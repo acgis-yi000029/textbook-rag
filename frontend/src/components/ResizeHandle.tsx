@@ -25,6 +25,7 @@ export default function ResizeHandle({
   const startX = useRef(0);
   const startW = useRef(0);
   const [active, setActive] = useState(false);
+  const [previewDelta, setPreviewDelta] = useState(0);
 
   const onMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -32,6 +33,7 @@ export default function ResizeHandle({
       dragging.current = true;
       startX.current = e.clientX;
       startW.current = width;
+      setPreviewDelta(0);
       setActive(true);
     },
     [width],
@@ -42,12 +44,20 @@ export default function ResizeHandle({
       if (!dragging.current) return;
       const delta = e.clientX - startX.current;
       const next = Math.max(min, Math.min(max, startW.current + delta));
-      onResize(next);
+      setPreviewDelta(next - startW.current);
     };
     const onMouseUp = () => {
       if (dragging.current) {
+        const next = Math.max(
+          min,
+          Math.min(max, startW.current + previewDelta),
+        );
         dragging.current = false;
+        setPreviewDelta(0);
         setActive(false);
+        if (next !== width) {
+          onResize(next);
+        }
       }
     };
     window.addEventListener("mousemove", onMouseMove);
@@ -56,14 +66,18 @@ export default function ResizeHandle({
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup", onMouseUp);
     };
-  }, [min, max, onResize]);
+  }, [max, min, onResize, previewDelta, width]);
 
   return (
     <div
-      className={`shrink-0 cursor-col-resize select-none transition-colors ${
+      className={`relative shrink-0 cursor-col-resize select-none transition-colors ${
         active ? "bg-blue-400" : "bg-gray-300 hover:bg-blue-300"
       }`}
-      style={{ width: 4 }}
+      style={{
+        width: 4,
+        transform: previewDelta === 0 ? undefined : `translateX(${previewDelta}px)`,
+        zIndex: active ? 10 : undefined,
+      }}
       onMouseDown={onMouseDown}
     />
   );

@@ -15,6 +15,8 @@ export interface AppState {
   currentBookId: number | null;
   currentPage: number;
   selectedSource: SourceInfo | null;
+  selectedSourceNonce: number;
+  selectedModel: string;
   pdfVariant: "origin" | "layout";
   showToc: boolean;
 }
@@ -24,8 +26,10 @@ const initialState: AppState = {
   currentBookId: null,
   currentPage: 1,
   selectedSource: null,
+  selectedSourceNonce: 0,
+  selectedModel: "llama3.2:3b",
   pdfVariant: "origin",
-  showToc: false,
+  showToc: true,
 };
 
 /* ── Persistence helpers ── */
@@ -40,6 +44,10 @@ function loadPersistedState(): Partial<AppState> {
     return {
       currentBookId: typeof saved.currentBookId === "number" ? saved.currentBookId : null,
       currentPage: typeof saved.currentPage === "number" ? saved.currentPage : 1,
+      selectedModel:
+        typeof saved.selectedModel === "string" && saved.selectedModel.trim()
+          ? saved.selectedModel
+          : initialState.selectedModel,
       pdfVariant: saved.pdfVariant === "layout" ? "layout" : "origin",
     };
   } catch {
@@ -54,6 +62,7 @@ function persistState(state: AppState) {
       JSON.stringify({
         currentBookId: state.currentBookId,
         currentPage: state.currentPage,
+        selectedModel: state.selectedModel,
         pdfVariant: state.pdfVariant,
       }),
     );
@@ -67,6 +76,7 @@ type Action =
   | { type: "SET_BOOK"; bookId: number | null }
   | { type: "SET_PAGE"; page: number }
   | { type: "SELECT_SOURCE"; source: SourceInfo | null }
+  | { type: "SET_MODEL"; model: string }
   | { type: "SET_PDF_VARIANT"; variant: "origin" | "layout" }
   | { type: "TOGGLE_TOC" };
 
@@ -80,6 +90,7 @@ function reducer(state: AppState, action: Action): AppState {
         currentBookId: action.bookId,
         currentPage: 1,
         selectedSource: null,
+        selectedSourceNonce: 0,
       };
     case "SET_PAGE":
       return { ...state, currentPage: action.page };
@@ -87,9 +98,12 @@ function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         selectedSource: action.source,
+        selectedSourceNonce: state.selectedSourceNonce + 1,
         currentBookId: action.source?.book_id ?? state.currentBookId,
         currentPage: action.source?.page_number ?? state.currentPage,
       };
+    case "SET_MODEL":
+      return { ...state, selectedModel: action.model };
     case "SET_PDF_VARIANT":
       return { ...state, pdfVariant: action.variant };
     case "TOGGLE_TOC":
@@ -112,7 +126,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     persistState(state);
-  }, [state.currentBookId, state.currentPage, state.pdfVariant]);
+  }, [state.currentBookId, state.currentPage, state.pdfVariant, state.selectedModel]);
 
   return (
     <StateCtx.Provider value={state}>

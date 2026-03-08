@@ -30,7 +30,8 @@ export default function BboxOverlay({
     backgroundColor: "rgba(59, 130, 246, 0.1)",
     pointerEvents: "none",
     borderRadius: 2,
+    boxShadow: "0 0 0 3px rgba(59, 130, 246, 0.12), 0 0 24px rgba(59, 130, 246, 0.18)",
   };
 
-  return <div ref={overlayRef} style={style} />;
+  return <div ref={overlayRef} className="animate-pulse" style={style} />;
 }

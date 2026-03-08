@@ -7,7 +7,7 @@ import { AppProvider } from "./context/AppContext";
 
 export default function App() {
   const [leftWidth, setLeftWidth] = useState(
-    () => Math.round(window.innerWidth / 2),
+    () => Math.round(window.innerWidth * 0.6),
   );
 
   return (
@@ -29,9 +29,9 @@ export default function App() {
           <div className="h-full overflow-hidden" style={{ width: leftWidth }}>
             <PdfViewer />
           </div>
-          <ResizeHandle width={leftWidth} onResize={setLeftWidth} min={300} max={1400} />
+          <ResizeHandle width={leftWidth} onResize={setLeftWidth} min={420} max={1600} />
           {/* Right: Chat */}
-          <div className="flex-1 h-full overflow-hidden min-w-[300px]">
+          <div className="flex-1 h-full overflow-hidden min-w-[320px]">
             <ChatPanel />
           </div>
         </div>

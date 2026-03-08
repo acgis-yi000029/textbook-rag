@@ -1,6 +1,7 @@
 import type {
   BookDetail,
   BookSummary,
+  ModelInfo,
   QueryRequest,
   QueryResponse,
   TocEntry,
@@ -35,6 +36,10 @@ export function getPdfUrl(bookId: number, variant: "origin" | "layout" = "origin
 
 export async function fetchSuggestions(bookId: number): Promise<string[]> {
   return request<string[]>(`${BASE}/books/${bookId}/suggestions`);
+}
+
+export async function fetchModels(): Promise<ModelInfo[]> {
+  return request<ModelInfo[]>(`${BASE}/models`);
 }
 
 export async function queryTextbook(

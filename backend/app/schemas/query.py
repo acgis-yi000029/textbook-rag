@@ -15,6 +15,7 @@ class QueryRequest(BaseModel):
     question: str = Field(..., min_length=1, max_length=2000)
     filters: QueryFilters | None = None
     top_k: int = Field(default=5, ge=1, le=20)
+    model: str | None = Field(default=None, min_length=1, max_length=200)
 
 
 class SourceInfo(BaseModel):
@@ -38,3 +39,8 @@ class QueryResponse(BaseModel):
     answer: str
     sources: list[SourceInfo]
     retrieval_stats: RetrievalStats
+
+
+class ModelInfo(BaseModel):
+    name: str
+    is_default: bool = False

@@ -1,10 +1,13 @@
-"""Generation service — call Ollama to produce an answer from retrieved context."""
+"""Generation service - call Ollama to produce an answer from retrieved context."""
 
 from __future__ import annotations
+
+import re
 
 import ollama as _ollama
 
 from backend.app.config import OLLAMA_BASE_URL, OLLAMA_MODEL
+from backend.app.schemas.query import ModelInfo
 
 _SYSTEM_PROMPT = (
     "You are a knowledgeable teaching assistant for a textbook search system.\n"
@@ -22,20 +25,31 @@ _SYSTEM_PROMPT = (
 )
 
 
-def generate(question: str, context_chunks: list[dict], *, active_book_title: str | None = None) -> str:
-    """Build a RAG prompt from *context_chunks* and call Ollama.
+def generate(
+    question: str,
+    context_chunks: list[dict],
+    *,
+    active_book_title: str | None = None,
+    model: str | None = None,
+) -> str:
+    """Build a RAG prompt from *context_chunks* and call Ollama."""
 
-    Returns the generated answer text.  Raises ``RuntimeError`` when Ollama
-    is unreachable.
-    """
     context_block = _build_context(context_chunks)
 
     book_hint = ""
     if active_book_title:
         book_hint = f"The user is currently reading **{active_book_title}**.\n\n"
 
+    citation_hint = ""
+    if context_chunks:
+        citation_hint = (
+            f"You may only use citation numbers [1] through [{len(context_chunks)}]. "
+            "Do not cite any number outside that range.\n\n"
+        )
+
     user_msg = (
         f"{book_hint}"
+        f"{citation_hint}"
         f"## Context\n\n{context_block}\n\n"
         f"## Question\n\n{question}"
     )
@@ -43,30 +57,71 @@ def generate(question: str, context_chunks: list[dict], *, active_book_title: st
     try:
         client = _ollama.Client(host=OLLAMA_BASE_URL)
         resp = client.chat(
-            model=OLLAMA_MODEL,
+            model=model or OLLAMA_MODEL,
             messages=[
                 {"role": "system", "content": _SYSTEM_PROMPT},
                 {"role": "user", "content": user_msg},
             ],
         )
-        return resp["message"]["content"]
+        return _sanitize_citations(resp["message"]["content"], len(context_chunks))
     except Exception as exc:
         raise RuntimeError(
-            f"Ollama generation failed ({OLLAMA_BASE_URL}, model={OLLAMA_MODEL}): {exc}"
+            f"Ollama generation failed ({OLLAMA_BASE_URL}, model={model or OLLAMA_MODEL}): {exc}"
         ) from exc
+
+
+def list_available_models() -> list[ModelInfo]:
+    """Return locally available Ollama models with the configured default marked."""
+
+    try:
+        client = _ollama.Client(host=OLLAMA_BASE_URL)
+        response = client.list()
+    except Exception as exc:
+        raise RuntimeError(
+            f"Ollama model listing failed ({OLLAMA_BASE_URL}): {exc}"
+        ) from exc
+
+    entries = response.get("models", [])
+    models: list[ModelInfo] = []
+    for entry in entries:
+        name = entry.get("model") or entry.get("name")
+        if not isinstance(name, str) or not name:
+            continue
+        models.append(ModelInfo(name=name, is_default=name == OLLAMA_MODEL))
+
+    if not any(model.name == OLLAMA_MODEL for model in models):
+        models.insert(0, ModelInfo(name=OLLAMA_MODEL, is_default=True))
+
+    return models
+
+
+def _sanitize_citations(text: str, max_citation: int) -> str:
+    """Remove citation markers that do not map to the retrieved source list."""
+
+    def replace(match: re.Match[str]) -> str:
+        citation_num = int(match.group(1))
+        if 1 <= citation_num <= max_citation:
+            return match.group(0)
+        return ""
+
+    cleaned = re.sub(r"\[(\d+)\]", replace, text)
+    cleaned = re.sub(r"[ \t]{2,}", " ", cleaned)
+    cleaned = re.sub(r"\s+([.,;:!?])", r"\1", cleaned)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+    return cleaned.strip()
 
 
 def _build_context(chunks: list[dict]) -> str:
     parts: list[str] = []
-    for i, c in enumerate(chunks, 1):
-        book = c.get('book_title', '')
-        chapter = c.get('chapter_title', '')
-        locs = c.get('source_locators', [])
-        page = (locs[0].get('page_number', 0) + 1) if locs else ''
+    for i, chunk in enumerate(chunks, 1):
+        book = chunk.get("book_title", "")
+        chapter = chunk.get("chapter_title", "")
+        locs = chunk.get("source_locators", [])
+        page = (locs[0].get("page_number", 0) + 1) if locs else ""
         header = f"[{i}] {book}"
         if chapter:
-            header += f" — {chapter}"
+            header += f" - {chapter}"
         if page:
             header += f" (p.{page})"
-        parts.append(f"{header}\n{c.get('text', '')}")
+        parts.append(f"{header}\n{chunk.get('text', '')}")
     return "\n\n---\n\n".join(parts)

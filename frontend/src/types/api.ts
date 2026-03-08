@@ -62,4 +62,10 @@ export interface QueryRequest {
   question: string;
   filters?: QueryFilters;
   top_k?: number;
+  model?: string;
+}
+
+export interface ModelInfo {
+  name: string;
+  is_default: boolean;
 }

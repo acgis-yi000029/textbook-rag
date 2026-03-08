@@ -6,10 +6,18 @@ from fastapi import APIRouter, HTTPException
 
 from backend.app.database import DB
 from backend.app.repositories import book_repo
-from backend.app.schemas.query import QueryRequest, QueryResponse
-from backend.app.services import query_service
+from backend.app.schemas.query import ModelInfo, QueryRequest, QueryResponse
+from backend.app.services import generation_service, query_service
 
 router = APIRouter(prefix="/api/v1", tags=["query"])
+
+
+@router.get("/models", response_model=list[ModelInfo])
+def list_models() -> list[ModelInfo]:
+    try:
+        return generation_service.list_available_models()
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
 @router.post("/query", response_model=QueryResponse)
@@ -31,6 +39,7 @@ def query(req: QueryRequest, db: DB) -> QueryResponse:
         return query_service.query(
             db, req.question, filters=filters, top_k=req.top_k,
             active_book_title=book_title,
+            model=req.model,
         )
     except RuntimeError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc

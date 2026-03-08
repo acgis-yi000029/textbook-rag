@@ -14,12 +14,18 @@ def query(
     filters: dict | None = None,
     top_k: int = 5,
     active_book_title: str | None = None,
+    model: str | None = None,
 ) -> QueryResponse:
     """Full RAG pipeline: retrieve → generate → assemble response."""
 
     chunks, stats = retrieval_service.retrieve(db, question, filters=filters, top_k=top_k)
 
-    answer = generation_service.generate(question, chunks, active_book_title=active_book_title)
+    answer = generation_service.generate(
+        question,
+        chunks,
+        active_book_title=active_book_title,
+        model=model,
+    )
 
     sources = _build_sources(chunks)
 
