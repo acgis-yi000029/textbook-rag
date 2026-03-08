@@ -14,11 +14,12 @@ def test_retrieve_returns_results(db: sqlite3.Connection) -> None:
         "backend.app.services.retrieval_service.vector_repo.search",
         return_value=[],
     ):
-        chunks, stats = retrieval_service.retrieve(db, "backpropagation", top_k=3)
+        chunks, stats, trace = retrieval_service.retrieve(db, "backpropagation", top_k=3)
     assert len(chunks) > 0
     assert len(chunks) <= 3
     assert stats["fts_hits"] > 0
     assert stats["fused_count"] == len(chunks)
+    assert "fused_results" in trace
     # Each chunk should have enriched book_title
     assert chunks[0].get("book_title")
 
@@ -29,9 +30,10 @@ def test_retrieve_empty_query(db: sqlite3.Connection) -> None:
         "backend.app.services.retrieval_service.vector_repo.search",
         return_value=[],
     ):
-        chunks, stats = retrieval_service.retrieve(db, "", top_k=5)
+        chunks, stats, trace = retrieval_service.retrieve(db, "", top_k=5)
     assert chunks == []
     assert stats["fts_hits"] == 0
+    assert trace["fts_query"] == ""
 
 
 def test_retrieve_with_book_filter(db: sqlite3.Connection) -> None:
@@ -43,7 +45,7 @@ def test_retrieve_with_book_filter(db: sqlite3.Connection) -> None:
         "backend.app.services.retrieval_service.vector_repo.search",
         return_value=[],
     ):
-        chunks, stats = retrieval_service.retrieve(
+        chunks, stats, _ = retrieval_service.retrieve(
             db, "algorithm", filters={"book_ids": [book_id]}, top_k=5
         )
     # All returned chunks should belong to the filtered book
@@ -57,7 +59,7 @@ def test_retrieve_source_locators_attached(db: sqlite3.Connection) -> None:
         "backend.app.services.retrieval_service.vector_repo.search",
         return_value=[],
     ):
-        chunks, _ = retrieval_service.retrieve(db, "algorithm", top_k=3)
+        chunks, _, _ = retrieval_service.retrieve(db, "algorithm", top_k=3)
     for c in chunks:
         assert "source_locators" in c
         assert isinstance(c["source_locators"], list)

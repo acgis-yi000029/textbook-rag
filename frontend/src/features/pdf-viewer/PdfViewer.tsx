@@ -75,6 +75,7 @@ export default function PdfViewer() {
   >({});
   const [tocEntries, setTocEntries] = useState<TocEntry[]>([]);
   const [tocWidth, setTocWidth] = useState(260);
+  const [selectedTocEntryId, setSelectedTocEntryId] = useState<number | null>(null);
   const [renderWidth, setRenderWidth] = useState(0);
   const [zoomScale, setZoomScale] = useState(1);
   const [isViewerHovered, setIsViewerHovered] = useState(false);
@@ -109,6 +110,25 @@ export default function PdfViewer() {
     () => Array.from({ length: numPages }, (_, index) => index + 1),
     [numPages],
   );
+  const activeTocEntryId = useMemo(() => {
+    if (selectedTocEntryId !== null) {
+      const selectedEntry = tocEntries.find((entry) => entry.id === selectedTocEntryId);
+      if (selectedEntry?.pdf_page === currentPage) {
+        return selectedTocEntryId;
+      }
+    }
+
+    let activeId: number | null = null;
+    for (const entry of tocEntries) {
+      if (entry.pdf_page <= currentPage) {
+        activeId = entry.id;
+      } else {
+        break;
+      }
+    }
+
+    return activeId;
+  }, [currentPage, selectedTocEntryId, tocEntries]);
 
   const markPagesRendered = useCallback((centerPage: number, radius: number) => {
     setRenderedPages((prev) => {
@@ -171,6 +191,7 @@ export default function PdfViewer() {
     setNumPages(0);
     setRenderWidth(0);
     setZoomScale(1);
+    setSelectedTocEntryId(null);
     setRenderedPages(new Set([1]));
     setLoadedPages(new Set());
     pageRefs.current.clear();
@@ -532,9 +553,6 @@ export default function PdfViewer() {
           ▶
         </button>
         <div className="ml-auto flex items-center gap-2">
-          <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">
-            Fit to width
-          </span>
           <button
             className="rounded bg-gray-200 px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-300"
             onClick={() => applyZoom(-ZOOM_STEP)}
@@ -588,7 +606,7 @@ export default function PdfViewer() {
               {tocEntries.map((entry) => {
                 const indent = entry.level * 12;
                 const isBold = entry.level <= 1;
-                const isActive = entry.pdf_page === currentPage;
+                const isActive = entry.id === activeTocEntryId;
                 const label = entry.number
                   ? `${entry.number} ${entry.title}`
                   : entry.title;
@@ -603,7 +621,10 @@ export default function PdfViewer() {
                     } ${isBold ? "font-semibold" : ""}`}
                     style={{ paddingLeft: `${indent + 8}px` }}
                     title={label}
-                    onClick={() => goToPage(entry.pdf_page)}
+                    onClick={() => {
+                      setSelectedTocEntryId(entry.id);
+                      goToPage(entry.pdf_page);
+                    }}
                   >
                     {label}
                     <span className="ml-1 font-normal text-gray-400">

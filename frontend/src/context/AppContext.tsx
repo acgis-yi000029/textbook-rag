@@ -17,6 +17,7 @@ export interface AppState {
   selectedSource: SourceInfo | null;
   selectedSourceNonce: number;
   selectedModel: string;
+  chatMode: "answer" | "trace";
   pdfVariant: "origin" | "layout";
   showToc: boolean;
 }
@@ -28,6 +29,7 @@ const initialState: AppState = {
   selectedSource: null,
   selectedSourceNonce: 0,
   selectedModel: "llama3.2:3b",
+  chatMode: "answer",
   pdfVariant: "origin",
   showToc: true,
 };
@@ -48,6 +50,7 @@ function loadPersistedState(): Partial<AppState> {
         typeof saved.selectedModel === "string" && saved.selectedModel.trim()
           ? saved.selectedModel
           : initialState.selectedModel,
+      chatMode: saved.chatMode === "trace" ? "trace" : "answer",
       pdfVariant: saved.pdfVariant === "layout" ? "layout" : "origin",
     };
   } catch {
@@ -63,6 +66,7 @@ function persistState(state: AppState) {
         currentBookId: state.currentBookId,
         currentPage: state.currentPage,
         selectedModel: state.selectedModel,
+        chatMode: state.chatMode,
         pdfVariant: state.pdfVariant,
       }),
     );
@@ -77,6 +81,7 @@ type Action =
   | { type: "SET_PAGE"; page: number }
   | { type: "SELECT_SOURCE"; source: SourceInfo | null }
   | { type: "SET_MODEL"; model: string }
+  | { type: "SET_CHAT_MODE"; mode: "answer" | "trace" }
   | { type: "SET_PDF_VARIANT"; variant: "origin" | "layout" }
   | { type: "TOGGLE_TOC" };
 
@@ -104,6 +109,8 @@ function reducer(state: AppState, action: Action): AppState {
       };
     case "SET_MODEL":
       return { ...state, selectedModel: action.model };
+    case "SET_CHAT_MODE":
+      return { ...state, chatMode: action.mode };
     case "SET_PDF_VARIANT":
       return { ...state, pdfVariant: action.variant };
     case "TOGGLE_TOC":
@@ -126,7 +133,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     persistState(state);
-  }, [state.currentBookId, state.currentPage, state.pdfVariant, state.selectedModel]);
+  }, [state.currentBookId, state.currentPage, state.pdfVariant, state.selectedModel, state.chatMode]);
 
   return (
     <StateCtx.Provider value={state}>

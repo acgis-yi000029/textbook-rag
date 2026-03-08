@@ -35,10 +35,45 @@ class RetrievalStats(BaseModel):
     fused_count: int
 
 
+class TraceChunkHit(BaseModel):
+    strategy: str
+    rank: int
+    chunk_id: str
+    book_title: str
+    chapter_title: str | None = None
+    page_number: int | None = None
+    score: float | None = None
+    snippet: str
+
+
+class RetrievalTrace(BaseModel):
+    fetch_k: int
+    fts_query: str
+    fts_results: list[TraceChunkHit]
+    vector_results: list[TraceChunkHit]
+    fused_results: list[TraceChunkHit]
+
+
+class GenerationTrace(BaseModel):
+    model: str
+    system_prompt: str
+    user_prompt: str
+
+
+class QueryTrace(BaseModel):
+    question: str
+    top_k: int
+    filters: QueryFilters | None = None
+    active_book_title: str | None = None
+    retrieval: RetrievalTrace
+    generation: GenerationTrace
+
+
 class QueryResponse(BaseModel):
     answer: str
     sources: list[SourceInfo]
     retrieval_stats: RetrievalStats
+    trace: QueryTrace
 
 
 class ModelInfo(BaseModel):

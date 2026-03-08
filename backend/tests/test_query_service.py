@@ -26,15 +26,29 @@ def _fake_chunks() -> list[dict]:
     ]
 
 
+def _fake_retrieval_trace() -> dict:
+    return {
+        "fetch_k": 9,
+        "fts_query": "backpropagation",
+        "fts_results": [],
+        "vector_results": [],
+        "fused_results": [],
+    }
+
+
 def test_query_happy_path(db: sqlite3.Connection) -> None:
     """query() should return a QueryResponse with answer, sources, stats."""
     with (
         patch(
             "backend.app.services.query_service.retrieval_service.retrieve",
-            return_value=(_fake_chunks(), {"fts_hits": 5, "vector_hits": 0, "fused_count": 1}),
+            return_value=(
+                _fake_chunks(),
+                {"fts_hits": 5, "vector_hits": 0, "fused_count": 1},
+                _fake_retrieval_trace(),
+            ),
         ),
         patch(
-            "backend.app.services.query_service.generation_service.generate",
+            "backend.app.services.query_service.generation_service.generate_from_messages",
             return_value="Backpropagation computes gradients.",
         ),
     ):
@@ -45,6 +59,8 @@ def test_query_happy_path(db: sqlite3.Connection) -> None:
     assert len(resp.sources) == 1
     assert resp.sources[0].book_title == "Deep Learning"
     assert resp.retrieval_stats.fts_hits == 5
+    assert resp.trace.question == "What is backpropagation?"
+    assert resp.trace.generation.model
 
 
 def test_query_sources_have_bbox(db: sqlite3.Connection) -> None:
@@ -52,10 +68,14 @@ def test_query_sources_have_bbox(db: sqlite3.Connection) -> None:
     with (
         patch(
             "backend.app.services.query_service.retrieval_service.retrieve",
-            return_value=(_fake_chunks(), {"fts_hits": 1, "vector_hits": 0, "fused_count": 1}),
+            return_value=(
+                _fake_chunks(),
+                {"fts_hits": 1, "vector_hits": 0, "fused_count": 1},
+                _fake_retrieval_trace(),
+            ),
         ),
         patch(
-            "backend.app.services.query_service.generation_service.generate",
+            "backend.app.services.query_service.generation_service.generate_from_messages",
             return_value="Answer",
         ),
     ):
@@ -70,10 +90,14 @@ def test_query_no_results(db: sqlite3.Connection) -> None:
     with (
         patch(
             "backend.app.services.query_service.retrieval_service.retrieve",
-            return_value=([], {"fts_hits": 0, "vector_hits": 0, "fused_count": 0}),
+            return_value=(
+                [],
+                {"fts_hits": 0, "vector_hits": 0, "fused_count": 0},
+                _fake_retrieval_trace(),
+            ),
         ),
         patch(
-            "backend.app.services.query_service.generation_service.generate",
+            "backend.app.services.query_service.generation_service.generate_from_messages",
             return_value="I don't have enough context.",
         ),
     ):

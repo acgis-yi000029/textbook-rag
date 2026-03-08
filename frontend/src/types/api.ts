@@ -46,10 +46,45 @@ export interface RetrievalStats {
   fused_count: number;
 }
 
+export interface TraceChunkHit {
+  strategy: "fts" | "vector" | "fused";
+  rank: number;
+  chunk_id: string;
+  book_title: string;
+  chapter_title: string | null;
+  page_number: number | null;
+  score: number | null;
+  snippet: string;
+}
+
+export interface RetrievalTrace {
+  fetch_k: number;
+  fts_query: string;
+  fts_results: TraceChunkHit[];
+  vector_results: TraceChunkHit[];
+  fused_results: TraceChunkHit[];
+}
+
+export interface GenerationTrace {
+  model: string;
+  system_prompt: string;
+  user_prompt: string;
+}
+
+export interface QueryTrace {
+  question: string;
+  top_k: number;
+  filters: QueryFilters | null;
+  active_book_title: string | null;
+  retrieval: RetrievalTrace;
+  generation: GenerationTrace;
+}
+
 export interface QueryResponse {
   answer: string;
   sources: SourceInfo[];
   retrieval_stats: RetrievalStats;
+  trace: QueryTrace;
 }
 
 export interface QueryFilters {

@@ -8,7 +8,13 @@ import {
 } from "react";
 import { fetchModels, queryTextbook, fetchSuggestions } from "../../api/client";
 import { useAppDispatch, useAppState } from "../../context/AppContext";
-import type { ModelInfo, QueryResponse, SourceInfo } from "../../types/api";
+import type {
+  ModelInfo,
+  QueryResponse,
+  QueryTrace,
+  SourceInfo,
+  TraceChunkHit,
+} from "../../types/api";
 import MessageBubble from "./MessageBubble";
 import SourceCard from "../source/SourceCard";
 
@@ -16,6 +22,7 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   sources?: SourceInfo[];
+  trace?: QueryTrace;
 }
 
 const FALLBACK_SUGGESTIONS = [
@@ -45,17 +52,282 @@ const ICONS = [
 function ThreadStatus({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-      <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-400">
-        Workspace
-      </div>
-      <div className="mt-1 text-sm font-semibold text-slate-900">{title}</div>
+      <div className="text-sm font-semibold text-slate-900">{title}</div>
       <div className="mt-1 text-sm text-slate-500">{subtitle}</div>
     </div>
   );
 }
 
+function ModeToggle({
+  mode,
+  onChange,
+}: {
+  mode: "answer" | "trace";
+  onChange: (mode: "answer" | "trace") => void;
+}) {
+  return (
+    <div className="inline-flex rounded-md border border-slate-200 bg-white p-1">
+      {(["answer", "trace"] as const).map((option) => {
+        const active = mode === option;
+        return (
+          <button
+            key={option}
+            type="button"
+            onClick={() => onChange(option)}
+            className={`rounded px-2.5 py-1 text-xs font-medium transition ${
+              active
+                ? "bg-slate-900 text-white"
+                : "text-slate-600 hover:bg-slate-100"
+            }`}
+          >
+            {option === "answer" ? "Answer" : "Trace"}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function formatScore(score: number | null) {
+  return score == null ? "n/a" : score.toFixed(4);
+}
+
+function TraceStat({
+  label,
+  value,
+  tone = "default",
+}: {
+  label: string;
+  value: string;
+  tone?: "default" | "warn";
+}) {
+  return (
+    <div
+      className={`rounded-xl border px-3 py-2 ${
+        tone === "warn"
+          ? "border-amber-200 bg-amber-50"
+          : "border-slate-200 bg-white"
+      }`}
+    >
+      <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400">
+        {label}
+      </div>
+      <div className="mt-1 text-sm font-medium text-slate-800">{value}</div>
+    </div>
+  );
+}
+
+function TracePromptBlock({
+  title,
+  text,
+  defaultOpen = false,
+}: {
+  title: string;
+  text: string;
+  defaultOpen?: boolean;
+}) {
+  return (
+    <details
+      className="rounded-xl border border-slate-200 bg-white"
+      open={defaultOpen}
+    >
+      <summary className="cursor-pointer list-none px-3 py-2 text-xs font-medium text-slate-700">
+        <div className="flex items-center justify-between gap-3">
+          <span>{title}</span>
+          <span className="text-[11px] text-slate-400">{text.length} chars</span>
+        </div>
+      </summary>
+      <pre className="max-h-64 overflow-auto whitespace-pre-wrap border-t border-slate-200 p-3 text-xs leading-5 text-slate-700">
+        {text || "(empty)"}
+      </pre>
+    </details>
+  );
+}
+
+function TraceHitList({
+  title,
+  hits,
+  emptyLabel,
+}: {
+  title: string;
+  hits: TraceChunkHit[];
+  emptyLabel: string;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+      <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500">
+        {title}
+      </div>
+      {hits.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-slate-200 bg-white px-3 py-2 text-sm text-slate-500">
+          {emptyLabel}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {hits.map((hit) => (
+            <div
+              key={`${title}-${hit.chunk_id}-${hit.rank}`}
+              className="rounded-lg border border-slate-200 bg-white p-2.5"
+            >
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                <span className="font-semibold text-slate-700">#{hit.rank}</span>
+                <span>{hit.book_title}</span>
+                {hit.chapter_title && <span>{hit.chapter_title}</span>}
+                {hit.page_number && <span>p.{hit.page_number}</span>}
+                <span>score {formatScore(hit.score)}</span>
+              </div>
+              <div className="mt-1.5 text-sm text-slate-700">{hit.snippet}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TracePanel({ trace }: { trace: QueryTrace }) {
+  const ftsCount = trace.retrieval.fts_results.length;
+  const vectorCount = trace.retrieval.vector_results.length;
+  const fusedCount = trace.retrieval.fused_results.length;
+  const noContext = fusedCount === 0;
+  const filterLines = [
+    trace.filters?.book_ids?.length
+      ? `book_ids: ${trace.filters.book_ids.join(", ")}`
+      : null,
+    trace.filters?.chapter_ids?.length
+      ? `chapter_ids: ${trace.filters.chapter_ids.join(", ")}`
+      : null,
+    trace.filters?.content_types?.length
+      ? `content_types: ${trace.filters.content_types.join(", ")}`
+      : null,
+  ].filter(Boolean) as string[];
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400">
+            Execution Trace
+          </div>
+          <div className="mt-1 text-sm font-medium text-slate-900">
+            {noContext
+              ? "No retrieval context reached the model."
+              : `${fusedCount} context chunks were sent to the model.`}
+          </div>
+        </div>
+        <div className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600">
+          {trace.generation.model}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <div className="grid gap-2 md:grid-cols-3">
+          <TraceStat label="FTS hits" value={String(ftsCount)} tone={ftsCount === 0 ? "warn" : "default"} />
+          <TraceStat label="Vector hits" value={String(vectorCount)} tone={vectorCount === 0 ? "warn" : "default"} />
+          <TraceStat label="Context sent" value={String(fusedCount)} tone={noContext ? "warn" : "default"} />
+        </div>
+
+        {noContext && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
+            Retrieval returned no usable context. The model answered without textbook evidence, so this result is not useful for optimization until retrieval is fixed.
+          </div>
+        )}
+
+        <details className="rounded-xl border border-slate-200 bg-slate-50/70" open>
+          <summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500">
+            Request
+          </summary>
+          <div className="space-y-3 border-t border-slate-200 p-3">
+            <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+              <div className="mb-1 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400">
+                Question
+              </div>
+              <div>{trace.question}</div>
+            </div>
+            <div className="grid gap-2 md:grid-cols-2">
+              <TraceStat label="top_k" value={String(trace.top_k)} />
+              <TraceStat label="fetch_k" value={String(trace.retrieval.fetch_k)} />
+            </div>
+            <div className="grid gap-2 md:grid-cols-2">
+              <TraceStat
+                label="Active book"
+                value={trace.active_book_title || "none"}
+              />
+              <TraceStat
+                label="Filters"
+                value={filterLines.length > 0 ? filterLines.join(" | ") : "none"}
+              />
+            </div>
+          </div>
+        </details>
+
+        <details className="rounded-xl border border-slate-200 bg-slate-50/70" open>
+          <summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500">
+            Retrieval
+          </summary>
+          <div className="space-y-3 border-t border-slate-200 p-3">
+            <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+              <div className="mb-1 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400">
+                FTS query
+              </div>
+              <code className="break-all text-[13px] text-slate-800">
+                {trace.retrieval.fts_query || "(empty)"}
+              </code>
+            </div>
+            <div className="space-y-3">
+              <TraceHitList
+                title="FTS Hits"
+                hits={trace.retrieval.fts_results}
+                emptyLabel="Keyword search returned no chunks."
+              />
+              <TraceHitList
+                title="Vector Hits"
+                hits={trace.retrieval.vector_results}
+                emptyLabel="Vector search returned no chunks."
+              />
+              <TraceHitList
+                title="Fused Context Sent To LLM"
+                hits={trace.retrieval.fused_results}
+                emptyLabel="RRF produced no context to send to the model."
+              />
+            </div>
+          </div>
+        </details>
+
+        <details className="rounded-xl border border-slate-200 bg-slate-50/70">
+          <summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500">
+            Generation
+          </summary>
+          <div className="space-y-3 border-t border-slate-200 p-3">
+            <div className="grid gap-2 md:grid-cols-2">
+              <TraceStat label="Model" value={trace.generation.model} />
+              <TraceStat
+                label="Prompt context"
+                value={noContext ? "empty" : `${fusedCount} chunks attached`}
+                tone={noContext ? "warn" : "default"}
+              />
+            </div>
+            <TracePromptBlock title="System prompt" text={trace.generation.system_prompt} />
+            <TracePromptBlock
+              title="User prompt"
+              text={trace.generation.user_prompt}
+              defaultOpen={noContext}
+            />
+          </div>
+        </details>
+      </div>
+    </div>
+  );
+}
+
 export default function ChatPanel() {
-  const { currentBookId, selectedSource, books, selectedModel } = useAppState();
+  const {
+    currentBookId,
+    selectedSource,
+    books,
+    selectedModel,
+    chatMode,
+  } = useAppState();
   const dispatch = useAppDispatch();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -127,7 +399,9 @@ export default function ChatPanel() {
     }
 
     fetchSuggestions(currentBookId)
-      .then((s) => setSuggestions(s.length ? s : FALLBACK_SUGGESTIONS))
+      .then((nextSuggestions) =>
+        setSuggestions(nextSuggestions.length ? nextSuggestions : FALLBACK_SUGGESTIONS),
+      )
       .catch(() => setSuggestions(FALLBACK_SUGGESTIONS));
   }, [currentBookId]);
 
@@ -167,7 +441,12 @@ export default function ChatPanel() {
 
         setMessages((prev) => [
           ...prev,
-          { role: "assistant", content: res.answer, sources: res.sources },
+          {
+            role: "assistant",
+            content: res.answer,
+            sources: res.sources,
+            trace: res.trace,
+          },
         ]);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
@@ -203,7 +482,7 @@ export default function ChatPanel() {
   }, [dispatch, scrollToBottom]);
 
   const selectedSourceLabel = selectedSource
-    ? `${selectedSource.chapter_title ?? selectedSource.book_title} · p.${selectedSource.page_number}`
+    ? `${selectedSource.chapter_title ?? selectedSource.book_title} | p.${selectedSource.page_number}`
     : null;
 
   return (
@@ -232,16 +511,17 @@ export default function ChatPanel() {
             </div>
             <p className="mt-1 text-xs text-slate-500">
               {currentBook
-                ? `${currentBook.page_count} pages · ${currentBook.chapter_count} chapters`
+                ? `${currentBook.page_count} pages | ${currentBook.chapter_count} chapters`
                 : "Select a textbook to start a conversation"}
             </p>
-          </div>
-          <div className="shrink-0 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600">
-            {loading ? "Thinking..." : hasMessages ? "Conversation" : "Ready"}
           </div>
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-3">
+          <ModeToggle
+            mode={chatMode}
+            onChange={(mode) => dispatch({ type: "SET_CHAT_MODE", mode })}
+          />
           <label className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400">
             <span>Model</span>
             <select
@@ -264,9 +544,6 @@ export default function ChatPanel() {
               )}
             </select>
           </label>
-          <span className="text-[11px] text-slate-400">
-            Current queries use the selected model only.
-          </span>
         </div>
 
         {selectedSourceLabel && (
@@ -290,7 +567,7 @@ export default function ChatPanel() {
               title={currentBook ? currentBook.title : "Textbook RAG"}
               subtitle={
                 currentBook
-                  ? "Ask for explanations, summaries, definitions, or page-grounded evidence."
+                  ? "Ask normally, or switch to Trace to inspect retrieval and prompt construction."
                   : "Choose a textbook first, then start asking questions."
               }
             />
@@ -306,13 +583,8 @@ export default function ChatPanel() {
                     <span className="mt-0.5 shrink-0 rounded-md bg-slate-100 p-2">
                       {ICONS[index % ICONS.length]}
                     </span>
-                    <div>
-                      <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-400">
-                        Prompt
-                      </div>
-                      <div className="mt-1 text-sm text-slate-700 group-hover:text-slate-900">
-                        {question}
-                      </div>
+                    <div className="text-sm text-slate-700 group-hover:text-slate-900">
+                      {question}
                     </div>
                   </div>
                 </button>
@@ -328,6 +600,9 @@ export default function ChatPanel() {
                   content={message.content}
                   sources={message.sources}
                 />
+                {message.role === "assistant" && chatMode === "trace" && message.trace && (
+                  <TracePanel trace={message.trace} />
+                )}
                 {message.sources && message.sources.length > 0 && (
                   <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
                     <div className="mb-2 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400">
@@ -427,7 +702,7 @@ export default function ChatPanel() {
                     ? "Grounded answers use the selected textbook only."
                     : "Pick a book to enable retrieval."}
                 </span>
-                <span>Enter to send · Shift+Enter for line breaks</span>
+                <span>Enter to send | Shift+Enter for line breaks</span>
               </div>
             </div>
             <button
@@ -440,7 +715,7 @@ export default function ChatPanel() {
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/80 border-t-transparent" />
               ) : (
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.906 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
                 </svg>
               )}
             </button>

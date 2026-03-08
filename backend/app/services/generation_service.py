@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from typing import Any
 
 import ollama as _ollama
 
@@ -33,7 +34,20 @@ def generate(
     model: str | None = None,
 ) -> str:
     """Build a RAG prompt from *context_chunks* and call Ollama."""
+    messages = build_messages(
+        question,
+        context_chunks,
+        active_book_title=active_book_title,
+    )
+    return generate_from_messages(messages, model=model, max_citation=len(context_chunks))
 
+
+def build_messages(
+    question: str,
+    context_chunks: list[dict],
+    *,
+    active_book_title: str | None = None,
+) -> list[dict[str, str]]:
     context_block = _build_context(context_chunks)
 
     book_hint = ""
@@ -53,17 +67,27 @@ def generate(
         f"## Context\n\n{context_block}\n\n"
         f"## Question\n\n{question}"
     )
+    return [
+        {"role": "system", "content": _SYSTEM_PROMPT},
+        {"role": "user", "content": user_msg},
+    ]
+
+
+def generate_from_messages(
+    messages: list[dict[str, str]],
+    *,
+    model: str | None = None,
+    max_citation: int,
+) -> str:
+    """Call Ollama with prebuilt messages and sanitize returned citations."""
 
     try:
         client = _ollama.Client(host=OLLAMA_BASE_URL)
         resp = client.chat(
             model=model or OLLAMA_MODEL,
-            messages=[
-                {"role": "system", "content": _SYSTEM_PROMPT},
-                {"role": "user", "content": user_msg},
-            ],
+            messages=messages,
         )
-        return _sanitize_citations(resp["message"]["content"], len(context_chunks))
+        return _sanitize_citations(resp["message"]["content"], max_citation)
     except Exception as exc:
         raise RuntimeError(
             f"Ollama generation failed ({OLLAMA_BASE_URL}, model={model or OLLAMA_MODEL}): {exc}"
@@ -93,6 +117,30 @@ def list_available_models() -> list[ModelInfo]:
         models.insert(0, ModelInfo(name=OLLAMA_MODEL, is_default=True))
 
     return models
+
+
+def get_effective_model_name(model: str | None = None) -> str:
+    return model or OLLAMA_MODEL
+
+
+def build_generation_trace(
+    messages: list[dict[str, str]],
+    *,
+    model: str | None = None,
+) -> dict[str, Any]:
+    system_prompt = next(
+        (message["content"] for message in messages if message["role"] == "system"),
+        "",
+    )
+    user_prompt = next(
+        (message["content"] for message in messages if message["role"] == "user"),
+        "",
+    )
+    return {
+        "model": get_effective_model_name(model),
+        "system_prompt": system_prompt,
+        "user_prompt": user_prompt,
+    }
 
 
 def _sanitize_citations(text: str, max_citation: int) -> str:
