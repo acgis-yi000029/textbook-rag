@@ -51,3 +51,7 @@ export async function queryTextbook(
     body: JSON.stringify(req),
   });
 }
+
+export async function fetchDemo(): Promise<QueryResponse> {
+  return request<QueryResponse>(`${BASE}/demo`);
+}

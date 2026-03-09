@@ -159,7 +159,8 @@ def _collect_unique_chunks(*groups: list[dict]) -> list[dict]:
 def _to_trace_hit(chunk: dict, strategy: str) -> dict:
     if strategy == "fts":
         rank = chunk.get("_fts_rank")
-        score = chunk.get("rank")
+        raw = chunk.get("rank")
+        score = -raw if raw is not None else None
     elif strategy == "vector":
         rank = chunk.get("_vec_rank")
         score = chunk.get("_vec_distance")

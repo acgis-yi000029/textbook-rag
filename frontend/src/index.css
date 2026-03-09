@@ -14,3 +14,17 @@ body,
     transform: translateX(100%);
   }
 }
+
+.react-pdf__Page__textContent {
+  pointer-events: none;
+}
+
+.react-pdf__Page__textContent span {
+  position: relative;
+  border-radius: 2px;
+  transition:
+    background-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+

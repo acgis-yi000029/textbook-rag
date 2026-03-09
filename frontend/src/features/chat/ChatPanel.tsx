@@ -6,7 +6,7 @@ import {
   type FormEvent,
   type KeyboardEvent,
 } from "react";
-import { fetchModels, queryTextbook, fetchSuggestions } from "../../api/client";
+import { fetchModels, queryTextbook, fetchSuggestions, fetchDemo } from "../../api/client";
 import { useAppDispatch, useAppState } from "../../context/AppContext";
 import type {
   ModelInfo,
@@ -16,7 +16,6 @@ import type {
   TraceChunkHit,
 } from "../../types/api";
 import MessageBubble from "./MessageBubble";
-import SourceCard from "../source/SourceCard";
 
 interface Message {
   role: "user" | "assistant";
@@ -188,6 +187,8 @@ function TraceHitList({
 function TracePanel({ trace }: { trace: QueryTrace }) {
   const ftsCount = trace.retrieval.fts_results.length;
   const vectorCount = trace.retrieval.vector_results.length;
+  const pageindexCount = (trace.retrieval.pageindex_results ?? []).length;
+  const metadataCount = (trace.retrieval.metadata_results ?? []).length;
   const fusedCount = trace.retrieval.fused_results.length;
   const noContext = fusedCount === 0;
   const filterLines = [
@@ -221,9 +222,11 @@ function TracePanel({ trace }: { trace: QueryTrace }) {
       </div>
 
       <div className="space-y-3">
-        <div className="grid gap-2 md:grid-cols-3">
+        <div className="grid gap-2 md:grid-cols-5">
           <TraceStat label="FTS hits" value={String(ftsCount)} tone={ftsCount === 0 ? "warn" : "default"} />
           <TraceStat label="Vector hits" value={String(vectorCount)} tone={vectorCount === 0 ? "warn" : "default"} />
+          <TraceStat label="PageIndex hits" value={String(pageindexCount)} tone={pageindexCount === 0 ? "warn" : "default"} />
+          <TraceStat label="Metadata hits" value={String(metadataCount)} tone={metadataCount === 0 ? "warn" : "default"} />
           <TraceStat label="Context sent" value={String(fusedCount)} tone={noContext ? "warn" : "default"} />
         </div>
 
@@ -286,6 +289,16 @@ function TracePanel({ trace }: { trace: QueryTrace }) {
                 emptyLabel="Vector search returned no chunks."
               />
               <TraceHitList
+                title="PageIndex Hits"
+                hits={trace.retrieval.pageindex_results ?? []}
+                emptyLabel="PageIndex tree search returned no chunks."
+              />
+              <TraceHitList
+                title="Metadata Hits"
+                hits={trace.retrieval.metadata_results ?? []}
+                emptyLabel="Metadata filter returned no chunks."
+              />
+              <TraceHitList
                 title="Fused Context Sent To LLM"
                 hits={trace.retrieval.fused_results}
                 emptyLabel="RRF produced no context to send to the model."
@@ -317,6 +330,125 @@ function TracePanel({ trace }: { trace: QueryTrace }) {
         </details>
       </div>
     </div>
+  );
+}
+
+/* ── Thinking Process Panel (collapsible, always visible) ── */
+
+const STRATEGY_META: Record<string, { label: string; color: string; desc: string }> = {
+  fts:       { label: "FTS5 (BM25)",         color: "text-amber-600 bg-amber-50 border-amber-200",  desc: "Full-text keyword search using SQLite FTS5 with BM25 ranking" },
+  vector:    { label: "Vector (Embedding)",   color: "text-blue-600 bg-blue-50 border-blue-200",    desc: "Semantic similarity search via ChromaDB embeddings" },
+  pageindex: { label: "PageIndex (Tree)",     color: "text-emerald-600 bg-emerald-50 border-emerald-200", desc: "Hierarchical TOC tree traversal with LLM-guided selection" },
+  metadata:  { label: "Metadata Filter",      color: "text-purple-600 bg-purple-50 border-purple-200",   desc: "Chapter & content-type metadata matching" },
+};
+
+function ThinkingProcessPanel({ trace }: { trace: QueryTrace }) {
+  const strategies = [
+    { key: "fts",       hits: trace.retrieval.fts_results },
+    { key: "vector",    hits: trace.retrieval.vector_results },
+    { key: "pageindex", hits: trace.retrieval.pageindex_results ?? [] },
+    { key: "metadata",  hits: trace.retrieval.metadata_results ?? [] },
+  ];
+  const fusedCount = trace.retrieval.fused_results.length;
+
+  return (
+    <details className="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium text-slate-700 select-none">
+        <svg className="h-4 w-4 text-slate-400 transition-transform [[open]>&]:rotate-90" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="m9 5 7 7-7 7" />
+        </svg>
+        <span>Thinking Process</span>
+        <span className="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">
+          4 strategies → {fusedCount} fused chunks
+        </span>
+      </summary>
+
+      <div className="space-y-4 border-t border-slate-200 p-4">
+        {/* Step 1: Query Analysis */}
+        <div>
+          <div className="mb-2 flex items-center gap-2">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 text-[10px] font-bold text-white">1</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Query Analysis</span>
+          </div>
+          <div className="ml-7 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+            <div className="text-[11px] font-medium text-slate-400">Generated FTS Query</div>
+            <code className="text-sm text-slate-800">{trace.retrieval.fts_query}</code>
+          </div>
+        </div>
+
+        {/* Step 2: Multi-Strategy Retrieval */}
+        <div>
+          <div className="mb-2 flex items-center gap-2">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 text-[10px] font-bold text-white">2</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Multi-Strategy Retrieval</span>
+          </div>
+          <div className="ml-7 grid gap-2 md:grid-cols-2">
+            {strategies.map(({ key, hits }) => {
+              const meta = STRATEGY_META[key];
+              return (
+                <div key={key} className={`rounded-lg border p-3 ${meta.color}`}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold">{meta.label}</span>
+                    <span className="rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-bold">
+                      {hits.length} hits
+                    </span>
+                  </div>
+                  <div className="mt-1 text-[11px] opacity-75">{meta.desc}</div>
+                  {hits.length > 0 && (
+                    <div className="mt-2 space-y-1">
+                      {hits.map((hit) => (
+                        <div key={`${key}-${hit.chunk_id}-${hit.rank}`} className="flex items-center justify-between rounded bg-white/60 px-2 py-1 text-[11px]">
+                          <span className="truncate">p.{hit.page_number} — {hit.snippet.slice(0, 50)}…</span>
+                          <span className="ml-2 shrink-0 font-mono font-semibold">
+                            {hit.score != null ? hit.score.toFixed(3) : "n/a"}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Step 3: RRF Fusion */}
+        <div>
+          <div className="mb-2 flex items-center gap-2">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 text-[10px] font-bold text-white">3</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">RRF Fusion</span>
+            <span className="rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-semibold text-green-700">Best {fusedCount} selected</span>
+          </div>
+          <div className="ml-7 space-y-1">
+            {trace.retrieval.fused_results.map((hit) => (
+              <div key={`fused-${hit.chunk_id}-${hit.rank}`} className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-900 text-[10px] font-bold text-white">
+                  {hit.rank}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-slate-700">
+                  p.{hit.page_number} — {hit.snippet.slice(0, 80)}…
+                </span>
+                <span className="shrink-0 font-mono text-xs font-semibold text-slate-500">
+                  {hit.score != null ? hit.score.toFixed(4) : "n/a"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Step 4: Generation */}
+        <div>
+          <div className="mb-2 flex items-center gap-2">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 text-[10px] font-bold text-white">4</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Answer Generation</span>
+          </div>
+          <div className="ml-7 flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+            <span className="rounded bg-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-700">{trace.generation.model}</span>
+            <span>{fusedCount} context chunks → structured answer with citations</span>
+          </div>
+        </div>
+      </div>
+    </details>
   );
 }
 
@@ -481,6 +613,31 @@ export default function ChatPanel() {
     scrollToBottom("auto");
   }, [dispatch, scrollToBottom]);
 
+  const runDemo = useCallback(async () => {
+    setError(null);
+    setLoading(true);
+    shouldStickToBottomRef.current = true;
+    setHasNewMessagesBelow(false);
+    try {
+      const res = await fetchDemo();
+      // Switch to HTTP book (id=24)
+      dispatch({ type: "SET_BOOK", bookId: 36 });
+      setMessages([
+        { role: "user", content: res.trace.question },
+        {
+          role: "assistant",
+          content: res.answer,
+          sources: res.sources,
+          trace: res.trace,
+        },
+      ]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Demo failed");
+    } finally {
+      setLoading(false);
+    }
+  }, [dispatch]);
+
   const selectedSourceLabel = selectedSource
     ? `${selectedSource.chapter_title ?? selectedSource.book_title} | p.${selectedSource.page_number}`
     : null;
@@ -558,7 +715,7 @@ export default function ChatPanel() {
 
       <div
         ref={threadRef}
-        className="chat-thread relative flex-1 overflow-y-auto px-4 pb-28 pt-4"
+        className="chat-thread relative flex-1 overflow-y-auto px-4 pb-40 pt-4"
         onScroll={updateNearBottom}
       >
         {!hasMessages && !loading ? (
@@ -590,6 +747,19 @@ export default function ChatPanel() {
                 </button>
               ))}
             </div>
+
+            {/* Demo button */}
+            <button
+              type="button"
+              onClick={() => void runDemo()}
+              disabled={loading}
+              className="group mx-auto flex items-center gap-2 rounded-xl border-2 border-dashed border-indigo-300 bg-indigo-50/50 px-5 py-3 text-sm font-medium text-indigo-600 transition hover:border-indigo-400 hover:bg-indigo-50 disabled:opacity-50"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
+              </svg>
+              Demo: FastAPI Dependency Injection
+            </button>
           </div>
         ) : (
           <div className="mx-auto flex max-w-3xl flex-col gap-3">
@@ -603,28 +773,8 @@ export default function ChatPanel() {
                 {message.role === "assistant" && chatMode === "trace" && message.trace && (
                   <TracePanel trace={message.trace} />
                 )}
-                {message.sources && message.sources.length > 0 && (
-                  <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-                    <div className="mb-2 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400">
-                      <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.7} viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                      </svg>
-                      <span>References</span>
-                      <span className="normal-case tracking-normal text-slate-400">
-                        Click to jump into the PDF
-                      </span>
-                    </div>
-                    <div className="space-y-2">
-                      {message.sources.map((source, sourceIndex) => (
-                        <SourceCard
-                          key={source.source_id}
-                          source={source}
-                          index={sourceIndex}
-                          isActive={selectedSource?.source_id === source.source_id}
-                        />
-                      ))}
-                    </div>
-                  </div>
+                {message.role === "assistant" && message.trace && (
+                  <ThinkingProcessPanel trace={message.trace} />
                 )}
               </div>
             ))}
@@ -661,7 +811,7 @@ export default function ChatPanel() {
       </div>
 
       {hasNewMessagesBelow && !isNearBottom && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-28 flex justify-center px-4">
+        <div className="pointer-events-none absolute inset-x-0 bottom-40 flex justify-center px-4">
           <button
             type="button"
             onClick={() => scrollToBottom("smooth")}

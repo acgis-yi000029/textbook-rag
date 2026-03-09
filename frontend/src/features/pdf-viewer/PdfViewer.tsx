@@ -8,10 +8,10 @@ import {
   useRef,
 } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
+import "react-pdf/dist/Page/TextLayer.css";
 
 import { getPdfUrl, fetchToc } from "../../api/client";
 import { useAppState, useAppDispatch } from "../../context/AppContext";
-import BboxOverlay from "./BboxOverlay";
 import Loading from "../../components/Loading";
 import ResizeHandle from "../../components/ResizeHandle";
 import type { TocEntry } from "../../types/api";
@@ -26,6 +26,7 @@ const ZOOM_STEP = 0.1;
 const VIEWPORT_VERTICAL_PADDING = 40;
 const INITIAL_RENDER_RADIUS = 2;
 const VISIBLE_RENDER_RADIUS = 3;
+const MIN_TEXT_MATCH_CHARS = 24;
 
 interface PdfPageCanvasProps {
   pageNumber: number;
@@ -51,11 +52,169 @@ const PdfPageCanvas = memo(function PdfPageCanvas({
       width={renderWidth}
       onLoadSuccess={handleLoadSuccess}
       loading={<Loading />}
-      renderTextLayer={false}
+      renderTextLayer
       renderAnnotationLayer={false}
     />
   );
 });
+
+function normalizeForMatch(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/[\u00ad\u2010\u2011\u2012\u2013\u2014-]/gu, "")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function buildSnippetCandidates(snippet: string): string[] {
+  const parts = snippet
+    .split(/(?<=[.!?])\s+|\n+/)
+    .map((part) => normalizeForMatch(part))
+    .filter((part) => part.length >= MIN_TEXT_MATCH_CHARS);
+
+  if (parts.length > 0) {
+    return [...parts].sort((a, b) => b.length - a.length);
+  }
+
+  const normalized = normalizeForMatch(snippet);
+  if (!normalized) return [];
+
+  const words = normalized.split(" ").filter(Boolean);
+  const windows: string[] = [];
+  for (let i = 0; i < words.length; i += 1) {
+    const window = words.slice(i, i + 10).join(" ");
+    if (window.length >= MIN_TEXT_MATCH_CHARS) {
+      windows.push(window);
+    }
+  }
+
+  return windows.length > 0 ? windows : [normalized];
+}
+
+function highlightSnippetInPage(
+  pageNode: HTMLDivElement,
+  snippet: string,
+  citationLabel?: string,
+): HTMLElement | null {
+  const textLayer = pageNode.querySelector(".react-pdf__Page__textContent");
+  if (!(textLayer instanceof HTMLElement)) return null;
+
+  // Remove previous overlay
+  const prev = pageNode.querySelector(".pdf-citation-box");
+  if (prev) prev.remove();
+
+  const spans = Array.from(textLayer.querySelectorAll("span")).filter(
+    (node): node is HTMLSpanElement => node instanceof HTMLSpanElement,
+  );
+  if (spans.length === 0) return null;
+
+  const normalizedPieces: string[] = [];
+  const charToSpan: number[] = [];
+
+  let previousEndedWithHyphen = false;
+  spans.forEach((span, spanIndex) => {
+    const rawText = span.textContent ?? "";
+    const normalized = normalizeForMatch(span.textContent ?? "");
+    if (!normalized) return;
+
+    const startsWithLetterOrDigit = /^\p{L}|\p{N}/u.test(normalized);
+    if (
+      normalizedPieces.length > 0 &&
+      !(previousEndedWithHyphen && startsWithLetterOrDigit)
+    ) {
+      normalizedPieces.push(" ");
+      charToSpan.push(spanIndex);
+    }
+
+    normalizedPieces.push(normalized);
+    for (let i = 0; i < normalized.length; i += 1) {
+      charToSpan.push(spanIndex);
+    }
+
+    previousEndedWithHyphen = /[\u00ad\u2010\u2011\u2012\u2013\u2014-]\s*$/u.test(rawText);
+  });
+
+  const normalizedText = normalizedPieces.join("");
+  if (!normalizedText) return null;
+
+  const candidates = buildSnippetCandidates(snippet);
+  for (const candidate of candidates) {
+    const start = normalizedText.indexOf(candidate);
+    if (start === -1) continue;
+
+    const end = start + candidate.length - 1;
+    const matchedIndices = new Set<number>();
+    for (let i = start; i <= end; i += 1) {
+      const spanIndex = charToSpan[i];
+      if (typeof spanIndex === "number") {
+        matchedIndices.add(spanIndex);
+      }
+    }
+
+    const matchedSpans = Array.from(matchedIndices)
+      .sort((a, b) => a - b)
+      .map((index) => spans[index]);
+
+    if (matchedSpans.length === 0) continue;
+
+    // Compute bounding rect relative to the page container
+    const pageRect = pageNode.getBoundingClientRect();
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const span of matchedSpans) {
+      const r = span.getBoundingClientRect();
+      if (r.width === 0 && r.height === 0) continue;
+      minX = Math.min(minX, r.left - pageRect.left);
+      minY = Math.min(minY, r.top - pageRect.top);
+      maxX = Math.max(maxX, r.right - pageRect.left);
+      maxY = Math.max(maxY, r.bottom - pageRect.top);
+    }
+
+    if (!isFinite(minX)) continue;
+
+    const pad = 4;
+    const box = document.createElement("div");
+    box.className = "pdf-citation-box";
+    box.style.cssText = [
+      "position:absolute",
+      "pointer-events:none",
+      `left:${minX - pad}px`,
+      `top:${minY - pad}px`,
+      `width:${maxX - minX + pad * 2}px`,
+      `height:${maxY - minY + pad * 2}px`,
+      "border:2px solid rgba(59,130,246,0.5)",
+      "border-radius:6px",
+      "background:rgba(59,130,246,0.06)",
+    ].join(";");
+
+    // Badge
+    const badge = document.createElement("div");
+    badge.style.cssText = [
+      "position:absolute",
+      "left:-2px",
+      "top:-22px",
+      "display:inline-flex",
+      "align-items:center",
+      "border-radius:9999px",
+      "background:rgba(37,99,235,0.92)",
+      "color:#eff6ff",
+      "padding:1px 7px",
+      "font-size:10px",
+      "font-weight:700",
+      "letter-spacing:0.04em",
+      "white-space:nowrap",
+      "box-shadow:0 4px 14px rgba(15,23,42,0.18)",
+    ].join(";");
+    badge.textContent = citationLabel ?? "Citation";
+    box.appendChild(badge);
+
+    pageNode.appendChild(box);
+    return box;
+  }
+
+  return null;
+}
 
 export default function PdfViewer() {
   const {
@@ -85,10 +244,11 @@ export default function PdfViewer() {
   const scrollViewportRef = useRef<HTMLDivElement>(null);
   const pageFrameRef = useRef<HTMLDivElement>(null);
   const pageRefs = useRef(new Map<number, HTMLDivElement>());
-  const bboxRefs = useRef(new Map<number, HTMLDivElement>());
+
   const currentPageRef = useRef(currentPage);
   const skipNextScrollRef = useRef(false);
   const didFitPageRef = useRef(false);
+  const matchedTextNonceRef = useRef<number | null>(null);
   const pendingPageJumpRef = useRef<{
     pageNumber: number;
     nonce: number;
@@ -153,14 +313,7 @@ export default function PdfViewer() {
     pageRefs.current.delete(pageNumber);
   }, []);
 
-  const setBboxNode = useCallback((pageNumber: number, node: HTMLDivElement | null) => {
-    if (node) {
-      bboxRefs.current.set(pageNumber, node);
-      return;
-    }
 
-    bboxRefs.current.delete(pageNumber);
-  }, []);
 
   const clampZoom = useCallback((value: number) => {
     return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round(value * 100) / 100));
@@ -195,8 +348,9 @@ export default function PdfViewer() {
     setRenderedPages(new Set([1]));
     setLoadedPages(new Set());
     pageRefs.current.clear();
-    bboxRefs.current.clear();
+
     didFitPageRef.current = false;
+    matchedTextNonceRef.current = null;
     pendingPageJumpRef.current = null;
     pendingSourceScrollRef.current = null;
 
@@ -369,6 +523,7 @@ export default function PdfViewer() {
       hasBbox: Boolean(selectedSource.bbox),
       nonce: selectedSourceNonce,
     };
+    matchedTextNonceRef.current = null;
     pendingPageJumpRef.current = {
       pageNumber: selectedSource.page_number,
       nonce: selectedSourceNonce,
@@ -411,28 +566,58 @@ export default function PdfViewer() {
   ]);
 
   useEffect(() => {
-    if (!selectedSource?.bbox) return;
+    if (!selectedSource?.snippet) return;
     if (selectedSource.book_id !== currentBookId) return;
 
-    const bboxNode = bboxRefs.current.get(selectedSource.page_number);
-    if (!bboxNode) return;
+    // Remove any previous citation box on other pages
+    for (const node of pageRefs.current.values()) {
+      const old = node.querySelector(".pdf-citation-box");
+      if (old) old.remove();
+    }
 
-    bboxNode.scrollIntoView({
-      block: "center",
-      inline: "nearest",
-      behavior: "smooth",
+    const pageNode = pageRefs.current.get(selectedSource.page_number);
+    if (!pageNode) return;
+
+    const tryHighlight = () => {
+      const firstMatch = highlightSnippetInPage(
+        pageNode,
+        selectedSource.snippet,
+        selectedSource.citation_label,
+      );
+      if (!firstMatch) return false;
+
+      matchedTextNonceRef.current = selectedSourceNonce;
+      firstMatch.scrollIntoView({
+        block: "center",
+        inline: "nearest",
+        behavior: "smooth",
+      });
+      pendingSourceScrollRef.current = null;
+      return true;
+    };
+
+    if (tryHighlight()) return;
+
+    const observer = new MutationObserver(() => {
+      if (tryHighlight()) {
+        observer.disconnect();
+      }
     });
-    pendingSourceScrollRef.current = null;
+
+    observer.observe(pageNode, { childList: true, subtree: true });
+    return () => observer.disconnect();
   }, [
     currentBookId,
     loadedPages,
-    selectedSource?.bbox,
+    renderedPages,
     selectedSource?.book_id,
     selectedSource?.page_number,
-    selectedSource?.source_id,
+    selectedSource?.snippet,
     selectedSourceNonce,
     zoomScale,
   ]);
+
+
 
   const onDocumentLoadSuccess = useCallback(
     ({ numPages: totalPages }: { numPages: number }) => {
@@ -667,7 +852,6 @@ export default function PdfViewer() {
               <div className="flex flex-col items-center" style={{ gap: scaledPageGap }}>
                 {pageNumbers.map((pageNumber) => {
                   const pageDims = pageDimsByPage[pageNumber];
-                  const bbox = selectedSource?.bbox ?? null;
                   const shouldRenderPage = renderedPages.has(pageNumber);
                   const isPageLoaded = loadedPages.has(pageNumber);
                   const renderedHeight = pageDims
@@ -675,12 +859,6 @@ export default function PdfViewer() {
                         (pageDims.height / pageDims.width) * stableRenderWidth,
                       )
                     : estimatedPageHeight;
-                  const showBbox =
-                    bbox &&
-                    shouldRenderPage &&
-                    selectedSource &&
-                    selectedSource.book_id === currentBookId &&
-                    selectedSource.page_number === pageNumber;
                   const scaledWidth = Math.round(stableRenderWidth * zoomScale);
                   const scaledHeight = renderedHeight
                     ? Math.round(renderedHeight * zoomScale)
@@ -748,16 +926,7 @@ export default function PdfViewer() {
                             <div className="pointer-events-none absolute right-3 top-3 rounded bg-white/85 px-2 py-0.5 text-[11px] font-medium text-gray-500 shadow-sm">
                               {pageNumber}
                             </div>
-                            {showBbox && pageDims && renderedHeight && (
-                              <BboxOverlay
-                                bbox={bbox}
-                                pageWidth={pageDims.width}
-                                pageHeight={pageDims.height}
-                                renderedWidth={stableRenderWidth}
-                                renderedHeight={renderedHeight}
-                                overlayRef={(node) => setBboxNode(pageNumber, node)}
-                              />
-                            )}
+
                           </div>
                       </div>
                     </div>

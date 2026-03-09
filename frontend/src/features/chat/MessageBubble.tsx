@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import Markdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import type { SourceInfo } from "../../types/api";
-import { useAppDispatch, useAppState } from "../../context/AppContext";
+import { useAppDispatch } from "../../context/AppContext";
 
 interface Props {
   role: "user" | "assistant";
@@ -16,7 +16,7 @@ function injectCitationLinks(text: string, maxCitation: number): string {
     (_, n) => {
       const index = Number.parseInt(n, 10);
       if (index >= 1 && index <= maxCitation) {
-        return `[^[${n}]](cite:${n})`;
+        return `<cite data-ref="${n}">[${n}]</cite>`;
       }
 
       return `<span data-invalid-cite="${n}" title="Citation ${n} is not available in this response"><sup>[${n}]</sup></span>`;
@@ -27,11 +27,16 @@ function injectCitationLinks(text: string, maxCitation: number): string {
 export default function MessageBubble({ role, content, sources }: Props) {
   const isUser = role === "user";
   const dispatch = useAppDispatch();
-  const { currentBookId } = useAppState();
 
   const handleCitationClick = (index: number) => {
     if (!sources || index < 0 || index >= sources.length) return;
-    dispatch({ type: "SELECT_SOURCE", source: sources[index] });
+    dispatch({
+      type: "SELECT_SOURCE",
+      source: {
+        ...sources[index],
+        citation_label: `[${index + 1}]`,
+      },
+    });
   };
 
   return (
@@ -61,6 +66,12 @@ export default function MessageBubble({ role, content, sources }: Props) {
             <Markdown
               rehypePlugins={[rehypeRaw]}
               components={{
+                h2({ children }) {
+                  return <h2 className="mt-4 mb-2 text-base font-bold text-slate-900">{children}</h2>;
+                },
+                h3({ children }) {
+                  return <h3 className="mt-3 mb-1.5 text-[0.94rem] font-semibold text-slate-800">{children}</h3>;
+                },
                 p({ children }) {
                   return <p className="my-2 leading-7 text-slate-700">{children}</p>;
                 },
@@ -101,9 +112,22 @@ export default function MessageBubble({ role, content, sources }: Props) {
                   return <span>{children}</span>;
                 },
                 a({ href, children }: { href?: string; children?: ReactNode }) {
-                  const match = href?.match(/^cite:(\d+)$/);
-                  if (match) {
-                    const idx = Number.parseInt(match[1], 10) - 1;
+                  return (
+                    <a href={href} className="text-blue-600 underline decoration-blue-200 underline-offset-2 hover:text-blue-800">
+                      {children}
+                    </a>
+                  );
+                },
+                cite({
+                  children,
+                  ...props
+                }: {
+                  children?: ReactNode;
+                  "data-ref"?: string;
+                }) {
+                  const ref = props["data-ref"];
+                  if (ref) {
+                    const idx = Number.parseInt(ref, 10) - 1;
                     return (
                       <button
                         type="button"
@@ -114,12 +138,7 @@ export default function MessageBubble({ role, content, sources }: Props) {
                       </button>
                     );
                   }
-
-                  return (
-                    <a href={href} className="text-blue-600 underline decoration-blue-200 underline-offset-2 hover:text-blue-800">
-                      {children}
-                    </a>
-                  );
+                  return <cite>{children}</cite>;
                 },
               }}
             >
@@ -127,39 +146,7 @@ export default function MessageBubble({ role, content, sources }: Props) {
             </Markdown>
           )}
         </div>
-        {!isUser && (
-          <div className="mt-2 flex items-center gap-2 text-xs">
-            <span className="text-slate-400">Sources: {sources?.length ?? 0}</span>
-            {currentBookId && (
-              <>
-                <span className="text-slate-400">Debug citation:</span>
-                <button
-                  type="button"
-                  className="inline-flex items-center rounded-md border border-amber-200 bg-amber-50 px-2 py-1 font-medium text-amber-700 transition hover:bg-amber-100"
-                  onClick={() => dispatch({ type: "SET_PAGE", page: 10 })}
-                >
-                  [p.10]
-                </button>
-              </>
-            )}
-            {sources && sources.length > 0 ? (
-              <>
-                <span className="text-slate-400">Test citation:</span>
-                <button
-                  type="button"
-                  className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-2 py-1 font-medium text-blue-700 transition hover:bg-blue-100"
-                  onClick={() => handleCitationClick(0)}
-                >
-                  [1]
-                </button>
-              </>
-            ) : (
-              <span className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-slate-500">
-                No source returned
-              </span>
-            )}
-          </div>
-        )}
+
       </div>
 
       {isUser && (

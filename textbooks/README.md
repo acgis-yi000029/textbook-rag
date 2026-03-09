@@ -1,6 +1,6 @@
 # Textbook Knowledge Base
 
-51 本教科书的 MinerU 转换输出，覆盖 AI/ML、数学、NLP、CV、RL、Python、JavaScript/TypeScript、软件工程、DevOps、UX 设计。
+58 本教科书的 MinerU 转换输出，覆盖 AI/ML、数学、NLP/IR、CV、RL、Python、JavaScript/TypeScript、软件工程、DevOps、安全、网络协议、数据库与框架、UX 设计。
 
 ## 概览
 
@@ -18,8 +18,11 @@
 | Algorithms             | 1      | CLRS                                           |
 | Software Engineering   | 9      | Clean Code/Arch, DDIA, GoF, Refactoring        |
 | DevOps                 | 3      | Pro Git, SRE, Release It!                      |
+| Security               | 4      | Black Hat Python, Serious Cryptography         |
+| Networking             | 2      | HTTP Definitive Guide, SSH Definitive Guide    |
+| Database / Frameworks  | 2      | Using SQLite, FastAPI Modern Web               |
 | UX/Design              | 2      | Don't Make Me Think, Design of Everyday Things |
-| **总计**               | **51** |                                                |
+| **总计**               | **58** |                                                |
 
 ## 目录结构
 
@@ -37,7 +40,7 @@ data/mineru_output/
 │           ├── {book_key}_span.pdf             # Span 标注
 │           └── images/                         # 提取的图片
 ├── batch_status.json                           # 转换状态记录
-└── ... (51 个书籍目录)
+└── ... (58 个书籍目录)
 
 textbooks/
 ├── README.md                                   # 本文件
@@ -191,6 +194,24 @@ for ref in idx['topics']['neural_networks']['references']:
 | `google_sre`        | Site Reliability Engineering | Google          |
 | `nygard_release_it` | Release It! (2nd ed)         | Michael Nygard  |
 
+### Security
+
+| Key                                  | 书名                       | 作者                     |
+| ------------------------------------ | -------------------------- | ------------------------ |
+| `seitz_black_hat_python`             | Black Hat Python (2nd ed)  | Justin Seitz & Tim Arnold |
+| `aumasson_serious_cryptography`      | Serious Cryptography       | Jean-Philippe Aumasson   |
+| `andriesse_practical_binary_analysis`| Practical Binary Analysis  | Dennis Andriesse         |
+| `zalewski_tangled_web`               | The Tangled Web            | Michal Zalewski          |
+
+### Networking / Database / Frameworks
+
+| Key                              | 书名                                  | 作者                         |
+| -------------------------------- | ------------------------------------- | ---------------------------- |
+| `gourley_http_definitive_guide`  | HTTP: The Definitive Guide            | Gourley & Totty              |
+| `barrett_ssh_definitive_guide`   | SSH: The Secure Shell (2nd ed)        | Barrett, Silverman, Byrnes   |
+| `kreibich_using_sqlite`          | Using SQLite                          | Jay A. Kreibich              |
+| `lubanovic_fastapi_modern_web`   | FastAPI: Modern Python Web Development| Bill Lubanovic               |
+
 ### UX / Design
 
 | Key                             | 书名                          | 作者       |
@@ -202,8 +223,8 @@ for ref in idx['topics']['neural_networks']['references']:
 
 | 指标     | 值  |
 | -------- | --- |
-| 主题数   | 52  |
-| 引用数   | 266 |
-| 覆盖书籍 | 50  |
+| 主题数   | 64  |
+| 引用数   | 327 |
+| 覆盖书籍 | 58  |
 
 重建索引：`uv run python scripts/rebuild_topic_index.py`

@@ -1,94 +1,88 @@
 project: "textbook-rag"
-started_at: "2026-03-07T00:00:00-05:00"
-current_phase: done
+version: "1.1"
+started_at: "2026-03-08T00:00:00-05:00"
+current_phase: requirements
+
+previous_versions:
+  v1.0:
+    completed_at: "2026-03-07T22:15:00-05:00"
+    docs_dir: "docs/v1.0"
+    review_summary: "All 10 phases PASS, 0 blocking issues, 86/100 code review score, 83% test coverage"
 
 config:
   parallel_frontend_backend: false
   auto_check: true
-  docs_dir: docs
+  docs_dir: docs/v1.1
 
 phases:
   requirements:
     name: "需求分析"
-    status: completed
-    started_at: "2026-03-07T00:00:00-05:00"
-    completed_at: "2026-03-07T19:10:00-05:00"
-    output: "docs/requirements/requirements.md"
+    status: in_progress
+    started_at: "2026-03-08T00:00:00-05:00"
+    output: "docs/v1.1/requirements/requirements.md"
     skill: "dev-product_manager"
     role: "product_manager"
     checks:
-      - file_exists: "docs/requirements/requirements.md"
-      - file_not_empty: "docs/requirements/requirements.md"
+      - file_exists: "docs/v1.1/requirements/requirements.md"
+      - file_not_empty: "docs/v1.1/requirements/requirements.md"
 
   prd:
     name: "产品需求文档"
-    status: completed
-    started_at: "2026-03-07T19:12:00-05:00"
-    completed_at: "2026-03-07T19:20:00-05:00"
-    output: "docs/requirements/prd.md"
+    status: not_started
+    output: "docs/v1.1/requirements/prd.md"
     skill: "dev-product_manager"
     role: "product_manager"
     depends_on: ["requirements"]
     checks:
-      - file_exists: "docs/requirements/prd.md"
-      - file_not_empty: "docs/requirements/prd.md"
+      - file_exists: "docs/v1.1/requirements/prd.md"
+      - file_not_empty: "docs/v1.1/requirements/prd.md"
 
   architecture:
     name: "系统架构"
-    status: completed
-    started_at: "2026-03-07T22:30:00-05:00"
-    completed_at: "2026-03-07T22:45:00-05:00"
-    output: "docs/architecture/system-architecture.md"
+    status: not_started
+    output: "docs/v1.1/architecture/system-architecture.md"
     skill: "dev-senior_architect"
     role: "architect"
     depends_on: ["prd"]
     checks:
-      - file_exists: "docs/architecture/system-architecture.md"
-      - file_not_empty: "docs/architecture/system-architecture.md"
+      - file_exists: "docs/v1.1/architecture/system-architecture.md"
+      - file_not_empty: "docs/v1.1/architecture/system-architecture.md"
 
   stories:
     name: "任务分解"
-    status: completed
-    started_at: "2026-03-07T22:50:00-05:00"
-    completed_at: "2026-03-07T23:10:00-05:00"
-    output: "docs/sprints/sprint-plan.md"
+    status: not_started
+    output: "docs/v1.1/sprints/sprint-plan.md"
     skill: "dev-senior_fullstack"
     role: "tech_lead"
     depends_on: ["architecture"]
     checks:
-      - file_exists: "docs/sprints/sprint-plan.md"
-      - file_not_empty: "docs/sprints/sprint-plan.md"
+      - file_exists: "docs/v1.1/sprints/sprint-plan.md"
+      - file_not_empty: "docs/v1.1/sprints/sprint-plan.md"
 
   database:
     name: "数据库设计"
-    status: completed
-    started_at: "2026-03-07T21:26:00-05:00"
-    completed_at: "2026-03-07T21:30:00-05:00"
-    output: "docs/codemaps/database.md"
+    status: not_started
+    output: "docs/v1.1/codemaps/database.md"
     skill: "dev-senior_data_engineer"
     role: "architect"
     depends_on: ["architecture"]
     checks:
-      - file_exists: "docs/codemaps/database.md"
+      - file_exists: "docs/v1.1/codemaps/database.md"
 
   backend:
     name: "后端开发"
-    status: completed
-    started_at: "2026-03-07T23:15:00-05:00"
-    completed_at: "2026-03-07T23:55:00-05:00"
+    status: not_started
     output: "backend/app/"
     skill: "dev-senior_backend"
     role: "backend_engineer"
     depends_on: ["database", "stories"]
     checks:
-      - command: "uv run ruff check app/"
+      - command: "uv run ruff check backend/"
       - command: "uv run pytest --tb=short -q"
 
   frontend:
     name: "前端开发"
-    status: completed
-    started_at: "2026-03-07T23:55:00-05:00"
-    completed_at: "2026-03-08T00:20:00-05:00"
+    status: not_started
     output: "frontend/src/"
     skill: "dev-senior_frontend"
     role: "frontend_engineer"
@@ -100,10 +94,8 @@ phases:
 
   testing:
     name: "测试"
-    status: completed
-    started_at: "2026-03-07T21:00:00-05:00"
-    completed_at: "2026-03-07T21:30:00-05:00"
-    output: "docs/test-report.md"
+    status: not_started
+    output: "docs/v1.1/test-report.md"
     skill: "dev-senior_qa"
     role: "qa_engineer"
     depends_on: ["backend"]
@@ -112,27 +104,20 @@ phases:
 
   review:
     name: "代码审查"
-    status: completed
-    started_at: "2026-03-07T21:30:00-05:00"
-    completed_at: "2026-03-07T22:00:00-05:00"
-    output: "docs/review-report.md"
+    status: not_started
+    output: "docs/v1.1/review-report.md"
     skill: "dev-code_reviewer"
     role: "code_reviewer"
     depends_on: ["testing"]
     checks:
-      - file_exists: "docs/review-report.md"
+      - file_exists: "docs/v1.1/review-report.md"
 
   deployment:
     name: "部署"
-    status: completed
-    started_at: "2026-03-07T22:00:00-05:00"
-    completed_at: "2026-03-07T22:15:00-05:00"
-    output: "docs/deployment.md"
+    status: not_started
+    output: "docs/v1.1/deployment.md"
     skill: "dev-senior_devops"
     role: "devops_engineer"
     depends_on: ["review"]
     checks:
-      - file_exists: "docs/deployment.md"
-      - file_exists: ".env.example"
-      - file_exists: ".vscode/tasks.json"
-      - file_exists: ".vscode/launch.json"
+      - file_exists: "docs/v1.1/deployment.md"

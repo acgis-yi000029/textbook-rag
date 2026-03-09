@@ -37,17 +37,21 @@ export interface SourceInfo {
   page_number: number;
   snippet: string;
   bbox: { x0: number; y0: number; x1: number; y1: number } | null;
+  page_dim: { width: number; height: number } | null;
   confidence: number;
+  citation_label?: string;
 }
 
 export interface RetrievalStats {
   fts_hits: number;
   vector_hits: number;
+  pageindex_hits: number;
+  metadata_hits: number;
   fused_count: number;
 }
 
 export interface TraceChunkHit {
-  strategy: "fts" | "vector" | "fused";
+  strategy: "fts" | "vector" | "pageindex" | "metadata" | "fused";
   rank: number;
   chunk_id: string;
   book_title: string;
@@ -62,6 +66,8 @@ export interface RetrievalTrace {
   fts_query: string;
   fts_results: TraceChunkHit[];
   vector_results: TraceChunkHit[];
+  pageindex_results: TraceChunkHit[];
+  metadata_results: TraceChunkHit[];
   fused_results: TraceChunkHit[];
 }
 

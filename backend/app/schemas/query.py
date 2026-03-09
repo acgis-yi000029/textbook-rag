@@ -26,12 +26,15 @@ class SourceInfo(BaseModel):
     page_number: int
     snippet: str
     bbox: dict | None = None
+    page_dim: dict | None = None
     confidence: float
 
 
 class RetrievalStats(BaseModel):
     fts_hits: int
     vector_hits: int
+    pageindex_hits: int = 0
+    metadata_hits: int = 0
     fused_count: int
 
 
@@ -51,13 +54,30 @@ class RetrievalTrace(BaseModel):
     fts_query: str
     fts_results: list[TraceChunkHit]
     vector_results: list[TraceChunkHit]
+    pageindex_results: list[TraceChunkHit] = Field(default_factory=list)
+    metadata_results: list[TraceChunkHit] = Field(default_factory=list)
     fused_results: list[TraceChunkHit]
+
+
+class CitationCleaningTrace(BaseModel):
+    raw_answer: str
+    cleaned_answer: str
+    valid_citations: list[int]
+    invalid_citations: list[int]
+    total_found: int
+
+
+class QualityWarning(BaseModel):
+    level: str  # "warn" | "error"
+    code: str
+    message: str
 
 
 class GenerationTrace(BaseModel):
     model: str
     system_prompt: str
     user_prompt: str
+    citation_cleaning: CitationCleaningTrace | None = None
 
 
 class QueryTrace(BaseModel):
@@ -74,6 +94,7 @@ class QueryResponse(BaseModel):
     sources: list[SourceInfo]
     retrieval_stats: RetrievalStats
     trace: QueryTrace
+    warnings: list[QualityWarning] = Field(default_factory=list)
 
 
 class ModelInfo(BaseModel):

@@ -68,5 +68,4 @@ htmlcov/
 
 # Data directory
 data/
-textbooks/
 backend/data/chroma_db/

@@ -459,6 +459,13 @@ def ingest_book(
         if len(bbox) < 4:
             bbox = [0, 0, 0, 0]
 
+        # content_list.json bbox uses a normalised 1000x1000 canvas.
+        # Convert to PDF-point coordinates so they match pages.width/height.
+        pw, ph = page_sizes.get(page_idx, (0.0, 0.0))
+        if pw and ph:
+            bbox = [bbox[0] / 1000 * pw, bbox[1] / 1000 * ph,
+                    bbox[2] / 1000 * pw, bbox[3] / 1000 * ph]
+
         # Map content type
         content_type = item_type  # text, equation, table, image
 
