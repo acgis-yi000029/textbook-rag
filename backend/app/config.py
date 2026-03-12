@@ -15,7 +15,7 @@ CHROMA_PERSIST_DIR: Path = Path(
     os.getenv("CHROMA_PERSIST_DIR", str(_PROJECT_ROOT / "data" / "chroma_persist"))
 )
 TEXTBOOKS_DIR: Path = Path(
-    os.getenv("TEXTBOOKS_DIR", str(_PROJECT_ROOT / "textbooks"))
+    os.getenv("TEXTBOOKS_DIR", str(_PROJECT_ROOT / "data" / "raw_pdfs" / "textbooks"))
 )
 DATA_DIR: Path = Path(
     os.getenv("DATA_DIR", str(_PROJECT_ROOT / "data"))

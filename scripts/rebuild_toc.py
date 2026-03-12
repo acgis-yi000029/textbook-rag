@@ -25,7 +25,7 @@ import pymupdf  # PyMuPDF
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DB_PATH = BASE_DIR / "data" / "textbook_rag.sqlite3"
-TEXTBOOKS_DIR = BASE_DIR / "textbooks"
+TEXTBOOKS_DIR = BASE_DIR / "data" / "raw_pdfs" / "textbooks"
 
 # ── Schema ───────────────────────────────────────────────────────────────────
 

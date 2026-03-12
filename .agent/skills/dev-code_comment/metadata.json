@@ -1,0 +1,20 @@
+{
+  "name": "code-comment",
+  "display_name": "Code Comment (Bilingual)",
+  "category": "development",
+  "keywords": [
+    "code comment",
+    "代码注释",
+    "bilingual",
+    "双语注释",
+    "documentation",
+    "文档",
+    "docstring",
+    "chinese english",
+    "中英文",
+    "注释规范"
+  ],
+  "version": "1.0.0",
+  "created_at": "2026-01-27",
+  "updated_at": "2026-01-27"
+}

@@ -1,0 +1,147 @@
+# Full Development Workflow State
+# 此文件由 /full-dev 命令自动管理
+# 所有 phase 使用字符串 key，不使用数字编号
+
+project: ""
+started_at: ""
+current_phase: requirements # 字符串 key，不是数字
+
+config:
+  # 是否允许前后端并行开发
+  parallel_frontend_backend: false
+
+  # 是否自动运行检查脚本
+  auto_check: true
+
+  # 产出物目录
+  docs_dir: docs
+
+# Phase 顺序:
+# requirements → prd → architecture → stories →
+# database → backend → frontend → testing → review → deployment
+
+phases:
+  requirements:
+    name: "需求分析"
+    status: pending # pending | in_progress | completed | skipped
+    started_at: ""
+    completed_at: ""
+    output: "docs/requirements/requirements.md"
+    skill: "dev-product_manager"
+    role: "product_manager"
+    checks:
+      - file_exists: "docs/requirements/requirements.md"
+      - file_not_empty: "docs/requirements/requirements.md"
+
+  prd:
+    name: "产品需求文档"
+    status: pending
+    started_at: ""
+    completed_at: ""
+    output: "docs/requirements/prd.md"
+    skill: "dev-product_manager"
+    role: "product_manager"
+    depends_on: ["requirements"]
+    checks:
+      - file_exists: "docs/requirements/prd.md"
+      - file_not_empty: "docs/requirements/prd.md"
+
+  architecture:
+    name: "系统架构"
+    status: pending
+    started_at: ""
+    completed_at: ""
+    output: "docs/architecture/system-architecture.md"
+    skill: "dev-senior_architect"
+    role: "architect"
+    depends_on: ["prd"]
+    checks:
+      - file_exists: "docs/architecture/system-architecture.md"
+      - file_not_empty: "docs/architecture/system-architecture.md"
+
+  stories:
+    name: "任务分解"
+    status: pending
+    started_at: ""
+    completed_at: ""
+    output: "docs/sprints/sprint-plan.md"
+    skill: "dev-senior_fullstack"
+    role: "tech_lead"
+    depends_on: ["architecture"]
+    checks:
+      - file_exists: "docs/sprints/sprint-plan.md"
+      - file_not_empty: "docs/sprints/sprint-plan.md"
+
+  database:
+    name: "数据库设计"
+    status: pending
+    started_at: ""
+    completed_at: ""
+    output: "docs/codemaps/database.md"
+    skill: "dev-senior_data_engineer"
+    role: "architect"
+    depends_on: ["architecture"]
+    checks:
+      - file_exists: "docs/codemaps/database.md"
+
+  backend:
+    name: "后端开发"
+    status: pending
+    started_at: ""
+    completed_at: ""
+    output: "backend/app/"
+    skill: "dev-senior_backend"
+    role: "backend_engineer"
+    depends_on: ["database", "stories"]
+    checks:
+      - command: "cd backend && uv run ruff check app/"
+      - command: "cd backend && uv run pytest --tb=short -q"
+
+  frontend:
+    name: "前端开发"
+    status: pending
+    started_at: ""
+    completed_at: ""
+    output: "frontend/src/"
+    skill: "dev-senior_frontend"
+    role: "frontend_engineer"
+    depends_on: ["stories"]
+    can_parallel_with: ["backend"]
+    checks:
+      - command: "cd frontend && npx tsc --noEmit"
+      - command: "cd frontend && npm run lint"
+
+  testing:
+    name: "测试"
+    status: pending
+    started_at: ""
+    completed_at: ""
+    output: "docs/test-report.md"
+    skill: "dev-senior_qa"
+    role: "qa_engineer"
+    depends_on: ["backend", "frontend"]
+    checks:
+      - command: "cd backend && uv run pytest --tb=short -q"
+
+  review:
+    name: "代码审查"
+    status: pending
+    started_at: ""
+    completed_at: ""
+    output: "docs/review-report.md"
+    skill: "dev-code_reviewer"
+    role: "code_reviewer"
+    depends_on: ["testing"]
+    checks:
+      - file_exists: "docs/review-report.md"
+
+  deployment:
+    name: "部署"
+    status: pending
+    started_at: ""
+    completed_at: ""
+    output: ""
+    skill: "dev-senior_devops"
+    role: "devops_engineer"
+    depends_on: ["review"]
+    checks: []

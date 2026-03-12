@@ -17,6 +17,9 @@ dependencies = [
     "loguru>=0.7.0",
     "fastapi>=0.135.1",
     "uvicorn[standard]>=0.41.0",
+    "mineru[pipeline]>=2.7.6",
+    "torch>=2.6.0",
+    "torchvision>=0.21.0",
 ]
 
 [project.optional-dependencies]
@@ -28,3 +31,25 @@ dev = [
 
 [tool.pytest.ini_options]
 addopts = "--basetemp=.pytest-tmp -p no:cacheprovider"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["backend*", "frontend*", "nlp*"]
+
+# ---------------------------------------------------------------------------
+# PyTorch CUDA wheel index
+# Driver 591.74 on RTX 4060 supports CUDA ≥ 12.x; cu128 is the highest
+# stable PyTorch wheel available for torch 2.6+.
+# ---------------------------------------------------------------------------
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu128" }
+torchvision = { index = "pytorch-cu128" }

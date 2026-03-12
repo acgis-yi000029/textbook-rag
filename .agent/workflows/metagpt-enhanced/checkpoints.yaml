@@ -1,0 +1,168 @@
+# MetaGPT-Enhanced Checkpoints
+# 每个阶段的验收标准
+# 路径均基于项目实际结构
+
+checkpoints:
+  requirements:
+    name: "Requirements Analysis"
+    required_outputs:
+      - path: "docs/requirements/master_prd.md"
+        description: "需求/PRD 主文档"
+    validations:
+      - type: file_exists
+        paths: ["docs/requirements/master_prd.md"]
+      - type: file_not_empty
+        paths: ["docs/requirements/master_prd.md"]
+    auto_continue: true
+    next_phase: prd
+
+  prd:
+    name: "Product Requirements Document"
+    required_outputs:
+      - path: "docs/requirements/master_prd.md"
+        description: "PRD 文档"
+    validations:
+      - type: file_exists
+        paths: ["docs/requirements/master_prd.md"]
+      - type: file_not_empty
+        paths: ["docs/requirements/master_prd.md"]
+    auto_continue: true
+    next_phase: architecture
+
+  architecture:
+    name: "System Architecture"
+    required_outputs:
+      - path: "docs/architecture/system-architecture.md"
+        description: "架构设计文档"
+    validations:
+      - type: file_exists
+        paths: ["docs/architecture/system-architecture.md"]
+      - type: file_not_empty
+        paths: ["docs/architecture/system-architecture.md"]
+    auto_continue: true
+    next_phase: stories
+
+  stories:
+    name: "Task Breakdown"
+    required_outputs:
+      - path: "docs/sprints/Sprint_Plan_North_Link.md"
+        description: "Sprint 计划"
+    validations:
+      - type: file_exists
+        paths: ["docs/sprints/Sprint_Plan_North_Link.md"]
+      - type: file_not_empty
+        paths: ["docs/sprints/Sprint_Plan_North_Link.md"]
+    auto_continue: true
+    next_phase: database
+
+  database:
+    name: "Database Design"
+    required_outputs:
+      - path: "docs/codemaps/database.md"
+        description: "数据库 CodeMap"
+    validations:
+      - type: file_exists
+        paths: ["docs/codemaps/database.md"]
+    auto_continue: true
+    next_phase: backend
+
+  backend:
+    name: "Backend Development"
+    required_outputs:
+      - path: "backend/app/"
+        description: "后端代码"
+      - path: "backend/tests/"
+        description: "后端测试"
+    validations:
+      - type: command_success
+        command: "cd backend && uv run python -m py_compile app/main.py"
+        description: "Python 语法检查"
+      - type: command_success
+        command: "cd backend && uv run ruff check app/"
+        description: "Ruff 代码检查"
+      - type: command_success
+        command: "cd backend && uv run pytest --tb=short -q"
+        description: "后端测试通过"
+    auto_continue: true
+    next_phase: frontend
+
+  frontend:
+    name: "Frontend Development"
+    required_outputs:
+      - path: "frontend/src/"
+        description: "前端代码"
+    validations:
+      - type: command_success
+        command: "cd frontend && npx tsc --noEmit"
+        description: "TypeScript 类型检查"
+      - type: command_success
+        command: "cd frontend && npm run lint"
+        description: "ESLint 检查"
+    auto_continue: true
+    next_phase: testing
+
+  testing:
+    name: "Testing"
+    required_outputs:
+      - path: "backend/tests/"
+        description: "后端测试"
+    validations:
+      - type: command_success
+        command: "cd backend && uv run pytest --tb=short -q"
+        description: "后端测试通过"
+    auto_continue: true
+    next_phase: review
+
+  review:
+    name: "Code Review"
+    required_outputs:
+      - path: "docs/review-report.md"
+        description: "代码审查报告"
+    validations:
+      - type: file_exists
+        paths: ["docs/review-report.md"]
+      - type: no_critical_issues
+        description: "无 CRITICAL 级别问题"
+    auto_continue: false # 需要人工确认
+    next_phase: deployment
+
+  deployment:
+    name: "Deployment"
+    required_outputs:
+      - path: "render.yaml"
+        description: "部署配置"
+    validations:
+      - type: file_exists
+        paths: ["render.yaml"]
+    auto_continue: false
+    next_phase: null # 最后阶段
+
+# Phase Order (for navigation)
+phase_order:
+  - requirements
+  - prd
+  - architecture
+  - stories
+  - database
+  - backend
+  - frontend
+  - testing
+  - review
+  - deployment
+
+# Validation Types
+validation_types:
+  file_exists:
+    description: "检查文件是否存在"
+
+  file_not_empty:
+    description: "检查文件是否非空"
+
+  content_contains:
+    description: "检查文件是否包含指定内容"
+
+  command_success:
+    description: "检查命令是否执行成功"
+
+  no_critical_issues:
+    description: "检查是否无严重问题"

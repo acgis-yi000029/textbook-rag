@@ -1,19 +1,19 @@
 """
-Nuke and rebuild the entire SQLite database + ChromaDB vector store.
+Nuke and rebuild the SQLite database from MinerU output.
 
 Steps:
-  1. Delete data/textbook_rag.sqlite3 and ChromaDB persist dir (if any).
+  1. Delete data/textbook_rag.sqlite3.
   2. Create schema (books, book_assets, chapters, pages, chunks,
      source_locators, chunk_fts).
-  3. Ingest every book from data/mineru_output/ (content_list.json +
-     middle.json for page sizes).
-  4. Populate the FTS5 virtual table.
-  5. Build ChromaDB collection with sentence-transformer embeddings.
+  3. Ingest every book from data/mineru_output/{category}/{book}/
+     (content_list.json + middle.json for page sizes).
+  4. Populate the FTS5 virtual table via INSERT trigger.
+
+For vector embeddings, run build_vectors.py separately (GPU-accelerated).
 
 Usage:
     uv run python scripts/rebuild_db.py
-    uv run python scripts/rebuild_db.py --skip-vectors   # skip ChromaDB (fast)
-    uv run python scripts/rebuild_db.py --book goodfellow_deep_learning  # one book
+    uv run python scripts/rebuild_db.py --book ed_update_q1_2022  # one book
 """
 
 from __future__ import annotations
@@ -21,17 +21,19 @@ from __future__ import annotations
 import argparse
 import json
 import re
-import shutil
 import sqlite3
-import sys
-import uuid
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DB_PATH = BASE_DIR / "data" / "textbook_rag.sqlite3"
 MINERU_DIR = BASE_DIR / "data" / "mineru_output"
-CHROMA_DIR = BASE_DIR / "data" / "chroma_persist"
-TEXTBOOKS_DIR = BASE_DIR / "textbooks"
+
+# Category → raw PDF source directory
+SOURCE_DIRS: dict[str, Path] = {
+    "textbook":    BASE_DIR / "data" / "raw_pdfs" / "textbooks",
+    "ecdev":       BASE_DIR / "data" / "raw_pdfs" / "ecdev",
+    "real_estate": BASE_DIR / "data" / "raw_pdfs" / "real_estate",
+}
 
 # ── Book metadata registry (same as rebuild_topic_index.py) ──────────────────
 BOOK_REGISTRY: dict[str, dict] = {
@@ -325,17 +327,28 @@ def assign_chapter(page_idx: int, chapter_ranges: list[tuple[int, int]]) -> int 
     return None
 
 
+def _auto_registry_entry(book_dir_name: str, category: str) -> dict:
+    """Generate a minimal registry entry for books not in BOOK_REGISTRY.
+
+    Used for ecdev / real_estate where titles are derived from the filename.
+    """
+    title = book_dir_name.replace("_", " ").title()
+    # Prettify common patterns: ed_update_q1_2022 → "Ed Update Q1 2022"
+    return {"title": title, "authors": category, "category": category}
+
+
 def ingest_book(
     conn: sqlite3.Connection,
     book_dir_name: str,
+    category: str,
     chroma_docs: list[dict] | None,
 ) -> dict:
     """Ingest one book. Returns stats dict."""
-    meta = BOOK_REGISTRY.get(book_dir_name, {})
+    meta = BOOK_REGISTRY.get(book_dir_name) or _auto_registry_entry(book_dir_name, category)
     title = meta.get("title", book_dir_name.replace("_", " ").title())
     authors = meta.get("authors", "")
 
-    auto_dir = MINERU_DIR / book_dir_name / book_dir_name / "auto"
+    auto_dir = MINERU_DIR / category / book_dir_name / book_dir_name / "auto"
     content_list_path = auto_dir / f"{book_dir_name}_content_list.json"
     middle_json_path = auto_dir / f"{book_dir_name}_middle.json"
 
@@ -369,7 +382,7 @@ def ingest_book(
     book_pk = cur.lastrowid
 
     # Insert book assets (PDFs)
-    _insert_book_assets(cur, book_pk, book_dir_name, auto_dir)
+    _insert_book_assets(cur, book_pk, book_dir_name, category, auto_dir)
 
     # Insert pages
     page_pk_map: dict[int, int] = {}  # page_idx -> pages.id
@@ -477,13 +490,12 @@ def ingest_book(
         page_pk = page_pk_map.get(page_idx)
 
         chunk_id = f"{book_dir_name}_{chunk_count:06d}"
-        chroma_doc_id = str(uuid.uuid4()) if chroma_docs is not None else None
 
         cur.execute(
             "INSERT INTO chunks "
-            "(chunk_id, book_id, chapter_id, primary_page_id, content_type, text, reading_order, chroma_document_id) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (chunk_id, book_pk, chapter_pk, page_pk, content_type, text, reading_order, chroma_doc_id),
+            "(chunk_id, book_id, chapter_id, primary_page_id, content_type, text, reading_order) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (chunk_id, book_pk, chapter_pk, page_pk, content_type, text, reading_order),
         )
         chunk_pk = cur.lastrowid
 
@@ -495,19 +507,6 @@ def ingest_book(
                 "VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (chunk_pk, page_pk, "bbox", bbox[0], bbox[1], bbox[2], bbox[3]),
             )
-
-        # Collect for ChromaDB
-        if chroma_docs is not None and text:
-            chroma_docs.append({
-                "id": chroma_doc_id,
-                "text": text[:8000],  # limit for embedding
-                "metadata": {
-                    "book_id": book_dir_name,
-                    "chunk_id": chunk_id,
-                    "page_idx": page_idx,
-                    "content_type": content_type,
-                },
-            })
 
         reading_order += 1
         chunk_count += 1
@@ -521,15 +520,17 @@ def ingest_book(
         "pages": total_pages,
         "chapters": len(chapters),
         "chunks": chunk_count,
+        "category": category,
     }
 
 
 def _insert_book_assets(
-    cur: sqlite3.Cursor, book_pk: int, book_dir_name: str, auto_dir: Path
+    cur: sqlite3.Cursor, book_pk: int, book_dir_name: str, category: str, auto_dir: Path
 ):
     """Register PDF and other assets in book_assets table."""
-    # Source PDF in textbooks/
-    src_pdf = TEXTBOOKS_DIR / f"{book_dir_name}.pdf"
+    # Source PDF — look in the category-specific raw PDF directory
+    src_dir = SOURCE_DIRS.get(category, SOURCE_DIRS["textbook"])
+    src_pdf = src_dir / f"{book_dir_name}.pdf"
     if src_pdf.exists():
         cur.execute(
             "INSERT INTO book_assets (book_id, asset_kind, path) VALUES (?, ?, ?)",
@@ -561,65 +562,24 @@ def _insert_book_assets(
         )
 
 
-# ── ChromaDB population ─────────────────────────────────────────────────────
-
-def build_chroma(chroma_docs: list[dict]) -> None:
-    """Create ChromaDB collection from collected docs."""
-    try:
-        import chromadb
-    except ImportError:
-        print("  ⚠ chromadb not installed — skipping vector store")
-        return
-
-    print(f"\n🔮 Building ChromaDB ({len(chroma_docs)} docs)...")
-
-    if CHROMA_DIR.exists():
-        shutil.rmtree(CHROMA_DIR)
-
-    client = chromadb.PersistentClient(path=str(CHROMA_DIR))
-    collection = client.get_or_create_collection(
-        name="textbook_chunks",
-        metadata={"hnsw:space": "cosine"},
-    )
-
-    # Batch insert (ChromaDB recommends max ~5000 per batch)
-    BATCH = 4096
-    for i in range(0, len(chroma_docs), BATCH):
-        batch = chroma_docs[i : i + BATCH]
-        collection.add(
-            ids=[d["id"] for d in batch],
-            documents=[d["text"] for d in batch],
-            metadatas=[d["metadata"] for d in batch],
-        )
-        done = min(i + BATCH, len(chroma_docs))
-        print(f"  ChromaDB: {done}/{len(chroma_docs)}")
-
-    print(f"  ✅ ChromaDB collection: {collection.count()} documents")
-
 
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 def main():
-    parser = argparse.ArgumentParser(description="Nuke & rebuild textbook_rag DB")
-    parser.add_argument("--skip-vectors", action="store_true",
-                        help="Skip ChromaDB vector store build")
+    parser = argparse.ArgumentParser(description="Nuke & rebuild textbook_rag SQLite DB")
     parser.add_argument("--book", type=str, default=None,
                         help="Only process a specific book directory")
     args = parser.parse_args()
 
     # ── Step 1: Nuke ──
-    print("💣 Nuking existing data...")
+    print("💣 Nuking existing SQLite DB...")
     if DB_PATH.exists():
         DB_PATH.unlink()
         print(f"  Deleted {DB_PATH}")
-    # Also remove WAL/SHM
     for suffix in ("-wal", "-shm"):
         p = DB_PATH.parent / (DB_PATH.name + suffix)
         if p.exists():
             p.unlink()
-    if CHROMA_DIR.exists() and not args.skip_vectors:
-        shutil.rmtree(CHROMA_DIR)
-        print(f"  Deleted {CHROMA_DIR}")
 
     # ── Step 2: Create schema ──
     print("\n📐 Creating schema...")
@@ -629,53 +589,49 @@ def main():
     conn.commit()
     print("  ✅ Schema created")
 
-    # ── Step 3: Ingest books ──
+    # ── Step 3: Ingest books — scan all category subdirectories ──
     print("\n📚 Ingesting books...")
-    chroma_docs: list[dict] | None = [] if not args.skip_vectors else None
 
-    book_dirs = sorted(MINERU_DIR.iterdir())
+    categories = ["textbook", "ecdev", "real_estate"]
     total_stats = {"books": 0, "pages": 0, "chapters": 0, "chunks": 0}
 
-    for book_dir in book_dirs:
-        if not book_dir.is_dir():
-            continue
-        dir_name = book_dir.name
-        if dir_name not in BOOK_REGISTRY:
-            print(f"  ⚠ Skipping unknown: {dir_name}")
-            continue
-        if args.book and dir_name != args.book:
+    for category in categories:
+        cat_dir = MINERU_DIR / category
+        if not cat_dir.is_dir():
             continue
 
-        result = ingest_book(conn, dir_name, chroma_docs)
-        if result["status"] == "ok":
-            total_stats["books"] += 1
-            total_stats["pages"] += result["pages"]
-            total_stats["chapters"] += result["chapters"]
-            total_stats["chunks"] += result["chunks"]
-            print(f"  ✓ {dir_name}: {result['pages']} pg, "
-                  f"{result['chapters']} ch, {result['chunks']} chunks")
-        else:
-            print(f"  ✗ {dir_name}: {result.get('reason', 'unknown')}")
+        for book_dir in sorted(cat_dir.iterdir()):
+            if not book_dir.is_dir():
+                continue
+            dir_name = book_dir.name
+            if dir_name.endswith(".processing"):
+                continue
+            if args.book and dir_name != args.book:
+                continue
+
+            result = ingest_book(conn, dir_name, category, chroma_docs)
+            if result["status"] == "ok":
+                total_stats["books"] += 1
+                total_stats["pages"] += result["pages"]
+                total_stats["chapters"] += result["chapters"]
+                total_stats["chunks"] += result["chunks"]
+                print(f"  \u2713 [{category}] {dir_name}: {result['pages']} pg, "
+                      f"{result['chapters']} ch, {result['chunks']} chunks")
+            else:
+                print(f"  \u2717 [{category}] {dir_name}: {result.get('reason', 'unknown')}")
 
     conn.close()
-
-    # ── Step 4: ChromaDB ──
-    if chroma_docs is not None and chroma_docs:
-        build_chroma(chroma_docs)
 
     # ── Summary ──
     size_kb = DB_PATH.stat().st_size / 1024 if DB_PATH.exists() else 0
     print(f"\n{'='*60}")
-    print(f"✅ Rebuild complete!")
+    print(f"✅ Rebuild complete! Run build_vectors.py next for semantic search.")
     print(f"   📖 {total_stats['books']} books")
     print(f"   📄 {total_stats['pages']} pages")
     print(f"   📑 {total_stats['chapters']} chapters")
     print(f"   🧩 {total_stats['chunks']} chunks")
     print(f"   💾 SQLite: {size_kb:.0f} KB ({DB_PATH})")
-    if chroma_docs is not None:
-        print(f"   🔮 ChromaDB: {len(chroma_docs)} vectors ({CHROMA_DIR})")
-    else:
-        print(f"   🔮 ChromaDB: skipped")
+    print(f"{'='*60}")
 
 
 if __name__ == "__main__":

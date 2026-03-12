@@ -20,7 +20,7 @@ from collections import defaultdict
 # ── Configuration ──
 BASE_DIR = Path(__file__).resolve().parent.parent
 MINERU_DIR = BASE_DIR / "data" / "mineru_output"
-OUTPUT_FILE = BASE_DIR / "textbooks" / "topic_index.json"
+OUTPUT_FILE = BASE_DIR / "data" / "topic_index.json"
 
 # Max chapters to extract per book (real books have 10-30 chapters)
 MAX_CHAPTERS_PER_BOOK = 50

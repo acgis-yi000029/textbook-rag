@@ -49,7 +49,6 @@ Thumbs.db
 desktop.ini
 
 # Agent / Tooling
-.agent/
 .agents/
 _agent/
 _agents/

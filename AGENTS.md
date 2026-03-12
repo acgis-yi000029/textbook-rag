@@ -53,6 +53,8 @@ and then execute the task directly.
   read `.agent/skills/dev-ui_ux_designer/SKILL.md`
 - Code review requests:
   read `.agent/skills/dev-code_reviewer/SKILL.md`
+- Requirements elicitation, "榨干需求", "挖掘需求", "我有个想法", or vague feature ideas needing structured discovery:
+  read `.agent/skills/dev-requirements_extractor/SKILL.md`
 
 ## Execution constraints
 

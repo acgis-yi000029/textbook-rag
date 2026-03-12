@@ -1,320 +1,478 @@
-# Textbook RAG v1.1 — 需求文档
+# Textbook RAG v1.1 — 需求规格说明
 
-> **版本**: 1.1  
-> **作者**: Alice (PM)  
-> **日期**: 2026-03-08  
-> **前置**: v1.0 已完成并通过全部 10 阶段 Review  
+> **版本**: 1.1
+> **作者**: Product Manager
+> **日期**: 2026-03-11
+> **前置**: v1.0 已完成并通过全部 10 阶段 Review
+> **Deadline**: 2026-04-03
 
 ---
 
 ## 1. 项目概述
 
-### 1.1 背景
+### 1.1 愿景
 
-v1.0 交付了一个可用的教科书 RAG 系统：双栏 UI（左 PDF / 右 Chat）、FTS5 + ChromaDB 混合检索、Ollama LLM 生成、inline citation 链接跳页。
+构建一个**统一的文档 RAG 平台**，将两个共享底层能力的项目合并：
 
-然而在实际使用中暴露出四个核心问题：
+- **Textbook RAG**（NLP 课程作业 CST8507）— 教科书领域的问答 + 深度溯源
+- **EcDev Research Assistant**（Ottawa 经济发展部）— 经济报告的问答 + 报告/图表生成
 
-1. **不知道哪里坏了**：检索无命中、citation 无效、context 为空时，用户和开发者看不到根因
-2. **无法调参**：top_k / fetch_k / FTS vs vector 权重等关键参数硬编码，无法实验
-3. **citation 不可靠**：LLM 生成的 `[N]` 可能指向错误 source，无校验/清洗链路
-4. **生成盲调**：没有 retrieval 和 citation 的稳定基础，调 prompt / model 全凭猜测
-
-> **Ref**: Krug, *Don't Make Me Think*, Ch9 — "Usability testing will always produce surprises, because it shows you what real users actually encounter." v1.0 缺乏可观测性，等效于没有 usability testing 的系统。
+核心价值：**查的准、定位准、全透明可控**。
 
 ### 1.2 目标
 
-在 v1.0 基础上新增 **4 个功能模块**，必须按以下顺序交付：
+| 序号 | 目标 | 成功标准 |
+|------|------|----------|
+| 1 | **检索精度** | 20 题评估中 top-3 retrieved documents 相关性 ≥ 80% |
+| 2 | **源文定位** | Citation 点击后 PDF 跳页 + bbox 高亮，位置误差 < 1px |
+| 3 | **全透明可控** | 所有检索策略可追踪、可开关、参数可调，质量告警自动触发 |
+| 4 | **多场景交付** | Web UI + ROS2 Node 共享同一个 RAG Core |
 
-| 序号 | 模块 | 目的 |
-|------|------|------|
-| 1 | **Trace & Quality** | 可观测性：知道系统哪里坏了 |
-| 2 | **Retrieval** | 可控性：控制"找什么证据、送什么证据" |
-| 3 | **Citations** | 可验证性：把 citation 变成可点击、可验证的证据链 |
-| 4 | **Generation** | 可优化性：在前三层稳定后优化答案质量 |
+### 1.3 背景
 
-> **Ref**: Norman, *The Design of Everyday Things*, Ch1 — "Discoverability: Is it possible to even figure out what actions are possible and where and how to perform them?" 四个模块逐层解决 discoverability 问题。
+v1.0 交付了可用的教科书 RAG 系统（双栏 UI、混合检索、Ollama LLM、citation 跳页），
+但存在四个核心问题：
 
-### 1.3 范围
+1. **不知道哪里坏了** — 检索无命中、citation 无效时无诊断手段
+2. **无法调参** — top_k / fetch_k / 策略权重硬编码
+3. **citation 不可靠** — LLM 生成的 `[N]` 可能指向错误 source
+4. **仅限教科书** — 不支持 EcDev 季报等多类别文档
+
+同时，NLP 课程作业要求 RAG 系统以 OOP 形式实现，并集成到 ROS2 语音管道中。
+
+> **Ref**: Krug, *Don't Make Me Think*, Ch9 — v1.0 缺乏可观测性，等效于没有 usability testing 的系统。
+
+### 1.4 范围
 
 **In Scope (v1.1)**:
-- 4 个模块的完整前后端实现
-- 向后兼容 v1.0 API（新字段可选，旧客户端不受影响）
-- 现有 26 个测试用例全部保持通过
-- 各模块新增测试用例
+- 8 个模块的完整实现（见第 3 节）
+- 向后兼容 v1.0 API
+- 多类别文档库支持
+- ROS2 Node 集成
+- 20 题混合评估
+- 6-10 页报告 + 10 分钟演示
 
 **Out of Scope (v1.1)**:
 - 多用户 / 鉴权
 - RAG 管道的流式输出 (streaming)
-- 多模态（图表 / 公式检索）
-- 知识库管理（书籍增删改）
+- 多模态检索（图表 / 公式检索）
+- Statistics Canada API 集成（Phase 2）
+- 报告导出（PDF/Word）— 先前端渲染
 
 ---
 
-## 2. 目标用户
+## 2. 用户与角色
 
 ### 2.1 用户画像
 
-延续 v1.0 的三类用户，v1.1 重点服务前两类：
+| 角色 | 描述 | 技术水平 | 使用频率 | 核心目标 |
+|------|------|----------|----------|----------|
+| 学生 | 学习 AI/ML/NLP 的学生 | 中 | 每日 | 问答 + 验证来源 |
+| TA / 教师 | 需要核对教材出处 | 中高 | 每周 | 排查回答质量、调参 |
+| NLP 教授 | 评分 Assignment 2 | 高 | 一次性 | 评估 RAG 实现质量 |
+| EcDev 分析师 | Ottawa 经济发展部门 | 低中 | 每周 | 从季报中提取数据、生成报告 |
+| 项目评审员 | 评估系统健康度 | 低 | 一次性 | 直观了解系统质量 |
 
-| 角色 | v1.1 新增价值 |
-|------|--------------|
-| **学生** | citation 可点击跳页 + snippet 高亮，真正"看到证据" |
-| **TA / 教师** | Trace 面板快速定位回答质量问题，Retrieval 面板调参优化 |
-| **项目评审员** | Quality warnings 直观展示系统健康度 |
+### 2.2 使用场景
 
-### 2.2 用户场景
+**场景 1: 学生验证答案来源**（Web）
+1. 提问 → 看到带 citation 的回答
+2. 点击 `[2]` → PDF 跳到对应页 + bbox 高亮
+3. 确认答案确实来自教科书
 
-**场景 1: TA 排查 "为什么回答不对"**
-1. 提问后切换到 Trace 模式
-2. 看到 FTS 0 hits → 意识到关键词未命中
-3. 看到 Quality warning: "NO_FTS_HITS"
-4. 切到 Retrieval 面板关闭 FTS，只用 vector → 拿到正确结果
+**场景 2: TA 排查回答质量**（Web）
+1. 打开 Trace 面板 → 看到 FTS 0 hits
+2. 看到 Quality warning: `NO_FTS_HITS`
+3. 切到 Retrieval 面板 → 关闭 FTS，只用 vector → 拿到正确结果
 
-**场景 2: 学生验证答案来源**
-1. 看到答案中 `[2]` 的 citation
-2. 点击 → PDF 跳到对应页
-3. 看到 bbox 高亮的原文段落
-4. 确认答案确实来自教科书
+**场景 3: EcDev 分析师生成报告**（Web）
+1. 选择 "经济发展季报" 文档类别
+2. 提问 "2023 年 Q3 建筑许可趋势" → 系统检索到相关表格数据
+3. 前端用 Chart 组件渲染趋势图
+4. 系统生成叙述性报告（IELTS Task 1/2 风格）
 
-**场景 3: 开发者调优 RAG 管道**
-1. 打开 Retrieval 面板，调 top_k 到 10，fetch_k 到 30
-2. 切换到 hybrid 模式，看 FTS / vector / fused 各多少条
-3. 打开 Generation 面板，切换到更大的 model
-4. 对比回答质量变化
+**场景 4: 语音问答**（ROS2）
+1. 用户对机器人说话 → Whisper 转文字 → publish to `words` topic
+2. ROS2 RAG Node 接收 → RAG Core 检索 + 生成回答
+3. 回答 publish to `ollama_reply` → gTTS 转语音播放
 
-> **Ref**: Krug, *Don't Make Me Think*, Ch3 — "Don't make me think" 原则：用户不应该思考"这个 citation 到底对不对"，系统应该自动校验并清晰展示。
+**场景 5: NLP 教授评分**
+1. 查看 20 题评估结果 → 每题有人工评分 + top-3 文档相关性
+2. 运行 Part 1 完整 Web UI 演示
+3. 运行 Part 2 ROS2 语音管道演示
 
 ---
 
-## 3. 功能需求
+## 3. 功能需求 — 模块化架构
 
-### 3.1 模块 1: Trace & Quality（可观测性）
+### 3.0 架构总览
 
-**优先级**: P0 — 最先开发  
-**依赖**: 无（在现有 API 基础上扩展）
+```
+┌─────────────────────────────────────────────────────────────┐
+│                   Delivery Targets                          │
+│  ┌─────────────────────┐  ┌──────────────────────────────┐  │
+│  │ Web UI (React/TS)   │  │ ROS2 Node (Python)           │  │
+│  │ PDF + Chat + Trace  │  │ Whisper → RAG → gTTS         │  │
+│  │ Reports + Charts    │  │ subscribe: words              │  │
+│  └─────────┬───────────┘  │ publish: ollama_reply         │  │
+│            │              └──────────────┬───────────────┘  │
+│            │                             │                  │
+│            ▼                             ▼                  │
+│  ┌─────────────────┐          ┌──────────────────┐         │
+│  │ FastAPI Backend  │          │ Direct Python    │         │
+│  │ HTTP API         │          │ Function Call    │         │
+│  └────────┬────────┘          └────────┬─────────┘         │
+│           │                            │                   │
+│           └──────────┬─────────────────┘                   │
+│                      ▼                                     │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │              RAG Core (Python OOP)                    │  │
+│  │                                                       │  │
+│  │  M1 Trace ──→ M2 Retrieval ──→ M3 Citations          │  │
+│  │                    │                                   │  │
+│  │              M4 Generation                            │  │
+│  │                    │                                   │  │
+│  │              M5 Reports & Charts (EcDev)              │  │
+│  └──────────────────────┬───────────────────────────────┘  │
+│                         ▼                                  │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │              Data Layer                               │  │
+│  │  SQLite (FTS5) + ChromaDB (Vectors) + MinerU Files   │  │
+│  └──────────────────────────────────────────────────────┘  │
+│                         ▲                                  │
+│  ┌──────────────────────┴───────────────────────────────┐  │
+│  │  M0 Ingestion Pipeline                                │  │
+│  │  PDF → MinerU → rebuild_db.py → SQLite + ChromaDB    │  │
+│  └──────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 3.1 模块清单与依赖
+
+| 模块 | 名称 | 优先级 | 服务场景 | 依赖 |
+|------|------|--------|----------|------|
+| **M0** | Ingestion Pipeline | P0 | 共享 | 无 |
+| **M1** | Trace & Quality | P0 | 共享 | M0 |
+| **M2** | Retrieval | P0 | 共享 | M0 |
+| **M3** | Citations | P0 | 共享 | M2 |
+| **M4** | Generation | P1 | 共享 | M3 |
+| **M5** | Reports & Charts | P1 | EcDev | M2+M4 |
+| **M6** | ROS2 Integration | P1 | NLP Part 2 | RAG Core |
+| **M7** | Evaluation | P1 | NLP 评分 | M2+M3+M4 |
+
+### 3.2 开发顺序（强制依赖链）
+
+```
+M0 Ingestion ──→ M2 Retrieval ──→ M3 Citations ──→ M4 Generation
+                      │                                    │
+                      ├──→ M1 Trace & Quality              ├──→ M5 Reports & Charts
+                      │                                    │
+                      └──→ M7 Evaluation ←─────────────────┘
+                                                           │
+                                      M6 ROS2 Integration ←┘
+```
+
+逻辑：
+- 没 M0，没数据可查
+- 没 M2，搜不到东西
+- 没 M3，citation 没证据可挂
+- 没 M1，不知道哪里坏了（可与 M2 平行开发）
+- 没 M4，报告生成没基础
+- M5 建立在 M2（检索表格）+ M4（生成叙述）之上
+- M6 共享 RAG Core，需要 M2+M3+M4 稳定后集成
+- M7 需要完整管道才能跑评估
+
+### 3.3 M0: Ingestion Pipeline（数据入库）
+
+**优先级**: P0 | **状态**: v1.0 已有基础，需扩展
+
+**FR-0.1** 多类别文档入库
+- 支持三类文档：教科书、EcDev 季报、房地产报告
+- 统一目录结构：`data/raw_pdfs/{category}/` → `data/mineru_output/{category}/`
+- 命名约定：教科书 `{author}_{short_title}`，EcDev `ed_update_q{N}_{year}`，房地产 `oreb_{type}_{date}`
+
+**FR-0.2** MinerU 批处理
+- `scripts/batch_mineru.py` 支持按类别批量处理
+- 输出：`content_list.json`、`middle.json`、`model.json`、`.md` 文件
+
+**FR-0.3** 数据库重建
+- `scripts/rebuild_db.py` 支持多类别 chunk 入库
+- bbox 坐标转换：content_list 1000×1000 → PDF 点坐标（v1.0 已修复）
+- 每个 chunk 标记 `category` 字段（textbook / ecdev / real_estate）
+
+**FR-0.4** TOC 与结构索引
+- `scripts/rebuild_toc.py` 提取 PDF 书签 → `toc_entries` 表
+- `scripts/rebuild_topic_index.py` 构建主题索引
+
+### 3.4 M1: Trace & Quality（可观测性）
+
+**优先级**: P0 | **依赖**: M0
 
 **FR-1.1** 请求参数展示
-- 在 Trace 面板中展示: question, top_k, fetch_k, filters, active_book_title
+- 在 Trace 面板展示: question, top_k, fetch_k, filters, active_book_title, 启用的策略列表
 
-**FR-1.2** 检索结果分层展示（4 种检索策略）
-- 分别展示 4 种检索策略各自的命中结果：
-  - **① FTS5 BM25 hits**: 关键词精确匹配结果
-  - **② Vector (Semantic) hits**: 语义相似度结果
-  - **③ PageIndex Tree hits**: LLM 推理树搜索结果（基于 toc_entries 目录树）
-  - **④ Metadata Filter hits**: 结构化筛选结果（按 book/chapter/page/content_type）
-- **Fused results**: RRF 融合后的最终排序
+**FR-1.2** 检索结果分层展示
+- 分别展示 5 种检索策略各自的命中结果：
+  - ① FTS5 BM25 hits
+  - ② Vector (Semantic) hits
+  - ③ TOC Heading Search hits
+  - ④ PageIndex Structure hits
+  - ⑤ Metadata Filter hits
+- Fused results：RRF 融合后的最终排序
 - 每条 hit 显示: strategy, rank, chunk_id, book_title, chapter_title, page_number, score, snippet
-- 可视化对比：哪些 chunk 只被一种策略命中、哪些被多种策略同时命中
+- 可视化对比：哪些 chunk 只被一种策略命中、哪些被多种同时命中
 
 **FR-1.3** 生成链路展示
 - 展示 system_prompt, user_prompt（可折叠）
 - 展示实际使用的 model 名称
-- 展示 citation 清洗结果：原始回答 vs 清洗后回答，有效/无效 citation 列表
+- 展示 citation 清洗结果：raw_answer vs cleaned_answer
 
 **FR-1.4** Quality Warnings
-- 后端自动检测并返回 warnings 列表：
-  - `NO_FTS_HITS`: FTS 搜索返回 0 条结果
-  - `NO_VECTOR_HITS`: vector 搜索返回 0 条结果
-  - `NO_PAGEINDEX_HITS`: PageIndex 树搜索返回 0 条结果
-  - `NO_METADATA_HITS`: metadata filter 搜索返回 0 条结果
-  - `NO_CONTEXT`: fused 结果为空，模型无 context 可用
-  - `NO_VALID_CITATIONS`: 清洗后回答中没有有效 citation
-  - `CITATIONS_REMOVED`: 有 citation 被清洗移除
-- 前端 Trace 面板以 warn / error 色块展示 warnings
-- 各策略 0 hits 时在对应区域显示建议（如 "尝试关闭 FTS 改用 Vector" 等）
+- 自动检测并返回 warnings：
+  - `NO_FTS_HITS` / `NO_VECTOR_HITS` / `NO_TOC_HITS` / `NO_PAGEINDEX_HITS` / `NO_METADATA_HITS`
+  - `NO_CONTEXT` / `NO_VALID_CITATIONS` / `CITATIONS_REMOVED`
+- 前端以 warn/error 色块展示
+- 各策略 0 hits 时显示建议
 
-> **Ref**: Norman, *The Design of Everyday Things*, Ch1 — "Feedback: ...there is full and continuous information about the results of actions." Quality warnings 实现了 Norman 的 feedback 原则。
+### 3.5 M2: Retrieval（可控性）
 
-### 3.2 模块 2: Retrieval（可控性）
-
-**优先级**: P0 — 第二个开发  
-**依赖**: Trace & Quality
+**优先级**: P0 | **依赖**: M0
 
 **FR-2.1** top_k 和 fetch_k 控制
-- 前端 Retrieval 面板提供 top_k（1~20）和 fetch_k（top_k~60）滑块
-- 后端接受 `fetch_k` 参数（原本硬编码为 `top_k * 3`）
+- 前端滑块：top_k（1~20）、fetch_k（top_k~60）
 
-**FR-2.2** 检索策略开关（4 种独立开关）
-- 每种检索策略独立可启/禁：
-  - **① FTS5 BM25**: 开/关（默认开）
-  - **② Vector (Semantic)**: 开/关（默认开）
-  - **③ PageIndex Tree**: 开/关（默认开）— 基于 `toc_entries` 表构建目录树，LLM 推理导航
-  - **④ Metadata Filter**: 开/关（默认关）— 纯结构化查询，按 book/chapter/page/content_type 匹配
-- 前端使用独立 checkbox 而非单选，允许任意组合
-- 后端根据启用的策略列表执行，跳过禁用的策略
-- 至少保留一种策略启用，全部关闭时提示用户
+**FR-2.2** 检索策略独立开关（5 种）
+- ① FTS5 BM25：开/关（默认开）
+- ② Vector (Semantic)：开/关（默认开）
+- ③ TOC Heading Search：开/关（默认开）
+- ④ PageIndex Structure：开/关（默认关）
+- ⑤ Metadata Filter：开/关（默认关）
+- 至少保留一种策略启用
 
-**FR-2.3** RRF 参数
-- 前端提供 RRF k 值输入（默认 60，范围 1~200）
-- 后端 `_rrf_fuse()` 接受多个结果列表（2~4 个），使用可配置的 k 值
-- 只有 1 种策略启用时跳过 RRF，直接用该策略结果
+**FR-2.3** RRF 融合参数
+- RRF k 值可配置（默认 60，范围 1~200）
+- 只有 1 种策略启用时跳过 RRF
 
 **FR-2.4** Filters 控制
-- 前端提供 content_type 多选（text / table / image / equation）
-- chapter_ids filter 已有，UI 中暴露出来
-- Metadata Filter 策略（④）专用：精确匹配 page_number 范围
+- content_type 多选（text / table / image / equation）
+- chapter_ids filter
+- document category filter（textbook / ecdev / real_estate）
 
-**FR-2.5** PageIndex Tree 配置
-- PageIndex 使用 `toc_entries` 表中的目录树结构
-- 可配置: 树搜索 LLM model（可与主生成 model 不同）
-- 可配置: 最大返回节点数
-- Trace 中展示 LLM 的 thinking 和选中的节点路径
+**FR-2.5** TOC Heading Search 配置
+- 数据源：`toc_entries` 表
+- 算法：词项重叠 + 子串 bonus（与 retrieval_lab 一致）
 
-> **Ref**: Manning et al., *Introduction to Information Retrieval*, Ch8 — "Evaluation in information retrieval" 强调了 precision/recall 权衡。4 种检索策略的独立开关让用户能精确实验每种方法对检索质量的影响，找到最佳组合。
+**FR-2.6** PageIndex Structure 配置
+- 数据源：MinerU `_middle.json` 结构树
+- 算法：词项重叠 + 子串匹配
 
-### 3.3 模块 3: Citations（可验证性）
+### 3.6 M3: Citations（可验证性）
 
-**优先级**: P1 — 第三个开发  
-**依赖**: Retrieval
+**优先级**: P0 | **依赖**: M2
 
 **FR-3.1** Citation 校验
-- 后端在生成后检查每个 `[N]` 是否映射到有效 source
-- 返回 `valid_citations` / `invalid_citations` 列表
+- 检查每个 `[N]` 是否映射到有效 source
 
 **FR-3.2** Citation 清洗
-- 移除无效 citation（已有 `_sanitize_citations`）
-- 清洗结果记录到 trace 中（raw_answer, cleaned_answer）
+- 移除无效 citation，记录原始 vs 清洗结果
 
 **FR-3.3** Citation → Source 映射
-- 前端点击 citation `[N]` 时，精确映射到 sources[N-1]
-- 获取该 source 的所有 source_locators（可能跨页）
+- 点击 `[N]` → 精确映射到 sources[N-1] → 获取 source_locators
 
 **FR-3.4** PDF 跳页 + bbox 高亮
-- 点击 citation → PDF 跳到对应 page_number
-- BboxOverlay 渲染该 chunk 的 bbox 区域（蓝色高亮）
-- 多个 bbox（跨页 chunk）时高亮第一个并提示"还有 N 个位置"
+- 点击 citation → PDF 跳到对应页 + bbox 蓝色高亮
+- 跨页 chunk 高亮第一个并提示 "还有 N 个位置"
 
-**FR-3.5** 无效 Citation UI 策略
-- 无效 citation `[N]` 显示为灰色删除线样式
-- hover 时提示 "Citation N is not available in this response"
-- 不可点击
+**FR-3.5** 无效 Citation UI
+- 灰色删除线样式，hover 提示，不可点击
 
-> **Ref**: Manning et al., *Introduction to Information Retrieval*, Ch8.6 — Evaluation metrics depend on verifiable provenance. Citation 模块确保每条引用都可追溯到原始 PDF 位置。
+### 3.7 M4: Generation（可优化性）
 
-### 3.4 模块 4: Generation（可优化性）
+**优先级**: P1 | **依赖**: M3
 
-**优先级**: P1 — 最后开发  
-**依赖**: Citations
+**FR-4.1** 模型选择
+- 保持 model 下拉选择，新增模型信息显示
 
-**FR-4.1** 模型选择（已有，增强）
-- 保持现有 model 下拉选择
-- 新增：显示模型参数量 / 上下文窗口（如 Ollama API 提供）
-
-**FR-4.2** Prompt 配置
-- 前端 Generation 面板提供 system prompt 模板选择
-- 预设模板：default / concise / detailed / academic
+**FR-4.2** Prompt 模板
+- 预设：default / concise / detailed / academic
 - 高级模式：直接编辑 system prompt
 
 **FR-4.3** Citation 输出规则
-- 可配置：`citation_style` = inline_numbered (默认) / footnote / none
-- 后端根据 style 调整 system prompt 中 citation 指令
+- citation_style: inline_numbered（默认）/ footnote / none
 
-**FR-4.4** 回答长度 / 风格
-- 可配置：`max_tokens` 范围（目前无限制，交由模型决定）
-- 可配置：`temperature`（如 Ollama 支持）
+**FR-4.4** 回答参数
+- max_tokens、temperature 可配置
 
 **FR-4.5** Citation 失败补救
-- 当清洗后 0 有效 citation 时，自动触发 warning
-- 可选策略：`retry_with_explicit_citation_instruction`（在 prompt 末尾追加 citation 强调）
+- 0 有效 citation 时自动 warning + 可选重试策略
 
-> **Ref**: Krug, *Don't Make Me Think*, Ch10 — "Usability is about people and how they understand and use things." Generation 面板让高级用户能理解和调整 LLM 的行为模式。
+### 3.8 M5: Reports & Charts（EcDev 专属）
+
+**优先级**: P1 | **依赖**: M2 + M4
+
+**FR-5.1** 表格数据提取
+- 从 MinerU 解析结果中提取 `content_type: table` 的结构化数据
+- 解析表格 markdown → 结构化 JSON（行列数据）
+
+**FR-5.2** 前端图表渲染
+- 使用前端 Chart 组件（如 Recharts）渲染提取的表格数据
+- 支持：折线图、柱状图、饼图（根据数据类型自动选择或用户选择）
+- 图表标题、坐标轴标签、图例自动从表格 header 生成
+
+**FR-5.3** 叙述性报告生成
+- **Task 1 风格**（数据描述）：描述图表中的趋势、比较、极值
+- **Task 2 风格**（分析报告）：基于检索到的多个文档段落，生成分析性叙述
+- 报告中保留 citation，可追溯到原始 PDF
+
+**FR-5.4** 报告展示
+- 前端直接渲染（Markdown → HTML）
+- 图表嵌入报告中
+- 暂不支持导出 PDF/Word
+
+### 3.9 M6: ROS2 Integration（NLP Part 2）
+
+**优先级**: P1 | **依赖**: RAG Core (M2+M3+M4)
+
+**FR-6.1** RAG Core OOP 封装
+- RAG Core 以 Python class 形式封装，Web 和 ROS2 共享同一个 class
+- 接口：`rag_core.query(question: str) -> RAGResponse`
+
+**FR-6.2** ROS2 Node 实现
+- `ollama_publisher.py`：继承 `rclpy.node.Node`
+- Subscribe to `words` topic (String) — Whisper 输出
+- Publish to `ollama_reply` topic (String) — RAG 回答
+- ROS2 parameter: `model`（默认 qwen2.5:0.5b，< 1.5GB）
+- ROS2 parameter: `knowledge_path`（知识文件路径）
+
+**FR-6.3** 模型约束
+- ROS2 场景下模型内存 < 1.5GB（与 Whisper + gTTS 共存）
+- 推荐 qwen2.5:0.5b（~0.4GB）
+
+### 3.10 M7: Evaluation（NLP 评分）
+
+**优先级**: P1 | **依赖**: M2 + M3 + M4
+
+**FR-7.1** 20 题评估集
+- 混合教科书 + EcDev 领域问题
+- 每题人工标注 ground truth 答案
+
+**FR-7.2** 自动评估运行
+- 批量运行 20 题，记录系统回答
+- 记录每题 top-3 retrieved documents
+
+**FR-7.3** 评分记录
+- 人工评分：1 = correct / 0.5 = partially correct / 0 = incorrect
+- top-3 文档相关性标注：relevant / not relevant
+- 计算 average accuracy score
+
+**FR-7.4** 评估报告输出
+- 生成评估结果表格，可直接引用到 Final Report 中
 
 ---
 
 ## 4. 非功能需求
 
 ### 4.1 性能
-
-- **NFR-1**: 新增参数不应使单次请求延迟增加超过 10%（PageIndex 策略需 LLM 调用，单独统计）
-- **NFR-2**: Trace 面板的 citation cleaning trace 不应引入额外 LLM 调用
-- **NFR-3**: 前端面板切换应 < 100ms（纯 UI 操作，无 API 调用）
+- **NFR-1**: 新增参数不应使单次请求延迟增加超过 10%
+- **NFR-2**: 前端面板切换 < 100ms
+- **NFR-3**: ROS2 Node 响应时间需适配语音交互节奏（< 5s）
 
 ### 4.2 向后兼容
-
-- **NFR-4**: 所有新增 API 字段必须有默认值，v1.0 客户端不传新参数时行为不变
-- **NFR-5**: 现有 26 个测试用例全部通过
+- **NFR-4**: 所有新增 API 字段有默认值，v1.0 客户端不受影响
+- **NFR-5**: 现有测试用例全部通过
 
 ### 4.3 安全
-
-- **NFR-6**: Prompt injection 防护 — system prompt 不接受用户直接输入
+- **NFR-6**: Prompt injection 防护
 - **NFR-7**: content_type filter 白名单校验
 
 ### 4.4 可用性
+- **NFR-8**: Trace / Retrieval / Generation 面板以 tab 或可折叠区域展示
+- **NFR-9**: 所有新增控件默认值与 v1.0 行为一致
 
-- **NFR-8**: Trace / Retrieval / Generation 面板在 Chat 面板内以 tab 或可折叠区域展示，不额外占屏幕空间
-- **NFR-9**: 所有新增控件默认值与 v1.0 行为一致（用户不需要配置即可使用）
-
-> **Ref**: Norman, *The Design of Everyday Things*, Ch2 — "Conceptual models: When things are visible, they tend to be easier to control." 面板的 progressive disclosure 平衡了初学者与高级用户需求。
+### 4.5 代码质量
+- **NFR-10**: RAG Core 以 OOP 形式封装（NLP 作业要求）
+- **NFR-11**: `ruff check` 通过
+- **NFR-12**: `tsc --noEmit` 通过
 
 ---
 
 ## 5. 约束条件
 
 ### 5.1 技术约束
-
-- 后端: Python / FastAPI，不引入新框架
-- 前端: React / TypeScript / Tailwind，不引入新 UI 库
-- 数据库: 不改变现有 schema（新功能复用 `toc_entries` 表作为 PageIndex 树数据源）
-- LLM: 继续使用 Ollama，PageIndex 树搜索可配置独立 model
+- 后端: Python / FastAPI
+- 前端: React / TypeScript / Tailwind
+- 数据库: SQLite FTS5 + ChromaDB
+- LLM: Ollama（Web 可用大模型，ROS2 限制 < 1.5GB）
+- 解析: MinerU v2.7.6
+- ROS2: 需要 loaner laptop
 
 ### 5.2 开发约束
-
-- **强制开发顺序**: Trace → Retrieval → Citations → Generation
-  - 没 trace，不知道问题在哪
-  - 没 retrieval，citation 没证据可挂
-  - 没 citations，生成再漂亮也落不到 PDF
-  - generation 应该最后调，不然全是盲调
+- 强制开发顺序: M0 → M2 → M3 → M1 → M4 → M5/M6/M7
 - v1.0 代码只做扩展，不做破坏性重构
+- RAG Core 必须 OOP，支持 Web + ROS2 双入口
 
 ### 5.3 时间约束
-
+- **Deadline**: 2026-04-03（Final Report + Code + PPT + ROS2 Demo）
+- **可用时间**: ~3 周
 - 每个模块独立可测试、可 review
-- 四个模块在同一个 sprint 内完成
 
 ---
 
 ## 6. 验收标准
 
-### 6.1 模块 1: Trace & Quality
+### 6.1 M0: Ingestion Pipeline
+- [ ] AC-0.1: 教科书、EcDev 季报、房地产报告均可入库
+- [ ] AC-0.2: 每个 chunk 有 category 字段标记
 
-- [ ] AC-1.1: Trace 面板展示 question, top_k, fetch_k, filters, model, 启用的策略列表
-- [ ] AC-1.2: Trace 面板分别展示 4 种检索策略结果 + fused 结果（含 rank, score, snippet）
-- [ ] AC-1.3: Trace 面板展示 system_prompt, user_prompt（可折叠）
-- [ ] AC-1.4: Trace 面板展示 citation 清洗结果（raw vs cleaned, valid/invalid list）
-- [ ] AC-1.5: 后端返回 quality warnings 列表，前端以色块展示
-- [ ] AC-1.6: 4 种策略各自 0 hits / 无 context / 无 citation 场景各有对应 warning
-- [ ] AC-1.7: PageIndex 策略的 trace 展示 LLM thinking 和选中节点路径
+### 6.2 M1: Trace & Quality
+- [ ] AC-1.1: Trace 面板展示所有请求参数和启用的策略列表
+- [ ] AC-1.2: 分别展示 5 种策略结果 + fused 结果
+- [ ] AC-1.3: 展示 system_prompt / user_prompt
+- [ ] AC-1.4: 展示 citation 清洗结果
+- [ ] AC-1.5: Quality warnings 以色块展示
 
-### 6.2 模块 2: Retrieval
+### 6.3 M2: Retrieval
+- [ ] AC-2.1: top_k / fetch_k 滑块正确响应
+- [ ] AC-2.2: 5 种策略可独立开关，任意组合正确执行
+- [ ] AC-2.3: RRF k 值可配置
+- [ ] AC-2.4: content_type + category filter 生效
+- [ ] AC-2.5: 1 种策略时跳过 RRF
 
-- [ ] AC-2.1: 前端提供 top_k / fetch_k 滑块，后端正确响应
-- [ ] AC-2.2: 4 种检索策略可独立开关，任意组合均正确执行
-- [ ] AC-2.3: RRF k 值可配置且影响融合结果
-- [ ] AC-2.4: content_type filter 可多选且生效
-- [ ] AC-2.5: PageIndex 树搜索正确使用 toc_entries 构建目录树
-- [ ] AC-2.6: 只启用 1 种策略时跳过 RRF，直接返回该策略结果
-
-### 6.3 模块 3: Citations
-
-- [ ] AC-3.1: citation 清洗结果包含 valid/invalid 列表
+### 6.4 M3: Citations
+- [ ] AC-3.1: citation 校验返回 valid/invalid 列表
 - [ ] AC-3.2: 点击有效 citation → PDF 跳页 + bbox 高亮
-- [ ] AC-3.3: 无效 citation 显示灰色样式，不可点击
-- [ ] AC-3.4: Source Card 展示完整 snippet 和 chapter/page 信息
+- [ ] AC-3.3: 无效 citation 灰色样式，不可点击
 
-### 6.4 模块 4: Generation
+### 6.5 M4: Generation
+- [ ] AC-4.1: prompt 模板可切换
+- [ ] AC-4.2: model 选择正常工作
+- [ ] AC-4.3: citation 风格可配置
 
-- [ ] AC-4.1: prompt 模板可切换（default / concise / detailed / academic）
-- [ ] AC-4.2: model 选择保持工作
-- [ ] AC-4.3: citation 输出风格可配置
-- [ ] AC-4.4: citation 失败时产生 warning 且有补救策略可选
+### 6.6 M5: Reports & Charts
+- [ ] AC-5.1: 从 MinerU 表格数据生成前端图表
+- [ ] AC-5.2: 生成 Task 1 风格数据描述
+- [ ] AC-5.3: 生成 Task 2 风格分析报告
+- [ ] AC-5.4: 报告中保留可追溯 citation
 
-### 6.5 通用
+### 6.7 M6: ROS2 Integration
+- [ ] AC-6.1: RAG Core 以 OOP class 封装，Web + ROS2 共享
+- [ ] AC-6.2: ROS2 node 正确 subscribe words / publish ollama_reply
+- [ ] AC-6.3: 使用 < 1.5GB 模型完成问答
+- [ ] AC-6.4: 完整语音管道可演示
 
-- [ ] AC-5.1: v1.0 的 26 个测试用例全部通过
-- [ ] AC-5.2: 每个模块新增至少 3 个测试用例
-- [ ] AC-5.3: 前端 tsc --noEmit 通过
-- [ ] AC-5.4: 后端 ruff check 通过
+### 6.8 M7: Evaluation
+- [ ] AC-7.1: 20 题混合评估集准备完成
+- [ ] AC-7.2: 每题有人工评分 + top-3 文档相关性标注
+- [ ] AC-7.3: 计算并输出 average accuracy score
+- [ ] AC-7.4: 评估结果可直接引用到 Final Report
+
+### 6.9 通用
+- [ ] AC-9.1: v1.0 现有测试用例全部通过
+- [ ] AC-9.2: 每个模块新增至少 3 个测试用例
+- [ ] AC-9.3: `tsc --noEmit` 通过
+- [ ] AC-9.4: `ruff check` 通过
+- [ ] AC-9.5: 6-10 页 Final Report 完成
+- [ ] AC-9.6: 10 分钟演示 PPT 完成
 
 ---
 
@@ -330,106 +488,46 @@ v1.0 交付了一个可用的教科书 RAG 系统：双栏 UI（左 PDF / 右 Ch
 | Feedback principle | Norman, *The Design of Everyday Things*, Ch1 |
 | Evaluation in IR | Manning et al., *Introduction to Information Retrieval*, Ch8 |
 | Provenance & evaluation | Manning et al., *Introduction to Information Retrieval*, Ch8.6 |
-| Usability & understanding | Krug, *Don't Make Me Think*, Ch10 |
 | Conceptual models & visibility | Norman, *The Design of Everyday Things*, Ch2 |
 
 ### 7.2 与 v1.0 的关系
 
-v1.1 是 v1.0 的**增量扩展**，不是重写。所有 v1.0 功能保持不变，v1.1 在其基础上新增 4 个功能模块。v1.0 文档保留在 `docs/v1.0/` 目录下。
+v1.1 是 v1.0 的增量扩展，不是重写。所有 v1.0 功能保持不变。v1.0 文档保留在 `docs/v1.0/`。
 
-### 7.3 开发顺序依据
+### 7.3 NLP 作业交付物清单
 
-```
-Trace & Quality ──→ Retrieval ──→ Citations ──→ Generation
-    (知道坏了)      (控制证据)   (验证证据)    (优化答案)
-```
+| 交付物 | 对应模块 | 格式 |
+|--------|---------|------|
+| RAG 实现（Part 1, 65%） | M0-M4 + Web UI | Python + React |
+| ROS2 集成（Part 2, 25%） | M6 | Python ROS2 Node |
+| Final Report（10%） | M7 + 写作 | 6-10 页文档 |
+| 演示 PPT | 所有 | 10 分钟 PPT |
+| 评估数据 | M7 | 20 题 + 评分表 |
 
-这是一个**从可观测到可控制到可验证到可优化**的渐进链路。每一层都依赖前一层的稳定输出。
+### 7.4 MinerU 坐标系与 bbox 修复
 
-### 7.4 四种检索策略总览
+详见 v1.0 文档。核心结论：`content_list.json` 的 bbox 使用归一化 1000×1000 画布坐标，`rebuild_db.py` 入库时将其转换为 PDF 点坐标（`÷1000×page_size`），误差 < 1px。
 
-```
-Query
-  ├─① FTS5 BM25 ──────── 关键词精确匹配，亚毫秒级
-  ├─② ChromaDB Vector ──── 语义相似度，理解同义词
-  ├─③ PageIndex Tree ───── LLM 推理导航 toc_entries 目录树
-  ├─④ Metadata Filter ──── 结构化精确筛选 (book/chapter/page/type)
-  │
-  └─ RRF Fusion ─────────→ Top-K Ranked Results → LLM Generation
-```
-
-| 策略 | 优势 | 劣势 | 适用场景 |
-|------|------|------|----------|
-| ① FTS5 BM25 | 速度极快，精确词匹配 | 不理解同义词 | 已知关键术语查询 |
-| ② Vector | 语义理解 | 计算开销大 | 自然语言问题 |
-| ③ PageIndex Tree | 利用文档结构，像人翻书 | 需 LLM 调用 | "第X章讲了什么" 类问题 |
-| ④ Metadata Filter | 精确定位 | 需要用户提供结构化条件 | "PRML 第3章的表格" |
-
-数据源：
-- ①② → `chunks` 表 + `chunk_fts` / ChromaDB
-- ③ → `toc_entries` 表 → 匹配到的章节下的 `chunks`
-- ④ → `chunks` 表 + `chapters` / `pages` 表联查
-
-### 7.5 MinerU 坐标系分析与 bbox 定位修复
-
-> **背景**: FR-3.4 要求 citation 点击后 PDF 跳页并 bbox 高亮。调试发现 bbox 覆盖区域与 PDF 内容严重错位。
-> **根因**: `content_list.json` 的 bbox 使用归一化 1000×1000 画布坐标，`rebuild_db.py` 未做转换直接入库，而 `pages` 表的 width/height 是 PDF 点坐标，两套坐标混用导致错位。
-> **状态**: ✅ 已修复 — `rebuild_db.py` 入库时将 bbox 从 1000×1000 画布转换为 PDF 点坐标。
-
-#### 7.5.1 MinerU 输出的三套坐标系
-
-MinerU 对每本书生成三个核心 JSON 文件，各自使用**不同的坐标空间**：
-
-| 文件 | 坐标系 | 示例尺寸（CLRS 第 1 页） | 说明 |
-|------|--------|--------------------------|------|
-| `_middle.json` → `page_size` | PDF 点（72 DPI） | 660 × 743 | 标准 PDF 坐标，`para_blocks[].bbox` 也在此空间 |
-| `_model.json` → `page_info` | 模型渲染像素 | 1834 × 2064 | ~2.78× 均匀缩放，`layout_dets` 检测框在此空间 |
-| `_content_list.json` → `bbox` | **归一化 1000×1000 画布** | X/Y 可达 ~998 | 与 PDF 尺寸无关的归一化坐标 |
-
-#### 7.5.2 content_list 坐标转换公式
-
-`content_list.json` 的 bbox 坐标可通过以下公式精确转换为 PDF 点：
+### 7.5 数据目录结构
 
 ```
-pdf_x = bbox_x / 1000 × page_width
-pdf_y = bbox_y / 1000 × page_height
+data/
+├── raw_pdfs/
+│   ├── textbooks/          ← 教科书
+│   ├── ecdev/              ← 经济发展季报
+│   └── real_estate/        ← 房地产报告
+├── mineru_output/
+│   ├── textbooks/
+│   ├── ecdev/
+│   └── real_estate/
 ```
 
-经三本书（CLRS、FastAPI、DDIA）多页验证，转换后与 `middle.json` 的 `para_blocks[].bbox` 误差 < 1 像素（纯四舍五入差异）。
+### 7.6 检索策略总览
 
-验证示例（lubanovic_fastapi_modern_web, page 0, page_size=504×661）：
-
-| 数据源 | x0 | y0 | x1 | y1 |
-|--------|-----|-----|-----|-----|
-| content_list bbox（原始） | 67 | 124 | 579 | 220 |
-| content_list → 转换后 | 33.8 | 82.0 | 291.8 | 145.4 |
-| middle para_blocks bbox | 34.0 | 82.0 | 292.0 | 146.0 |
-| 误差 | 0.23 | 0.04 | 0.18 | 0.58 |
-
-#### 7.5.3 修复内容
-
-**`rebuild_db.py`** 在 bbox 入库前增加坐标转换：
-
-```python
-# content_list.json bbox uses a normalised 1000x1000 canvas.
-# Convert to PDF-point coordinates so they match pages.width/height.
-pw, ph = page_sizes.get(page_idx, (0.0, 0.0))
-if pw and ph:
-    bbox = [bbox[0]/1000*pw, bbox[1]/1000*ph,
-            bbox[2]/1000*pw, bbox[3]/1000*ph]
-```
-
-转换后 `source_locators` 与 `pages` 表坐标统一为 PDF 点空间，前端计算 `bbox / page_size` 得到正确的百分比位置。
-
-#### 7.5.4 前端高亮策略
-
-修复后支持两种并行高亮方式：
-- **bbox overlay**（主方案）：用转换后的 PDF 点坐标渲染蓝色透明边框，适用于所有内容类型
-- **文本层匹配**（后备方案）：在 react-pdf 文本层中搜索 snippet 文本并高亮，作为 bbox 数据缺失时的 fallback
-
-#### 7.5.5 结论
-
-- 不是 MinerU 的 bug — 三套坐标系各有明确用途
-- 问题出在 `rebuild_db.py` 未做坐标转换，混用了两个坐标空间
-- 转换公式简单（÷1000×page_size），精度误差 < 1px
-- 现有 MinerU 输出数据完全足够，无需额外数据
+| # | 策略 | 优势 | 劣势 | 适用场景 | 默认 |
+|---|------|------|------|----------|------|
+| ① | FTS5 BM25 | 速度极快，精确词匹配 | 不理解同义词 | 已知关键术语 | 开 |
+| ② | Vector (ChromaDB) | 语义理解 | 计算开销大 | 自然语言问题 | 开 |
+| ③ | TOC Heading Search | 利用文档结构 | 仅标题级匹配 | 章节导航 | 开 |
+| ④ | PageIndex Structure | 精准结构定位 | 需 LLM 调用 | "第X章讲了什么" | 关 |
+| ⑤ | Metadata Filter | 精确定位 | 需结构化条件 | "PRML 第3章的表格" | 关 |

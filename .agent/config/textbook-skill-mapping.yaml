@@ -1,0 +1,1289 @@
+# Textbook ↔ Skill Mapping
+# Maps each skill to its relevant textbook sources from data/mineru_output/
+#
+# Usage: Before generating code, the skill should consult these textbooks
+# for authoritative reference. Access the textbook content at:
+#   data/mineru_output/{book_key}/{book_key}/auto/{book_key}.md
+#
+# The topic_index.json at textbooks/topic_index.json provides
+# keyword → chapter/section mappings for quick lookup.
+
+# ── Textbook Registry ──
+textbooks:
+  # Python
+  ramalho_fluent_python:
+    title: "Fluent Python (2nd ed)"
+    author: "Luciano Ramalho"
+    domain: python
+    topics:
+      [
+        data_model,
+        iterators,
+        generators,
+        decorators,
+        metaclasses,
+        concurrency,
+        type_hints,
+      ]
+
+  beazley_python_cookbook:
+    title: "Python Cookbook (3rd ed)"
+    author: "David Beazley & Brian K. Jones"
+    domain: python
+    topics:
+      [
+        data_structures,
+        strings,
+        iterators,
+        functions,
+        classes,
+        metaprogramming,
+        modules,
+        testing,
+        concurrency,
+        networking,
+      ]
+
+  downey_think_python_2e:
+    title: "Think Python (2nd ed)"
+    author: "Allen B. Downey"
+    domain: python
+    topics:
+      [
+        python_basics,
+        functions,
+        conditionals,
+        recursion,
+        data_structures,
+        oop,
+        debugging,
+      ]
+
+  downey_how_to_think_like_cs:
+    title: "How to Think Like a Computer Scientist"
+    author: "Allen B. Downey"
+    domain: python
+    topics:
+      [computational_thinking, problem_solving, algorithms, data_structures]
+
+  # JavaScript
+  flanagan_js_definitive_guide:
+    title: "JavaScript: The Definitive Guide (7th ed)"
+    author: "David Flanagan"
+    domain: javascript
+    topics:
+      [
+        types,
+        expressions,
+        statements,
+        objects,
+        arrays,
+        functions,
+        classes,
+        modules,
+        iterators,
+        async,
+        node_js,
+        web_apis,
+      ]
+
+  haverbeke_eloquent_javascript:
+    title: "Eloquent JavaScript (3rd ed)"
+    author: "Marijn Haverbeke"
+    domain: javascript
+    topics:
+      [
+        values,
+        functions,
+        objects,
+        higher_order,
+        bugs,
+        regex,
+        modules,
+        async,
+        dom,
+        node_js,
+        canvas,
+      ]
+
+  simpson_ydkjs_up_going:
+    title: "You Don't Know JS: Up & Going"
+    author: "Kyle Simpson"
+    domain: javascript
+    topics: [js_overview, scope, types, closures, this, prototypes]
+
+  simpson_ydkjs_scope_closures:
+    title: "You Don't Know JS: Scope & Closures"
+    author: "Kyle Simpson"
+    domain: javascript
+    topics: [scope, closures, hoisting, block_scope, modules]
+
+  simpson_ydkjs_this_object_prototypes:
+    title: "You Don't Know JS: this & Object Prototypes"
+    author: "Kyle Simpson"
+    domain: javascript
+    topics: [this_binding, objects, prototypes, delegation, class_pattern]
+
+  simpson_ydkjs_types_grammar:
+    title: "You Don't Know JS: Types & Grammar"
+    author: "Kyle Simpson"
+    domain: javascript
+    topics: [types, values, natives, coercion, grammar]
+
+  simpson_ydkjs_async_performance:
+    title: "You Don't Know JS: Async & Performance"
+    author: "Kyle Simpson"
+    domain: javascript
+    topics:
+      [
+        callbacks,
+        promises,
+        generators,
+        async_patterns,
+        web_workers,
+        benchmarking,
+      ]
+
+  simpson_ydkjs_es6_beyond:
+    title: "You Don't Know JS: ES6 & Beyond"
+    author: "Kyle Simpson"
+    domain: javascript
+    topics:
+      [
+        arrow_functions,
+        destructuring,
+        template_literals,
+        symbols,
+        iterators,
+        generators,
+        modules,
+        proxy,
+        reflect,
+      ]
+
+  # Algorithms & Data Structures
+  cormen_CLRS:
+    title: "Introduction to Algorithms (CLRS)"
+    author: "Cormen, Leiserson, Rivest, Stein"
+    domain: algorithms
+    topics:
+      [
+        sorting,
+        searching,
+        graph_algorithms,
+        dynamic_programming,
+        greedy,
+        hash_tables,
+        trees,
+        heaps,
+        complexity_analysis,
+      ]
+
+  # Machine Learning
+  goodfellow_deep_learning:
+    title: "Deep Learning"
+    author: "Goodfellow, Bengio, Courville"
+    domain: ml
+    topics:
+      [
+        neural_networks,
+        cnn,
+        rnn,
+        optimization,
+        regularization,
+        generative_models,
+        autoencoders,
+        representation_learning,
+      ]
+
+  bishop_prml:
+    title: "Pattern Recognition and Machine Learning"
+    author: "Christopher Bishop"
+    domain: ml
+    topics:
+      [
+        bayesian,
+        classification,
+        regression,
+        neural_networks,
+        graphical_models,
+        mixture_models,
+        em_algorithm,
+        svm,
+        pca,
+      ]
+
+  hastie_esl:
+    title: "The Elements of Statistical Learning"
+    author: "Hastie, Tibshirani, Friedman"
+    domain: ml
+    topics:
+      [
+        linear_methods,
+        regularization,
+        model_selection,
+        ensemble_methods,
+        boosting,
+        random_forests,
+        svm,
+        neural_networks,
+      ]
+
+  james_ISLR:
+    title: "An Introduction to Statistical Learning"
+    author: "James, Witten, Hastie, Tibshirani"
+    domain: ml
+    topics:
+      [
+        linear_regression,
+        classification,
+        resampling,
+        model_selection,
+        tree_methods,
+        svm,
+        clustering,
+        pca,
+      ]
+
+  kelleher_ml_fundamentals:
+    title: "Fundamentals of Machine Learning"
+    author: "John D. Kelleher"
+    domain: ml
+    topics:
+      [
+        ml_pipeline,
+        feature_engineering,
+        evaluation,
+        decision_trees,
+        naive_bayes,
+        regression,
+        ensemble,
+        neural_networks,
+      ]
+
+  murphy_pml1:
+    title: "Probabilistic Machine Learning: An Introduction"
+    author: "Kevin P. Murphy"
+    domain: ml
+    topics:
+      [
+        probability,
+        bayesian,
+        linear_models,
+        neural_networks,
+        optimization,
+        generalized_linear_models,
+        clustering,
+        dimensionality_reduction,
+      ]
+
+  murphy_pml2:
+    title: "Probabilistic Machine Learning: Advanced Topics"
+    author: "Kevin P. Murphy"
+    domain: ml
+    topics:
+      [
+        variational_inference,
+        mcmc,
+        gaussian_processes,
+        generative_models,
+        vae,
+        gan,
+        normalizing_flows,
+        causal_inference,
+      ]
+
+  barber_brml:
+    title: "Bayesian Reasoning and Machine Learning"
+    author: "David Barber"
+    domain: ml
+    topics:
+      [
+        bayesian_inference,
+        graphical_models,
+        hmm,
+        mixture_models,
+        gaussian_processes,
+        approximate_inference,
+      ]
+
+  shalev-shwartz_uml:
+    title: "Understanding Machine Learning"
+    author: "Shalev-Shwartz & Ben-David"
+    domain: ml
+    topics:
+      [
+        pac_learning,
+        vc_dimension,
+        regularization,
+        convexity,
+        boosting,
+        kernel_methods,
+        learning_theory,
+      ]
+
+  # Mathematics
+  deisenroth_mml:
+    title: "Mathematics for Machine Learning"
+    author: "Deisenroth, Faisal, Ong"
+    domain: math
+    topics:
+      [
+        linear_algebra,
+        analytic_geometry,
+        matrix_decomposition,
+        probability,
+        optimization,
+        pca,
+        svd,
+      ]
+
+  boyd_convex_optimization:
+    title: "Convex Optimization"
+    author: "Stephen Boyd & Lieven Vandenberghe"
+    domain: math
+    topics:
+      [
+        convex_sets,
+        convex_functions,
+        optimization_problems,
+        duality,
+        gradient_descent,
+        interior_point_methods,
+      ]
+
+  grinstead_snell_probability:
+    title: "Introduction to Probability"
+    author: "Charles Grinstead & J. Laurie Snell"
+    domain: math
+    topics:
+      [
+        discrete_probability,
+        continuous_probability,
+        conditional_probability,
+        random_variables,
+        expected_value,
+        law_of_large_numbers,
+        central_limit_theorem,
+      ]
+
+  downey_think_stats_2e:
+    title: "Think Stats (2nd ed)"
+    author: "Allen B. Downey"
+    domain: math
+    topics:
+      [
+        exploratory_data_analysis,
+        distributions,
+        probability,
+        hypothesis_testing,
+        regression,
+        estimation,
+        visualization,
+      ]
+
+  mackay_information_theory:
+    title: "Information Theory, Inference, and Learning Algorithms"
+    author: "David J.C. MacKay"
+    domain: math
+    topics:
+      [
+        information_theory,
+        entropy,
+        coding,
+        inference,
+        bayesian,
+        monte_carlo,
+        clustering,
+        neural_networks,
+      ]
+
+  # NLP
+  jurafsky_slp3:
+    title: "Speech and Language Processing (3rd ed)"
+    author: "Daniel Jurafsky & James H. Martin"
+    domain: nlp
+    topics:
+      [
+        tokenization,
+        language_models,
+        pos_tagging,
+        named_entity_recognition,
+        parsing,
+        word_embeddings,
+        transformers,
+        seq2seq,
+        question_answering,
+        dialogue,
+      ]
+
+  eisenstein_nlp:
+    title: "Introduction to Natural Language Processing"
+    author: "Jacob Eisenstein"
+    domain: nlp
+    topics:
+      [
+        text_classification,
+        sequence_labeling,
+        language_models,
+        neural_nlp,
+        syntax,
+        semantics,
+        discourse,
+        information_extraction,
+      ]
+
+  # Information Retrieval
+  manning_intro_to_ir:
+    title: "Introduction to Information Retrieval"
+    author: "Manning, Raghavan, Schütze"
+    domain: ir
+    topics:
+      [
+        inverted_index,
+        tf_idf,
+        boolean_retrieval,
+        vector_space_model,
+        scoring,
+        evaluation,
+        text_classification,
+        clustering,
+        web_search,
+      ]
+
+  # Computer Vision
+  szeliski_cv:
+    title: "Computer Vision: Algorithms and Applications"
+    author: "Richard Szeliski"
+    domain: cv
+    topics:
+      [
+        image_formation,
+        filtering,
+        feature_detection,
+        segmentation,
+        recognition,
+        stereo,
+        motion,
+        3d_reconstruction,
+      ]
+
+  # Reinforcement Learning
+  sutton_barto_rl_intro:
+    title: "Reinforcement Learning: An Introduction (2nd ed)"
+    author: "Richard S. Sutton & Andrew G. Barto"
+    domain: rl
+    topics:
+      [
+        mdp,
+        dynamic_programming,
+        monte_carlo,
+        td_learning,
+        policy_gradient,
+        function_approximation,
+        multi_agent,
+      ]
+
+  # Graph Learning
+  hamilton_grl:
+    title: "Graph Representation Learning"
+    author: "William L. Hamilton"
+    domain: graphs
+    topics:
+      [
+        node_embeddings,
+        graph_neural_networks,
+        message_passing,
+        graph_generation,
+        knowledge_graphs,
+      ]
+
+  # UX/Design
+  krug_dont_make_me_think:
+    title: "Don't Make Me Think"
+    author: "Steve Krug"
+    domain: ux
+    topics:
+      [
+        usability,
+        web_navigation,
+        homepage_design,
+        usability_testing,
+        accessibility,
+        mobile_usability,
+      ]
+
+  norman_design_everyday_things:
+    title: "The Design of Everyday Things"
+    author: "Don Norman"
+    domain: ux
+    topics:
+      [
+        affordances,
+        signifiers,
+        constraints,
+        mappings,
+        feedback,
+        conceptual_models,
+        human_error,
+        design_thinking,
+      ]
+
+  # Software Engineering
+  martin_clean_code:
+    title: "Clean Code"
+    author: "Robert C. Martin"
+    domain: se
+    topics:
+      [
+        naming,
+        functions,
+        comments,
+        formatting,
+        error_handling,
+        unit_tests,
+        classes,
+        systems,
+        concurrency,
+      ]
+
+  martin_clean_architecture:
+    title: "Clean Architecture"
+    author: "Robert C. Martin"
+    domain: se
+    topics:
+      [
+        solid,
+        component_principles,
+        architecture_boundaries,
+        layers,
+        frameworks,
+        dependency_rule,
+        use_cases,
+      ]
+
+  gof_design_patterns:
+    title: "Design Patterns: Elements of Reusable OO Software"
+    author: "Gamma, Helm, Johnson, Vlissides"
+    domain: se
+    topics:
+      [
+        creational_patterns,
+        structural_patterns,
+        behavioral_patterns,
+        factory,
+        observer,
+        strategy,
+        decorator,
+        adapter,
+        singleton,
+      ]
+
+  kleppmann_ddia:
+    title: "Designing Data-Intensive Applications"
+    author: "Martin Kleppmann"
+    domain: se
+    topics:
+      [
+        data_models,
+        storage_engines,
+        replication,
+        partitioning,
+        transactions,
+        consistency,
+        batch_processing,
+        stream_processing,
+        distributed_systems,
+      ]
+
+  hunt_pragmatic_programmer:
+    title: "The Pragmatic Programmer (20th Anniversary)"
+    author: "David Thomas & Andrew Hunt"
+    domain: se
+    topics:
+      [
+        pragmatic_philosophy,
+        dry,
+        orthogonality,
+        tracer_bullets,
+        prototyping,
+        estimation,
+        refactoring,
+        testing,
+        automation,
+      ]
+
+  fowler_refactoring:
+    title: "Refactoring: Improving the Design of Existing Code"
+    author: "Martin Fowler"
+    domain: se
+    topics:
+      [
+        code_smells,
+        extract_method,
+        move_method,
+        replace_conditional,
+        encapsulate_field,
+        inline_method,
+        refactoring_catalog,
+      ]
+
+  ejsmont_web_scalability:
+    title: "Web Scalability for Startup Engineers"
+    author: "Artur Ejsmont"
+    domain: se
+    topics:
+      [
+        caching,
+        load_balancing,
+        cdn,
+        message_queues,
+        data_partitioning,
+        web_services,
+        search,
+        scalability_patterns,
+      ]
+
+  fontaine_art_of_postgresql:
+    title: "The Art of PostgreSQL"
+    author: "Dimitri Fontaine"
+    domain: se
+    topics:
+      [
+        sql_patterns,
+        indexing,
+        window_functions,
+        cte,
+        triggers,
+        stored_procedures,
+        query_optimization,
+        data_modeling,
+      ]
+
+  percival_cosmic_python:
+    title: "Architecture Patterns with Python"
+    author: "Harry Percival & Bob Gregory"
+    domain: se
+    topics:
+      [
+        domain_driven_design,
+        repository_pattern,
+        service_layer,
+        unit_of_work,
+        cqrs,
+        event_driven,
+        dependency_injection,
+      ]
+
+  google_swe:
+    title: "Software Engineering at Google"
+    author: "Winters, Manshreck, Wright"
+    domain: se
+    topics:
+      [
+        code_review,
+        testing_culture,
+        documentation,
+        style_guides,
+        deprecation,
+        large_scale_changes,
+        ci_cd,
+        version_control,
+      ]
+
+  # DevOps
+  chacon_pro_git:
+    title: "Pro Git (2nd ed)"
+    author: "Scott Chacon & Ben Straub"
+    domain: devops
+    topics:
+      [
+        git_basics,
+        branching,
+        merging,
+        rebasing,
+        workflows,
+        distributed_git,
+        hooks,
+        internals,
+      ]
+
+  google_sre:
+    title: "Site Reliability Engineering"
+    author: "Google"
+    domain: devops
+    topics:
+      [
+        slo,
+        error_budgets,
+        monitoring,
+        alerting,
+        incident_response,
+        capacity_planning,
+        load_balancing,
+        release_engineering,
+      ]
+
+  nygard_release_it:
+    title: "Release It! Design and Deploy Production-Ready Software"
+    author: "Michael T. Nygard"
+    domain: devops
+    topics:
+      [
+        stability_patterns,
+        circuit_breaker,
+        bulkhead,
+        timeouts,
+        cascading_failures,
+        deployment,
+        monitoring,
+        capacity,
+      ]
+
+  # Python (testing)
+  okken_python_testing_pytest:
+    title: "Python Testing with pytest"
+    author: "Brian Okken"
+    domain: python
+    topics:
+      [
+        pytest_basics,
+        fixtures,
+        parametrize,
+        markers,
+        plugins,
+        mocking,
+        coverage,
+        test_organization,
+        conftest,
+      ]
+
+  # TypeScript
+  basarat_typescript_deep_dive:
+    title: "TypeScript Deep Dive"
+    author: "Basarat Ali Syed"
+    domain: typescript
+    topics:
+      [
+        type_system,
+        interfaces,
+        generics,
+        enums,
+        type_guards,
+        decorators,
+        compiler_options,
+        jsx,
+        testing,
+      ]
+
+  # Security & Reverse Engineering (CloudCode Phantom 项目核心)
+  seitz_black_hat_python:
+    title: "Black Hat Python (2nd ed)"
+    author: "Justin Seitz & Tim Arnold"
+    domain: security
+    topics:
+      [
+        network_programming,
+        raw_sockets,
+        packet_sniffing,
+        web_hacking,
+        proxy_servers,
+        ssh_tunneling,
+        reverse_engineering,
+        forensics,
+        credential_harvesting,
+      ]
+
+  aumasson_serious_cryptography:
+    title: "Serious Cryptography"
+    author: "Jean-Philippe Aumasson"
+    domain: security
+    topics:
+      [
+        aes,
+        block_ciphers,
+        stream_ciphers,
+        hash_functions,
+        mac,
+        key_derivation,
+        pbkdf2,
+        tls,
+        rsa,
+        elliptic_curves,
+      ]
+
+  andriesse_practical_binary_analysis:
+    title: "Practical Binary Analysis"
+    author: "Dennis Andriesse"
+    domain: security
+    topics:
+      [
+        binary_formats,
+        elf,
+        pe,
+        disassembly,
+        debugging,
+        instrumentation,
+        symbolic_execution,
+        binary_patching,
+        code_injection,
+      ]
+
+  zalewski_tangled_web:
+    title: "The Tangled Web"
+    author: "Michal Zalewski"
+    domain: security
+    topics:
+      [
+        browser_security,
+        same_origin_policy,
+        xss,
+        csrf,
+        http_security,
+        cookie_security,
+        content_sniffing,
+        web_application_security,
+      ]
+
+  # Networking & Protocols
+  gourley_http_definitive_guide:
+    title: "HTTP: The Definitive Guide"
+    author: "David Gourley & Brian Totty"
+    domain: networking
+    topics:
+      [
+        http_protocol,
+        headers,
+        methods,
+        status_codes,
+        proxies,
+        caching,
+        authentication,
+        tls_ssl,
+        content_negotiation,
+        streaming,
+      ]
+
+  barrett_ssh_definitive_guide:
+    title: "SSH: The Secure Shell (2nd ed)"
+    author: "Barrett, Silverman, Byrnes"
+    domain: networking
+    topics:
+      [
+        ssh_protocol,
+        key_management,
+        port_forwarding,
+        tunneling,
+        scp,
+        sftp,
+        agent_forwarding,
+        ssh_configuration,
+      ]
+
+  # Frameworks & Tools
+  lubanovic_fastapi_modern_web:
+    title: "FastAPI: Modern Python Web Development"
+    author: "Bill Lubanovic"
+    domain: python
+    topics:
+      [
+        fastapi,
+        pydantic,
+        dependency_injection,
+        middleware,
+        async_endpoints,
+        sse,
+        websockets,
+        testing_fastapi,
+        deployment,
+      ]
+
+  kreibich_using_sqlite:
+    title: "Using SQLite"
+    author: "Jay A. Kreibich"
+    domain: database
+    topics:
+      [
+        sqlite_internals,
+        sql_syntax,
+        wal_mode,
+        file_format,
+        transactions,
+        c_api,
+        virtual_tables,
+        full_text_search,
+        embedded_database,
+      ]
+
+# ── Skill → Textbook Mapping ──
+skill_mappings:
+  dev-senior_backend:
+    primary:
+      - ramalho_fluent_python # Python 高级特性、数据模型、并发
+      - beazley_python_cookbook # Python 实用模式、网络编程、元编程
+      - percival_cosmic_python # DDD、Repository、Service Layer、Unit of Work
+      - fontaine_art_of_postgresql # SQL 模式、索引、窗口函数、查询优化
+      - lubanovic_fastapi_modern_web # FastAPI 框架、依赖注入、中间件、SSE
+    secondary:
+      - cormen_CLRS # 算法与数据结构（API 性能优化）
+      - manning_intro_to_ir # 搜索与索引（搜索 API 实现）
+      - downey_think_stats_2e # 统计分析（数据 API）
+      - martin_clean_code # 命名、函数设计、错误处理
+      - gof_design_patterns # 后端常用模式（Factory, Strategy, Observer）
+      - kleppmann_ddia # 存储引擎、事务、复制
+      - fowler_refactoring # 代码重构方法论
+      - kreibich_using_sqlite # SQLite 内部原理、WAL 模式、嵌入式数据库
+      - gourley_http_definitive_guide # HTTP 协议深度、Headers、代理架构
+    usage: |
+      生成 Python 后端代码时：
+      - 数据模型/ORM 设计 → 查阅 Fluent Python Ch1-4 (数据模型)
+      - 并发/异步 → 查阅 Fluent Python Ch19-21, Python Cookbook Ch12
+      - 装饰器/元编程 → 查阅 Fluent Python Ch7-9, Python Cookbook Ch9
+      - 架构模式 (DDD) → 查阅 Cosmic Python Ch1-7
+      - SQL 优化/复杂查询 → 查阅 Art of PostgreSQL
+      - FastAPI 开发 → 查阅 FastAPI Modern Web (全书)
+      - SQLite 操作 → 查阅 Using SQLite (WAL, 事务, 并发)
+      - HTTP 协议/代理 → 查阅 HTTP Definitive Guide Ch6-8 (代理/网关)
+      - 代码整洁 → 查阅 Clean Code Ch2-4
+      - 设计模式 → 查阅 GoF (按需)
+      - 重构 → 查阅 Refactoring (代码坏味道目录)
+      - 算法优化 → 查阅 CLRS 相关章节
+      - 搜索功能 → 查阅 Manning IR Ch1-8
+
+  dev-senior_frontend:
+    primary:
+      - flanagan_js_definitive_guide # JavaScript 权威指南
+      - haverbeke_eloquent_javascript # JavaScript 编程艺术
+      - basarat_typescript_deep_dive # TypeScript 类型系统、泛型、类型守卫
+    secondary:
+      - simpson_ydkjs_scope_closures # 作用域与闭包
+      - simpson_ydkjs_this_object_prototypes # this 与原型
+      - simpson_ydkjs_async_performance # 异步与性能
+      - simpson_ydkjs_types_grammar # 类型与语法
+      - simpson_ydkjs_es6_beyond # ES6+ 新特性
+      - simpson_ydkjs_up_going # JS 概览
+      - martin_clean_code # 命名、函数设计、组件结构原则
+      - fowler_refactoring # 前端代码重构手法、组件拆分
+      - gof_design_patterns # Observer（事件）、Strategy（渲染）、Decorator（HOC）
+      - hunt_pragmatic_programmer # DRY、正交性、可维护性
+    usage: |
+      生成前端代码时：
+      - TypeScript 类型设计 → TS Deep Dive (类型系统、泛型)
+      - 闭包/作用域问题 → YDKJS Scope & Closures
+      - this 绑定问题 → YDKJS this & Object Prototypes
+      - Promise/async 模式 → YDKJS Async & Performance, Flanagan Ch13
+      - 类型转换/陷阱 → YDKJS Types & Grammar
+      - DOM 操作 → Flanagan Ch15, Eloquent JS Ch14-15
+      - 模块系统 → YDKJS ES6 & Beyond, Flanagan Ch10
+      - 代码整洁/组件设计 → Clean Code Ch2-4
+      - 重构手法 → Refactoring (代码坏味道目录)
+      - 设计模式 → GoF (Observer, Strategy, Decorator)
+
+  dev-python_frontend:
+    primary:
+      - ramalho_fluent_python # Pythonic UI composition, functions, data structures
+      - beazley_python_cookbook # Practical Python patterns for app structure and utilities
+      - krug_dont_make_me_think # Usability and interaction clarity for UI work
+    secondary:
+      - norman_design_everyday_things # Feedback, mappings, constraints, user-centered interactions
+      - martin_clean_code # Naming, function boundaries, readability
+      - fowler_refactoring # Safe refactoring for growing UI files
+      - google_swe # Review discipline and maintainability
+      - hunt_pragmatic_programmer # DRY, tracer bullets, iterative delivery
+    usage: |
+      生成 Python 前端代码时：
+      - Streamlit/Gradio/NiceGUI 页面组织 → 参考 Fluent Python（函数、对象组合、可读性）
+      - UI 辅助函数/状态组织 → 参考 Python Cookbook
+      - 可用性与导航 → 参考 Don't Make Me Think
+      - 反馈、错误提示、交互映射 → 参考 Design of Everyday Things
+      - 命名与函数拆分 → 参考 Clean Code Ch2-4
+      - 渐进式重构 → 参考 Refactoring（代码坏味道目录）
+      - 增量交付与快速验证 → 参考 Pragmatic Programmer
+
+  dev-senior_architect:
+    primary:
+      - cormen_CLRS # 算法复杂度分析、数据结构选择
+      - manning_intro_to_ir # 搜索架构、索引设计
+      - kleppmann_ddia # 分布式系统、数据模型、一致性、流处理
+      - martin_clean_architecture # SOLID、分层架构、依赖规则、组件原则
+    secondary:
+      - boyd_convex_optimization # 优化问题建模
+      - deisenroth_mml # 数学基础决策
+      - gof_design_patterns # 创建型/结构型/行为型模式
+      - ejsmont_web_scalability # 缓存、负载均衡、CDN、消息队列
+      - percival_cosmic_python # DDD、Repository 模式、CQRS、事件驱动
+      - nygard_release_it # 稳定性模式、熔断器、容错
+      - google_sre # SLO、容量规划、可靠性架构
+      - gourley_http_definitive_guide # HTTP 协议、代理架构、网关设计
+      - aumasson_serious_cryptography # 加密体系架构、密钥管理
+      - seitz_black_hat_python # 协议逆向、代理构建、网络安全架构
+    usage: |
+      系统架构设计时：
+      - 分布式系统设计 → DDIA Part I-II (数据模型、复制、分区)
+      - 分层架构/依赖管理 → Clean Architecture Part III-V
+      - 设计模式选择 → GoF (按场景查阅)
+      - 扩展性设计 → Web Scalability + DDIA Part II
+      - 稳定性/容错 → Release It! Ch3-5 + SRE Ch17-21
+      - HTTP/代理架构 → HTTP Definitive Guide Ch6 (代理), Ch8 (网关)
+      - 加密体系设计 → Serious Cryptography Ch4-7 (对称加密, 密钥派生)
+      - 协议逆向架构 → Black Hat Python Ch2-5 (网络, 代理, SSH)
+      - 数据结构选型 → CLRS Part III (数据结构)
+      - 算法复杂度评估 → CLRS Part I (复杂度基础)
+      - 搜索/索引架构 → Manning IR Ch1-4
+      - 图算法（依赖分析）→ CLRS Part VI (图算法)
+      - 动态规划（缓存策略）→ CLRS Ch15
+
+  dev-senior_fullstack:
+    primary:
+      - ramalho_fluent_python
+      - flanagan_js_definitive_guide
+    secondary:
+      - beazley_python_cookbook
+      - haverbeke_eloquent_javascript
+      - cormen_CLRS
+      - manning_intro_to_ir
+      - kleppmann_ddia # 全栈系统设计
+      - martin_clean_architecture # 分层架构
+      - basarat_typescript_deep_dive # TypeScript 类型系统
+    usage: |
+      全栈开发时按前后端分别查阅对应教科书。
+      - 系统设计 → DDIA
+      - 架构分层 → Clean Architecture
+      - TypeScript → TS Deep Dive
+
+  dev-senior_data_engineer:
+    primary:
+      - ramalho_fluent_python # 迭代器/生成器（流式处理）
+      - beazley_python_cookbook # 数据处理配方
+      - kleppmann_ddia # 数据模型、存储引擎、批处理、流处理
+      - fontaine_art_of_postgresql # SQL 模式、索引、查询优化
+    secondary:
+      - downey_think_stats_2e # 统计与数据分析
+      - cormen_CLRS # 排序/搜索/图（ETL 管道）
+      - grinstead_snell_probability # 概率采样
+    usage: |
+      数据工程：
+      - 流式处理/生成器 → Fluent Python Ch17
+      - 数据模型选型 → DDIA Ch2-3
+      - ETL 管道架构 → DDIA Ch10-11 (batch + stream)
+      - SQL 优化/复杂查询 → Art of PostgreSQL
+      - 数据清洗模式 → Python Cookbook Ch1-2
+      - 统计验证 → Think Stats
+      - 大数据排序/归并 → CLRS Ch2, Ch8
+
+  dev-senior_qa:
+    primary:
+      - okken_python_testing_pytest # fixtures、参数化、markers、插件、conftest
+      - google_swe # 测试文化、测试策略、大规模测试
+      - beazley_python_cookbook # 测试模式 (Ch14)
+      - ramalho_fluent_python # Python 语义理解（正确测试前提）
+    secondary:
+      - downey_think_stats_2e # 统计测试验证
+      - grinstead_snell_probability # 概率性测试
+      - martin_clean_code # 单元测试章节 (Ch9)
+      - hunt_pragmatic_programmer # 测试哲学与自动化
+    usage: |
+      编写测试时：
+      - pytest 用法/fixture → pytest Book (全书)
+      - 测试策略/文化 → Google SWE Ch11-14
+      - Python 测试模式 → Python Cookbook Ch14
+      - 单元测试原则 → Clean Code Ch9
+      - 测试自动化哲学 → Pragmatic Programmer Ch41-43
+      - 边界值分析 → 理解数据模型 via Fluent Python
+      - 统计性测试 → Think Stats Ch7-9 (假设检验)
+
+  dev-ui_ux_designer:
+    primary:
+      - krug_dont_make_me_think # Web 可用性
+      - norman_design_everyday_things # 设计原则
+    secondary: []
+    usage: |
+      UI/UX 设计时：
+      - 默认按 MVP 优先，先收缩范围，只保留主任务所需界面
+      - 导航设计 → Don't Make Me Think Ch6-7
+      - 可用性测试 → Don't Make Me Think Ch9
+      - 交互设计原则 → Design of Everyday Things Ch1-3 (概念模型、反馈)
+      - 错误处理 UX → Design of Everyday Things Ch5 (人为错误)
+      - 无障碍设计 → Don't Make Me Think Ch12
+
+  dev-code_reviewer:
+    primary:
+      - ramalho_fluent_python # Python 最佳实践审查依据
+      - flanagan_js_definitive_guide # JavaScript 最佳实践审查依据
+      - martin_clean_code # 命名、函数、注释、格式、错误处理标准
+      - fowler_refactoring # 代码坏味道识别、重构手法
+    secondary:
+      - beazley_python_cookbook
+      - simpson_ydkjs_types_grammar
+      - cormen_CLRS # 性能审查（复杂度分析）
+      - hunt_pragmatic_programmer # DRY、正交性、实用主义
+      - google_swe # Code Review 最佳实践 (Ch9)
+      - gof_design_patterns # 模式审查（是否正确使用）
+    usage: |
+      代码审查时：
+      - 代码整洁标准 → Clean Code Ch2-7
+      - 代码坏味道 → Refactoring Ch3 (Bad Smells)
+      - Python 风格 → Fluent Python (Pythonic patterns)
+      - JS 类型陷阱 → YDKJS Types & Grammar
+      - Code Review 流程 → Google SWE Ch9
+      - 性能问题 → CLRS (复杂度分析)
+      - 并发问题 → Fluent Python Ch19, YDKJS Async
+      - DRY/正交性 → Pragmatic Programmer
+
+  dev-code_comment:
+    primary:
+      - ramalho_fluent_python # Python docstring 规范
+    secondary:
+      - flanagan_js_definitive_guide # JSDoc 规范
+      - martin_clean_code # 注释哲学（Ch4: 好注释 vs 坏注释）
+    usage: |
+      添加注释时：
+      - Python docstring → Fluent Python
+      - JSDoc → JS Definitive Guide
+      - 注释哲学（何时该写/不该写）→ Clean Code Ch4
+
+  dev-document_builder:
+    primary: []
+    secondary:
+      - ramalho_fluent_python
+      - beazley_python_cookbook
+    usage: |
+      文档构建工具本身不强依赖教科书，但处理 PDF/文档时
+      可参考 Python Cookbook 的文件处理模式。
+
+  dev-product_manager:
+    primary:
+      - krug_dont_make_me_think # 用户需求与可用性
+      - norman_design_everyday_things # 用户心理模型
+    secondary:
+      - google_swe # 产品工程实践、技术债管理
+    usage: |
+      产品设计时：
+      - 用户需求分析 → Don't Make Me Think (用户行为洞察)
+      - 概念模型设计 → Design of Everyday Things Ch1
+      - 可用性评估标准 → Don't Make Me Think Ch9
+      - 工程实践与技术债 → Google SWE Ch1-4
+
+  dev-phase_reviewer:
+    primary: []
+    secondary:
+      - cormen_CLRS # 架构阶段 Review 时的复杂度验证
+      - ramalho_fluent_python # 后端阶段 Review 时的 Python 规范
+      - flanagan_js_definitive_guide # 前端阶段 Review 时的 JS 规范
+      - martin_clean_code # 代码阶段质量标准
+      - google_swe # Review 流程与文化
+    usage: |
+      Phase Review 时根据阶段类型查阅对应教科书验证质量。
+      - 代码质量标准 → Clean Code
+      - Review 流程 → Google SWE Ch9
+
+  dev-senior_devops:
+    primary:
+      - chacon_pro_git # 分支策略、工作流、rebase、hooks
+      - google_sre # SLO、监控、告警、事故响应、发布工程
+      - nygard_release_it # 稳定性模式、熔断器、超时、部署
+    secondary:
+      - beazley_python_cookbook # 部署脚本编写
+      - ejsmont_web_scalability # 缓存、负载均衡、CDN、扩展模式
+      - google_swe # CI/CD、大规模变更、版本控制文化
+    usage: |
+      DevOps 工作时：
+      - Git 工作流/分支策略 → Pro Git Ch3 (branching), Ch5 (distributed)
+      - 监控/告警 → SRE Ch6 (monitoring), Ch10 (alerting)
+      - 稳定性/容错 → Release It! Ch3-5 (stability patterns)
+      - CI/CD 最佳实践 → Google SWE Ch23-25
+      - 扩展性 → Web Scalability (全书)
+      - 部署脚本 → Python Cookbook Ch13 (system)
+
+  dev-template_extraction:
+    primary: []
+    secondary:
+      - ramalho_fluent_python # 模板中的 Python 模式
+      - flanagan_js_definitive_guide # 模板中的 JS 模式
+      - gof_design_patterns # 设计模式辅助模板提取
+    usage: |
+      提取模板时参考语言最佳实践确保模板质量。
+      - 设计模式 → GoF (识别可模板化的模式)
+
+# ── ML/AI Extended Mapping (for future ML-specific skills) ──
+# These books are available for any ML/AI/data science work
+ml_references:
+  deep_learning:
+    - goodfellow_deep_learning
+    - murphy_pml1
+    - murphy_pml2
+  classical_ml:
+    - bishop_prml
+    - hastie_esl
+    - james_ISLR
+    - kelleher_ml_fundamentals
+    - shalev-shwartz_uml
+  bayesian:
+    - barber_brml
+    - murphy_pml1
+    - mackay_information_theory
+  nlp:
+    - jurafsky_slp3
+    - eisenstein_nlp
+    - manning_intro_to_ir
+  computer_vision:
+    - szeliski_cv
+    - goodfellow_deep_learning
+  reinforcement_learning:
+    - sutton_barto_rl_intro
+  graph_learning:
+    - hamilton_grl
+  math_foundations:
+    - deisenroth_mml
+    - boyd_convex_optimization
+    - grinstead_snell_probability
+    - downey_think_stats_2e
+    - mackay_information_theory
+
+# ── SE/DevOps Extended Mapping ──
+se_references:
+  code_quality:
+    - martin_clean_code
+    - fowler_refactoring
+    - hunt_pragmatic_programmer
+    - google_swe
+  architecture:
+    - martin_clean_architecture
+    - gof_design_patterns
+    - kleppmann_ddia
+    - percival_cosmic_python
+    - ejsmont_web_scalability
+  database:
+    - fontaine_art_of_postgresql
+    - kleppmann_ddia
+  devops:
+    - chacon_pro_git
+    - google_sre
+    - nygard_release_it
+  security:
+    - seitz_black_hat_python
+    - aumasson_serious_cryptography
+    - andriesse_practical_binary_analysis
+    - zalewski_tangled_web
+  networking:
+    - gourley_http_definitive_guide
+    - barrett_ssh_definitive_guide
+  frameworks:
+    - lubanovic_fastapi_modern_web
+    - kreibich_using_sqlite
+  testing:
+    - okken_python_testing_pytest
+    - google_swe
+
+# ── How to Access Textbook Content ──
+access:
+  markdown_path: "data/mineru_output/{book_key}/{book_key}/auto/{book_key}.md"
+  content_list_path: "data/mineru_output/{book_key}/{book_key}/auto/{book_key}_content_list.json"
+  topic_index: "textbooks/topic_index.json"
+  instructions: |
+    1. Identify the relevant textbook(s) from skill_mappings
+    2. Use topic_index.json to find specific chapters/sections
+    3. Read the markdown file at the path above for full content
+    4. Cite the source in code comments:
+       # Ref: Goodfellow et al., Deep Learning, Ch8.5 (Adaptive Learning Rates)
+       # Ref: Ramalho, Fluent Python, Ch17 (Iterators & Generators)

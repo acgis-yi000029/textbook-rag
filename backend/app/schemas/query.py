@@ -9,13 +9,21 @@ class QueryFilters(BaseModel):
     book_ids: list[int] = Field(default_factory=list)
     chapter_ids: list[int] = Field(default_factory=list)
     content_types: list[str] = Field(default_factory=list)
+    categories: list[str] = Field(default_factory=list)
 
 
 class QueryRequest(BaseModel):
     question: str = Field(..., min_length=1, max_length=2000)
     filters: QueryFilters | None = None
     top_k: int = Field(default=5, ge=1, le=20)
+    fetch_k: int | None = Field(default=None, ge=1, le=100, description="Over-fetch count; defaults to top_k * 3")
     model: str | None = Field(default=None, min_length=1, max_length=200)
+    # STORY-007: strategy control
+    enabled_strategies: list[str] | None = Field(default=None, description="Strategy names to enable; None → default set")
+    rrf_k: int = Field(default=60, ge=1, le=200, description="RRF constant k")
+    # STORY-011: generation config
+    prompt_template: str = Field(default="default", description="Prompt template id: default/concise/detailed/academic")
+    custom_system_prompt: str | None = Field(default=None, max_length=4000, description="Overrides prompt_template if set")
 
 
 class SourceInfo(BaseModel):
@@ -100,3 +108,9 @@ class QueryResponse(BaseModel):
 class ModelInfo(BaseModel):
     name: str
     is_default: bool = False
+
+
+class PromptTemplateInfo(BaseModel):
+    id: str
+    name: str
+    description: str

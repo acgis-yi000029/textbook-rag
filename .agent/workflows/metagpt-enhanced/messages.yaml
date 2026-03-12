@@ -1,0 +1,248 @@
+# MetaGPT-Enhanced Message System
+# 阶段间的上下文传递
+
+# Message Template
+message_template:
+  id: "" # 唯一ID
+  timestamp: "" # 时间戳
+  from_role: "" # 发送者角色
+  to_role: "" # 接收者角色
+  phase: "" # 所属阶段
+  type: "" # 消息类型: output | request | feedback
+  content: "" # 消息内容
+  artifacts: [] # 产出物路径列表
+  metadata: {} # 额外元数据
+
+# Phase Output Messages
+phase_outputs:
+  requirements:
+    type: "prd_document"
+    template: |
+      ## Requirements Analysis Complete
+
+      **From**: {from_role} (Product Manager)
+      **To**: {to_role} (Architect)
+
+      ### Summary
+      {summary}
+
+      ### Key Requirements
+      {requirements_list}
+
+      ### Artifacts
+      - PRD: {prd_path}
+
+      ### Next Steps
+      Please design the system architecture based on these requirements.
+
+  architecture:
+    type: "architecture_document"
+    template: |
+      ## Architecture Design Complete
+
+      **From**: {from_role} (Architect)
+      **To**: {to_role} (Tech Lead)
+
+      ### Summary
+      {summary}
+
+      ### Key Decisions
+      {decisions_list}
+
+      ### Tech Stack
+      {tech_stack}
+
+      ### Artifacts
+      - Architecture: {architecture_path}
+      - API Design: {api_path}
+
+      ### Next Steps
+      Please break down into implementable tasks.
+
+  stories:
+    type: "task_breakdown"
+    template: |
+      ## Task Breakdown Complete
+
+      **From**: {from_role} (Tech Lead)
+      **To**: {to_role} (Engineers)
+
+      ### Summary
+      {summary}
+
+      ### Sprint Plan
+      {sprint_plan}
+
+      ### Priority Tasks
+      {priority_tasks}
+
+      ### Artifacts
+      - Stories: {stories_path}
+      - Sprint Plan: {sprint_path}
+
+      ### Next Steps
+      Begin implementation with highest priority tasks.
+
+  backend:
+    type: "backend_code"
+    template: |
+      ## Backend Implementation Complete
+
+      **From**: {from_role} (Backend Engineer)
+      **To**: {to_role} (QA Engineer)
+
+      ### Summary
+      {summary}
+
+      ### Implemented Features
+      {features_list}
+
+      ### API Endpoints
+      {endpoints_list}
+
+      ### Test Coverage
+      {coverage}
+
+      ### Artifacts
+      - Code: backend/app/
+      - Tests: backend/tests/
+
+      ### Next Steps
+      Please run comprehensive tests.
+
+  frontend:
+    type: "frontend_code"
+    template: |
+      ## Frontend Implementation Complete
+
+      **From**: {from_role} (Frontend Engineer)
+      **To**: {to_role} (QA Engineer)
+
+      ### Summary
+      {summary}
+
+      ### Implemented Components
+      {components_list}
+
+      ### Pages
+      {pages_list}
+
+      ### Artifacts
+      - Code: frontend/src/
+      - Tests: frontend/src/**/*.test.tsx
+
+      ### Next Steps
+      Please run E2E tests.
+
+  testing:
+    type: "test_results"
+    template: |
+      ## Testing Complete
+
+      **From**: {from_role} (QA Engineer)
+      **To**: {to_role} (Code Reviewer)
+
+      ### Summary
+      {summary}
+
+      ### Test Results
+      - Unit Tests: {unit_results}
+      - Integration Tests: {integration_results}
+      - E2E Tests: {e2e_results}
+
+      ### Coverage
+      {coverage_report}
+
+      ### Issues Found
+      {issues_list}
+
+      ### Artifacts
+      - Test Report: {report_path}
+
+      ### Next Steps
+      Please review the code for merge.
+
+  review:
+    type: "review_report"
+    template: |
+      ## Code Review Complete
+
+      **From**: {from_role} (Code Reviewer)
+      **To**: {to_role} (DevOps Engineer)
+
+      ### Summary
+      {summary}
+
+      ### Review Status
+      {review_status}
+
+      ### Issues
+      - Critical: {critical_count}
+      - High: {high_count}
+      - Medium: {medium_count}
+
+      ### Approval
+      {approval_status}
+
+      ### Artifacts
+      - Review Report: {report_path}
+
+      ### Next Steps
+      {next_steps}
+
+# Context Accumulation
+# 每个阶段可以访问之前所有阶段的输出
+# 路径基于项目实际结构
+context_chain:
+  - phase: requirements
+    provides: ["project_name", "requirements", "user_stories"]
+    artifacts: ["docs/requirements/master_prd.md"]
+
+  - phase: prd
+    requires: ["requirements"]
+    provides: ["prd", "acceptance_criteria"]
+    artifacts: ["docs/requirements/master_prd.md"]
+
+  - phase: architecture
+    requires: ["prd"]
+    provides: ["tech_stack", "api_design", "database_schema"]
+    artifacts: ["docs/architecture/system-architecture.md"]
+
+  - phase: stories
+    requires: ["requirements", "architecture"]
+    provides: ["tasks", "sprint_plan", "estimates"]
+    artifacts:
+      [
+        "docs/sprints/Sprint_Plan_North_Link.md",
+        "docs/plans/",
+      ]
+
+  - phase: database
+    requires: ["architecture"]
+    provides: ["database_design"]
+    artifacts: ["docs/codemaps/database.md"]
+
+  - phase: backend
+    requires: ["api_design", "database_design", "tasks"]
+    provides: ["api_endpoints", "models", "services"]
+    artifacts: ["backend/app/", "backend/tests/"]
+
+  - phase: frontend
+    requires: ["api_design", "tasks", "api_endpoints"]
+    provides: ["components", "pages", "stores"]
+    artifacts: ["frontend/src/"]
+
+  - phase: testing
+    requires: ["api_endpoints", "components"]
+    provides: ["test_coverage", "test_results"]
+    artifacts: ["backend/tests/", "docs/test-report.md"]
+
+  - phase: review
+    requires: ["test_results"]
+    provides: ["review_status", "approval"]
+    artifacts: ["docs/review-report.md"]
+
+  - phase: deployment
+    requires: ["approval"]
+    provides: ["deployment_url", "deployment_status"]
+    artifacts: ["render.yaml"]
