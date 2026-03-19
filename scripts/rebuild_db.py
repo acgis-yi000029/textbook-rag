@@ -609,7 +609,7 @@ def main():
             if args.book and dir_name != args.book:
                 continue
 
-            result = ingest_book(conn, dir_name, category, chroma_docs)
+            result = ingest_book(conn, dir_name, category, None)
             if result["status"] == "ok":
                 total_stats["books"] += 1
                 total_stats["pages"] += result["pages"]

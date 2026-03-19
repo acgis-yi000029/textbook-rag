@@ -133,7 +133,7 @@ def _build_stats(stats: dict) -> RetrievalStats:
         fts_hits=stats.get("fts5_bm25_hits", stats.get("fts_hits", 0)),
         vector_hits=stats.get("vector_hits", 0),
         pageindex_hits=stats.get("pageindex_hits", 0),
-        metadata_hits=stats.get("metadata_filter_hits", 0),
+
         fused_count=stats.get("total_hits", stats.get("fused_count", 0)),
     )
 
@@ -193,7 +193,7 @@ def _build_trace(
             fts_results=_to_hits("fts5_bm25"),
             vector_results=_to_hits("vector"),
             pageindex_results=_to_hits("pageindex"),
-            metadata_results=_to_hits("metadata_filter"),
+
             fused_results=[],  # fused list not tracked per-hit in trace
         ),
         generation=GenerationTrace(

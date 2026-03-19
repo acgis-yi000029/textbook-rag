@@ -42,7 +42,7 @@ class RetrievalStats(BaseModel):
     fts_hits: int
     vector_hits: int
     pageindex_hits: int = 0
-    metadata_hits: int = 0
+
     fused_count: int
 
 
@@ -63,7 +63,7 @@ class RetrievalTrace(BaseModel):
     fts_results: list[TraceChunkHit]
     vector_results: list[TraceChunkHit]
     pageindex_results: list[TraceChunkHit] = Field(default_factory=list)
-    metadata_results: list[TraceChunkHit] = Field(default_factory=list)
+
     fused_results: list[TraceChunkHit]
 
 

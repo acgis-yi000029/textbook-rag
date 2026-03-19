@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 import sqlite3
+import time
 
 from backend.app.core.config import QueryConfig, RAGConfig
 from backend.app.core.types import RAGResponse
+
+logger = logging.getLogger(__name__)
 
 
 class RAGCore:
@@ -103,26 +107,66 @@ class RAGCore:
         trace = self._get_trace()
         db = self._get_db()
 
+        t_start = time.perf_counter()
+        logger.info("═══ RAG query start: %s", question[:80])
+
         try:
             # 1. Retrieve
+            t0 = time.perf_counter()
             retrieval_result = self._get_retriever().retrieve(question, cfg, db)
+            t_retrieve = time.perf_counter() - t0
+            logger.info(
+                "  [1/4] Retrieve: %.2fs | %d strategies, %d chunks",
+                t_retrieve,
+                retrieval_result.stats.get("total_strategies", 0),
+                len(retrieval_result.chunks),
+            )
+            for name, sr in retrieval_result.per_strategy.items():
+                logger.info("         ├─ %s: %d hits", name, len(sr.hits))
             trace.record_retrieval(question, cfg, retrieval_result)
 
             # 2. Generate
+            t0 = time.perf_counter()
+            model = cfg.model or self._config.default_model
             raw_answer = self._get_generator().generate(
                 question, retrieval_result.chunks, cfg
+            )
+            t_generate = time.perf_counter() - t0
+            logger.info(
+                "  [2/4] Generate: %.2fs | model=%s, answer_len=%d",
+                t_generate, model, len(raw_answer),
             )
             trace.record_generation(cfg, raw_answer)
 
             # 3. Citation
+            t0 = time.perf_counter()
             citation_result = self._get_citation().process(raw_answer, retrieval_result.chunks)
+            t_cite = time.perf_counter() - t0
+            logger.info(
+                "  [3/4] Citation: %.2fs | valid=%d, invalid=%d",
+                t_cite,
+                len(citation_result.valid_ids),
+                len(citation_result.invalid_ids),
+            )
             trace.record_citations(citation_result)
 
             # 4. Quality
+            t0 = time.perf_counter()
             warnings = self._get_quality().check(retrieval_result, citation_result)
+            t_quality = time.perf_counter() - t0
+            logger.info(
+                "  [4/4] Quality: %.2fs | %d warnings",
+                t_quality, len(warnings),
+            )
 
         finally:
             db.close()
+
+        t_total = time.perf_counter() - t_start
+        logger.info(
+            "═══ RAG query done: %.2fs (retrieve=%.2f, generate=%.2f, cite=%.2f, quality=%.2f)",
+            t_total, t_retrieve, t_generate, t_cite, t_quality,
+        )
 
         return RAGResponse(
             answer=citation_result.cleaned_answer,

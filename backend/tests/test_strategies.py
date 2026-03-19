@@ -15,7 +15,6 @@ import pytest
 
 from backend.app.core.config import QueryConfig, QueryFilters, RAGConfig
 from backend.app.core.strategies.fts5_strategy import FTS5BM25Strategy
-from backend.app.core.strategies.metadata_strategy import MetadataFilterStrategy
 from backend.app.core.strategies.toc_strategy import TOCHeadingStrategy
 from backend.app.core.strategies.vector_strategy import VectorStrategy
 
@@ -233,29 +232,4 @@ class TestTOCHeadingStrategy:
         assert all(h.book_id == 1 for h in result.hits)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# STORY-006: MetadataFilterStrategy
-# ─────────────────────────────────────────────────────────────────────────────
 
-class TestMetadataFilterStrategy:
-    strategy = MetadataFilterStrategy()
-
-    def test_no_filters_returns_empty(self, mem_db):
-        """Without any active filter, returns empty to avoid flooding results."""
-        result = self.strategy.search("anything", _cfg(), mem_db)
-        assert result.hits == []
-        assert result.error is None
-
-    def test_book_id_filter_returns_correct_chunks(self, mem_db):
-        """book_ids=[2] returns only chunks from book 2."""
-        cfg = _cfg(filters=QueryFilters(book_ids=[2]))
-        result = self.strategy.search("economic growth", cfg, mem_db)
-        assert len(result.hits) >= 1
-        assert all(h.book_id == 2 for h in result.hits)
-
-    def test_content_type_filter_narrows_results(self, mem_db):
-        """content_types=['table'] returns only table chunks."""
-        cfg = _cfg(filters=QueryFilters(content_types=["table"]))
-        result = self.strategy.search("anything", cfg, mem_db)
-        assert len(result.hits) >= 1
-        assert all(h.content_type == "table" for h in result.hits)

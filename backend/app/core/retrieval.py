@@ -52,10 +52,11 @@ class RetrievalOrchestrator:
             pass
 
         try:
-            from backend.app.core.strategies.metadata_strategy import MetadataFilterStrategy
-            self.registry.register(MetadataFilterStrategy())
+            from backend.app.core.strategies.sirchmunk_strategy import SirchmunkStrategy
+            self.registry.register(SirchmunkStrategy(self._config))
         except ImportError:
             pass
+
 
     def retrieve(
         self,

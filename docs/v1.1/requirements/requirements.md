@@ -204,6 +204,12 @@ M0 Ingestion ──→ M2 Retrieval ──→ M3 Citations ──→ M4 Generati
 - `scripts/rebuild_toc.py` 提取 PDF 书签 → `toc_entries` 表
 - `scripts/rebuild_topic_index.py` 构建主题索引
 
+**FR-0.5** PageIndex 树结构构建
+- `scripts/build_pageindex.py` 使用本地 Ollama 模型为每本 PDF 生成层次化树结构索引
+- 输出：`data/pageindex/{category}/{book}_structure.json`
+- 参考实现：VectifyAI/PageIndex（`.github/references/PageIndex`）
+- 通过 monkey-patch openai 库指向 Ollama 的 OpenAI 兼容端点实现零 API 费用
+
 ### 3.4 M1: Trace & Quality（可观测性）
 
 **优先级**: P0 | **依赖**: M0
@@ -212,12 +218,11 @@ M0 Ingestion ──→ M2 Retrieval ──→ M3 Citations ──→ M4 Generati
 - 在 Trace 面板展示: question, top_k, fetch_k, filters, active_book_title, 启用的策略列表
 
 **FR-1.2** 检索结果分层展示
-- 分别展示 5 种检索策略各自的命中结果：
+- 分别展示 4 种检索策略各自的命中结果：
   - ① FTS5 BM25 hits
   - ② Vector (Semantic) hits
   - ③ TOC Heading Search hits
   - ④ PageIndex Structure hits
-  - ⑤ Metadata Filter hits
 - Fused results：RRF 融合后的最终排序
 - 每条 hit 显示: strategy, rank, chunk_id, book_title, chapter_title, page_number, score, snippet
 - 可视化对比：哪些 chunk 只被一种策略命中、哪些被多种同时命中
@@ -229,7 +234,7 @@ M0 Ingestion ──→ M2 Retrieval ──→ M3 Citations ──→ M4 Generati
 
 **FR-1.4** Quality Warnings
 - 自动检测并返回 warnings：
-  - `NO_FTS_HITS` / `NO_VECTOR_HITS` / `NO_TOC_HITS` / `NO_PAGEINDEX_HITS` / `NO_METADATA_HITS`
+  - `NO_FTS_HITS` / `NO_VECTOR_HITS` / `NO_TOC_HITS` / `NO_PAGEINDEX_HITS`
   - `NO_CONTEXT` / `NO_VALID_CITATIONS` / `CITATIONS_REMOVED`
 - 前端以 warn/error 色块展示
 - 各策略 0 hits 时显示建议
@@ -245,8 +250,8 @@ M0 Ingestion ──→ M2 Retrieval ──→ M3 Citations ──→ M4 Generati
 - ① FTS5 BM25：开/关（默认开）
 - ② Vector (Semantic)：开/关（默认开）
 - ③ TOC Heading Search：开/关（默认开）
-- ④ PageIndex Structure：开/关（默认关）
-- ⑤ Metadata Filter：开/关（默认关）
+- ④ PageIndex Structure：开/关（默认关，需先运行 `build_pageindex.py` 生成树索引）
+- ⑤ Ripgrep Raw Search：开/关（默认关，需安装 ripgrep）
 - 至少保留一种策略启用
 
 **FR-2.3** RRF 融合参数
@@ -263,8 +268,25 @@ M0 Ingestion ──→ M2 Retrieval ──→ M3 Citations ──→ M4 Generati
 - 算法：词项重叠 + 子串 bonus（与 retrieval_lab 一致）
 
 **FR-2.6** PageIndex Structure 配置
-- 数据源：MinerU `_middle.json` 结构树
-- 算法：词项重叠 + 子串匹配
+- 数据源：`data/pageindex/{category}/{book}_structure.json`（由 `build_pageindex.py` 生成的 LLM 层次化树索引）
+- 算法：词项重叠 + 节点 summary 匹配
+- Fallback：若无 PageIndex 数据，使用 MinerU `_middle.json` 做简单关键词匹配
+
+**FR-2.7** Query Rewriter（查询改写）
+- 在检索前使用 LLM 对用户的模糊/不完整/口语化查询进行改写
+- 输出标准化的搜索查询，提高检索命中率
+- 支持多轮对话上下文理解（参考 Sirchmunk v0.0.6 的 query rewriting 机制）
+- 可配置开关：默认关闭，前端可启用
+- 改写结果在 Trace 面板展示（原始 query → 改写后 query）
+
+**FR-2.8** Sirchmunk Agentic Search 配置
+- 依赖：`pip install sirchmunk`（Python SDK，可直接 import）
+- 数据源：`data/mineru_output/**/*.md` 原始文件（零索引，无需预构建）
+- 算法：Sirchmunk AgenticSearch — ripgrep 全文搜索 + Monte Carlo 证据采样
+- 调用方式：`AgenticSearch(llm=ollama).search(query, paths=[mineru_output_dir])`
+- LLM 交互：FAST 模式 2 次 LLM 调用（关键词提取 + 结果综合）
+- 命中结果映射回 SQLite chunk_id 参与 RRF 融合
+- 参考实现：Sirchmunk SDK（`.github/references/Sirchmunk`，`pip install sirchmunk`）
 
 ### 3.6 M3: Citations（可验证性）
 
@@ -433,10 +455,11 @@ M0 Ingestion ──→ M2 Retrieval ──→ M3 Citations ──→ M4 Generati
 
 ### 6.3 M2: Retrieval
 - [ ] AC-2.1: top_k / fetch_k 滑块正确响应
-- [ ] AC-2.2: 5 种策略可独立开关，任意组合正确执行
+- [ ] AC-2.2: 4 种策略可独立开关，任意组合正确执行
 - [ ] AC-2.3: RRF k 值可配置
 - [ ] AC-2.4: content_type + category filter 生效
 - [ ] AC-2.5: 1 种策略时跳过 RRF
+- [ ] AC-2.6: Query Rewriter 可开关，改写结果在 Trace 面板可见
 
 ### 6.4 M3: Citations
 - [ ] AC-3.1: citation 校验返回 valid/invalid 列表
@@ -529,5 +552,12 @@ data/
 | ① | FTS5 BM25 | 速度极快，精确词匹配 | 不理解同义词 | 已知关键术语 | 开 |
 | ② | Vector (ChromaDB) | 语义理解 | 计算开销大 | 自然语言问题 | 开 |
 | ③ | TOC Heading Search | 利用文档结构 | 仅标题级匹配 | 章节导航 | 开 |
-| ④ | PageIndex Structure | 精准结构定位 | 需 LLM 调用 | "第X章讲了什么" | 关 |
-| ⑤ | Metadata Filter | 精确定位 | 需结构化条件 | "PRML 第3章的表格" | 关 |
+| ④ | PageIndex Structure | 精准结构定位 | 需离线构建树索引 | "第X章讲了什么" | 关 |
+| ⑤ | Sirchmunk Agentic | 零索引，跨chunk搜索，SDK集成 | 需LLM调用，需pip install | Agentic搜索，复杂问题 | 关 |
+
+### 7.7 参考项目
+
+| 项目 | 位置 | 用途 |
+|------|------|------|
+| VectifyAI/PageIndex | `.github/references/PageIndex` | 层次化树结构索引构建，LLM 推理检索 |
+| ModelScope/Sirchmunk | `.github/references/Sirchmunk` | Query Rewriting、Monte Carlo Evidence Sampling、KnowledgeCluster 自进化 |

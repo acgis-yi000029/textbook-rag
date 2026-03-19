@@ -2,7 +2,7 @@
 
 from backend.app.core.strategies.base import RetrievalStrategy
 from backend.app.core.strategies.fts5_strategy import FTS5BM25Strategy
-from backend.app.core.strategies.metadata_strategy import MetadataFilterStrategy
+
 from backend.app.core.strategies.pageindex_strategy import PageIndexStrategy
 from backend.app.core.strategies.registry import StrategyRegistry
 from backend.app.core.strategies.toc_strategy import TOCHeadingStrategy
@@ -15,5 +15,5 @@ __all__ = [
     "VectorStrategy",
     "TOCHeadingStrategy",
     "PageIndexStrategy",
-    "MetadataFilterStrategy",
+
 ]
