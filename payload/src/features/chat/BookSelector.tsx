@@ -19,7 +19,7 @@ export default function BookSelector() {
 
   return (
     <select
-      className="w-full rounded border border-gray-600 bg-surface-800 px-3 py-2 text-sm text-slate-200 focus:border-brand-500 focus:outline-none"
+      className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none transition-colors"
       value={currentBookId ?? ""}
       onChange={(e) => {
         const v = e.target.value;

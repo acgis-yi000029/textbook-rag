@@ -15,8 +15,22 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="en" className="h-full" suppressHydrationWarning>
       <head>
         <link href="/favicon.ico" rel="icon" sizes="32x32" />
+        {/* Blocking script: set dark class BEFORE first paint to prevent FOUC */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var t = localStorage.getItem('theme');
+                  var isDark = t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                  if (isDark) document.documentElement.classList.add('dark');
+                } catch(e) {}
+              })();
+            `,
+          }}
+        />
       </head>
-      <body className="h-full bg-surface-950 text-slate-100">
+      <body className="h-full">
         <Providers>
           {children}
         </Providers>

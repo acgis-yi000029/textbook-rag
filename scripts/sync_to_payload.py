@@ -210,6 +210,13 @@ def sync(args: argparse.Namespace):
             "category": category,
             "status": "indexed",
             "chunkCount": book["chunk_count"],
+            "pipeline": {
+                "chunked": "done",
+                "stored": "done",
+                "vector": "done",
+                "fts": "done",
+                "toc": "done",
+            },
             "metadata": {
                 "pageCount": book["page_count"],
                 "chapterCount": book["chapter_count"],
@@ -276,12 +283,52 @@ def sync(args: argparse.Namespace):
     print(f"{'='*60}")
 
 
+def fix_pipeline(args: argparse.Namespace):
+    """Backfill pipeline fields for existing books based on their status."""
+    print("\n🔧 Fixing pipeline fields for existing books...")
+    client = PayloadClient(args.url)
+    client.login(args.email, args.password)
+
+    docs = client.find("books", limit=500)
+    fixed = 0
+    for doc in docs:
+        pipeline = doc.get("pipeline") or {}
+        # Skip if already has pipeline data
+        has_data = any(pipeline.get(k) and pipeline[k] != "pending" for k in ["chunked", "stored", "vector", "fts", "toc"])
+        if has_data:
+            continue
+
+        status = doc.get("status", "pending")
+        if status == "indexed":
+            stage_val = "done"
+        elif status == "error":
+            stage_val = "error"
+        else:
+            continue  # pending/processing — leave as pending
+
+        client.update("books", doc["id"], {
+            "pipeline": {
+                "chunked": stage_val,
+                "stored": stage_val,
+                "vector": stage_val,
+                "fts": stage_val,
+                "toc": stage_val,
+            },
+        })
+        fixed += 1
+        print(f"  ✅ {doc.get('engineBookId', doc['id'])}: pipeline → all {stage_val}")
+
+    print(f"\n  Fixed {fixed} books")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Sync engine SQLite → Payload CMS")
     parser.add_argument("--book", type=str, default=None,
                         help="Sync only a specific book (engine book_id)")
     parser.add_argument("--dry-run", action="store_true",
                         help="Show what would be synced without making changes")
+    parser.add_argument("--fix-pipeline", action="store_true",
+                        help="Backfill pipeline fields for existing books")
     parser.add_argument("--email", type=str, default=DEFAULT_EMAIL,
                         help="Payload admin email")
     parser.add_argument("--password", type=str, default=DEFAULT_PASSWORD,
@@ -290,7 +337,10 @@ def main():
                         help="Payload server URL")
     args = parser.parse_args()
 
-    sync(args)
+    if args.fix_pipeline:
+        fix_pipeline(args)
+    else:
+        sync(args)
 
 
 if __name__ == "__main__":

@@ -70,6 +70,71 @@ export const Books: CollectionConfig = {
       type: 'number',
       admin: { readOnly: true },
     },
+    // ── Pipeline stage status (一阶段一字段) ──
+    {
+      name: 'pipeline',
+      type: 'group',
+      admin: {
+        description: 'Processing pipeline stage status',
+      },
+      fields: [
+        {
+          name: 'chunked',
+          type: 'select',
+          defaultValue: 'pending',
+          options: [
+            { label: 'Pending', value: 'pending' },
+            { label: 'Done', value: 'done' },
+            { label: 'Error', value: 'error' },
+          ],
+          admin: { readOnly: true, width: '20%' },
+        },
+        {
+          name: 'stored',
+          type: 'select',
+          defaultValue: 'pending',
+          options: [
+            { label: 'Pending', value: 'pending' },
+            { label: 'Done', value: 'done' },
+            { label: 'Error', value: 'error' },
+          ],
+          admin: { readOnly: true, width: '20%' },
+        },
+        {
+          name: 'vector',
+          type: 'select',
+          defaultValue: 'pending',
+          options: [
+            { label: 'Pending', value: 'pending' },
+            { label: 'Done', value: 'done' },
+            { label: 'Error', value: 'error' },
+          ],
+          admin: { readOnly: true, width: '20%' },
+        },
+        {
+          name: 'fts',
+          type: 'select',
+          defaultValue: 'pending',
+          options: [
+            { label: 'Pending', value: 'pending' },
+            { label: 'Done', value: 'done' },
+            { label: 'Error', value: 'error' },
+          ],
+          admin: { readOnly: true, width: '20%' },
+        },
+        {
+          name: 'toc',
+          type: 'select',
+          defaultValue: 'pending',
+          options: [
+            { label: 'Pending', value: 'pending' },
+            { label: 'Done', value: 'done' },
+            { label: 'Error', value: 'error' },
+          ],
+          admin: { readOnly: true, width: '20%' },
+        },
+      ],
+    },
     {
       name: 'metadata',
       type: 'json',

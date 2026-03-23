@@ -32,7 +32,7 @@ export const Users: CollectionConfig = {
         { label: 'Reader', value: 'reader' },
       ],
       access: {
-        update: isAdmin,  // only admin can change role
+        update: ({ req: { user } }) => user?.role === 'admin',  // only admin can change role
       },
     },
   ],
