@@ -1,15 +1,189 @@
 'use client'
 
-import ComingSoon from '@/features/shared/components/ComingSoon'
-import { FileText } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import {
+  FileText, Loader2, AlertCircle, RefreshCw, CheckCircle2,
+  Lightbulb, BookOpen, BarChart3, Minimize2, Star,
+  Folder, FolderOpen, List,
+} from 'lucide-react'
+import { cn } from '@/features/shared/utils'
+
+interface PromptMode {
+  id: number
+  name: string
+  slug: string
+  description: string
+  systemPrompt: string
+  icon?: string
+  isDefault: boolean
+}
+
+const ICON_MAP: Record<string, React.ElementType> = {
+  lightbulb: Lightbulb,
+  book: BookOpen,
+  chart: BarChart3,
+  minimize: Minimize2,
+  'bar-chart': BarChart3,
+}
+
+const MODE_COLORS = [
+  { border: 'border-blue-500/30', bg: 'bg-blue-500/10', text: 'text-blue-400' },
+  { border: 'border-amber-500/30', bg: 'bg-amber-500/10', text: 'text-amber-400' },
+  { border: 'border-purple-500/30', bg: 'bg-purple-500/10', text: 'text-purple-400' },
+  { border: 'border-emerald-500/30', bg: 'bg-emerald-500/10', text: 'text-emerald-400' },
+  { border: 'border-rose-500/30', bg: 'bg-rose-500/10', text: 'text-rose-400' },
+]
 
 export default function Page() {
+  const [modes, setModes] = useState<PromptMode[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [selected, setSelected] = useState<number | null>(null)
+
+  const fetchModes = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/prompt-modes?limit=100')
+      const data = await res.json()
+      const docs = data.docs || []
+      setModes(docs)
+      if (docs.length > 0 && selected === null) {
+        setSelected(docs[0].id)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { fetchModes() }, [])
+
+  const activeMode = modes.find((m) => m.id === selected) || null
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full py-20">
+        <AlertCircle className="h-8 w-8 text-destructive mb-3" />
+        <p className="text-sm text-destructive mb-3">{error}</p>
+        <button onClick={fetchModes} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium">
+          <RefreshCw className="h-4 w-4 inline mr-2" />重试
+        </button>
+      </div>
+    )
+  }
+
   return (
-    <ComingSoon
-      title="Prompt 管理"
-      description="编辑 / 测试 Prompt 模板"
-      icon={FileText}
-      iconColor="text-rose-400"
-    />
+    <div className="flex h-full">
+      {/* ════════ Sub-sidebar: Mode list ════════ */}
+      <aside className="w-48 shrink-0 border-r border-border bg-card/50 flex flex-col">
+        <div className="px-3 py-3 border-b border-border">
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-rose-400" />
+            <span className="text-xs font-semibold text-foreground">Prompt 管理</span>
+          </div>
+        </div>
+
+        <nav className="flex-1 overflow-y-auto py-2 px-1.5">
+          {modes.map((mode, idx) => {
+            const isActive = selected === mode.id
+            const color = MODE_COLORS[idx % MODE_COLORS.length]
+            const IconComp = ICON_MAP[mode.icon || ''] || FileText
+
+            return (
+              <button
+                key={mode.id}
+                onClick={() => setSelected(mode.id)}
+                className={cn(
+                  'flex items-center gap-2 w-full rounded-md px-2.5 py-2 text-left transition-colors mb-0.5',
+                  isActive
+                    ? 'bg-primary/10 text-primary font-medium'
+                    : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
+                )}
+              >
+                <IconComp className={cn('h-4 w-4 shrink-0', isActive ? color.text : '')} />
+                <span className="text-xs flex-1 truncate">{mode.name}</span>
+                {mode.isDefault && (
+                  <Star className="h-3 w-3 text-amber-400 shrink-0" />
+                )}
+              </button>
+            )
+          })}
+        </nav>
+
+        <div className="px-3 py-2.5 border-t border-border">
+          <p className="text-[10px] text-muted-foreground">共 {modes.length} 种模式</p>
+        </div>
+      </aside>
+
+      {/* ════════ Main content: Mode detail ════════ */}
+      <div className="flex-1 min-w-0 overflow-y-auto p-6">
+        {activeMode ? (
+          <div>
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                {(() => {
+                  const idx = modes.findIndex((m) => m.id === activeMode.id)
+                  const color = MODE_COLORS[idx % MODE_COLORS.length]
+                  const IconComp = ICON_MAP[activeMode.icon || ''] || FileText
+                  return (
+                    <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center', color.bg)}>
+                      <IconComp className={cn('h-5 w-5', color.text)} />
+                    </div>
+                  )
+                })()}
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-lg font-bold text-foreground">{activeMode.name}</h1>
+                    {activeMode.isDefault && (
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-0.5">
+                        <Star className="h-2.5 w-2.5" />默认
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <code className="text-xs text-muted-foreground font-mono bg-secondary px-1.5 py-0.5 rounded">{activeMode.slug}</code>
+                  </div>
+                </div>
+              </div>
+              <button onClick={fetchModes} className="p-2 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors">
+                <RefreshCw className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Description */}
+            <div className="mb-6">
+              <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">描述</h2>
+              <p className="text-sm text-foreground/80 bg-card rounded-lg border border-border p-4">
+                {activeMode.description}
+              </p>
+            </div>
+
+            {/* System Prompt */}
+            <div>
+              <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">System Prompt</h2>
+              <pre className="text-sm text-foreground/80 bg-card rounded-lg border border-border p-4 whitespace-pre-wrap font-mono leading-relaxed max-h-[60vh] overflow-y-auto">
+                {activeMode.systemPrompt}
+              </pre>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full py-20">
+            <List className="h-10 w-10 text-muted-foreground mb-3" />
+            <p className="text-sm text-muted-foreground">选择左侧的 Prompt 模式查看详情</p>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }

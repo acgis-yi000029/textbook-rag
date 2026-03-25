@@ -22,7 +22,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from engine.config import CORS_ORIGINS
-from engine.api.routes import books, health, ingest, query
+from engine.api.routes import books, health, ingest, query, sync
 
 logger = logging.getLogger(__name__)
 
@@ -50,10 +50,6 @@ def create_app() -> FastAPI:
     )
 
     # --- Global exception handler -------------------------------------------
-    # When an unhandled exception causes a 500, FastAPI's default error
-    # response may NOT include CORS headers, so the browser reports a
-    # misleading "CORS blocked" error.  This handler ensures the real error
-    # message is always visible in the browser console.
     @app.exception_handler(Exception)
     async def _unhandled_exception(request: Request, exc: Exception):
         tb = traceback.format_exc()
@@ -67,6 +63,7 @@ def create_app() -> FastAPI:
     app.include_router(query.router, prefix="/engine")
     app.include_router(ingest.router, prefix="/engine")
     app.include_router(books.router, prefix="/engine")
+    app.include_router(sync.router, prefix="/engine")
 
     return app
 

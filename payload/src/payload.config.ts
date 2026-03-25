@@ -10,6 +10,9 @@ import { Chapters } from './collections/Chapters'
 import { Chunks } from './collections/Chunks'
 import { Users } from './collections/Users'
 import { PipelineTasks } from './collections/PipelineTasks'
+import { PromptModes } from './collections/PromptModes'
+import { LlmModels } from './collections/LlmModels'
+import { QueryTemplates } from './collections/QueryTemplates'
 import { QueryLogs } from './collections/QueryLogs'
 
 const filename = fileURLToPath(import.meta.url)
@@ -28,6 +31,9 @@ export default buildConfig({
     Chapters,
     Chunks,
     PipelineTasks,
+    PromptModes,
+    LlmModels,
+    QueryTemplates,
     QueryLogs,
   ],
   editor: lexicalEditor(),
