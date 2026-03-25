@@ -1,0 +1,362 @@
+/**
+ * panel/ChatPanel.tsx
+ * 聊天主面板 — 组装 ChatHeader / WelcomeScreen / MessageThread / ChatInput
+ * 从原来 966 行瘦身到 ~280 行，子组件已拆分到同级文件和 trace/ 子模块
+ */
+import {
+  useState,
+  useRef,
+  useCallback,
+  useEffect,
+} from "react";
+import { queryTextbook, fetchSuggestions, fetchDemo } from "@/features/shared/api";
+import { fetchAvailableModels } from "@/features/models";
+import { useAppDispatch, useAppState } from "@/features/shared/AppContext";
+import { useAuth } from "@/features/shared/AuthProvider";
+import type { ModelInfo, QueryResponse } from "@/features/shared/types";
+
+import type { Message } from "../types";
+import { FALLBACK_SUGGESTIONS, NEAR_BOTTOM_THRESHOLD } from "../types";
+import { useChatHistoryContext } from "../history/ChatHistoryContext";
+import { TracePanel, ThinkingProcessPanel } from "../trace";
+
+import ChatHeader from "./ChatHeader";
+import ChatInput from "./ChatInput";
+import WelcomeScreen from "./WelcomeScreen";
+import MessageBubble from "./MessageBubble";
+
+export default function ChatPanel({
+  activeSessionId,
+  onSessionCreated,
+}: {
+  activeSessionId: string | null;
+  onSessionCreated: (id: string) => void;
+}) {
+  const {
+    currentBookId,
+    selectedSource,
+    books,
+    selectedModel,
+    chatMode,
+    sessionBookIds,
+  } = useAppState();
+  const dispatch = useAppDispatch();
+  const { user: currentUser } = useAuth();
+  const chatHistory = useChatHistoryContext();
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<string[]>(FALLBACK_SUGGESTIONS);
+  const [models, setModels] = useState<ModelInfo[]>([]);
+  const [isNearBottom, setIsNearBottom] = useState(true);
+  const [hasNewMessagesBelow, setHasNewMessagesBelow] = useState(false);
+
+  const threadRef = useRef<HTMLDivElement>(null);
+  const shouldStickToBottomRef = useRef(true);
+
+  const sessionBooks = books.filter((b) => sessionBookIds.includes(b.id));
+  const hasMessages = messages.length > 0;
+
+  /** Track current session id across renders inside callbacks */
+  const sessionIdRef = useRef<string | null>(activeSessionId);
+  useEffect(() => {
+    sessionIdRef.current = activeSessionId;
+  }, [activeSessionId]);
+
+  /** When history panel selects an old session, restore its messages */
+  useEffect(() => {
+    if (!activeSessionId) return;
+    const session = chatHistory.getSession(activeSessionId);
+    if (session && session.messages.length > 0) {
+      setMessages(session.messages as Message[]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSessionId]);
+
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
+    const thread = threadRef.current;
+    if (!thread) return;
+    thread.scrollTo({ top: thread.scrollHeight, behavior });
+    shouldStickToBottomRef.current = true;
+    setIsNearBottom(true);
+    setHasNewMessagesBelow(false);
+  }, []);
+
+  const updateNearBottom = useCallback(() => {
+    const thread = threadRef.current;
+    if (!thread) return;
+    const distanceFromBottom =
+      thread.scrollHeight - thread.scrollTop - thread.clientHeight;
+    const nextNearBottom = distanceFromBottom < NEAR_BOTTOM_THRESHOLD;
+    shouldStickToBottomRef.current = nextNearBottom;
+    setIsNearBottom(nextNearBottom);
+    if (nextNearBottom) setHasNewMessagesBelow(false);
+  }, []);
+
+  /* ── Load models ── */
+  useEffect(() => {
+    fetchAvailableModels()
+      .then((availableModels) => {
+        setModels(availableModels);
+        if (
+          availableModels.length > 0 &&
+          !availableModels.some((model) => model.name === selectedModel)
+        ) {
+          const preferred =
+            availableModels.find((model) => model.is_default) ?? availableModels[0];
+          dispatch({ type: "SET_MODEL", model: preferred.name });
+        }
+      })
+      .catch(() => setModels([]));
+  }, [dispatch, selectedModel]);
+
+  /* ── Fetch suggestions ── */
+  useEffect(() => {
+    const firstBook = sessionBookIds[0] ?? currentBookId;
+    if (!firstBook) {
+      setSuggestions(FALLBACK_SUGGESTIONS);
+      return;
+    }
+
+    fetchSuggestions(firstBook)
+      .then((nextSuggestions) =>
+        setSuggestions(nextSuggestions.length ? nextSuggestions : FALLBACK_SUGGESTIONS),
+      )
+      .catch(() => setSuggestions(FALLBACK_SUGGESTIONS));
+  }, [currentBookId, sessionBookIds]);
+
+  /* ── Auto-scroll ── */
+  useEffect(() => {
+    if (!threadRef.current) return;
+    if (!hasMessages) {
+      scrollToBottom("auto");
+      return;
+    }
+    if (shouldStickToBottomRef.current) {
+      scrollToBottom("smooth");
+      return;
+    }
+    setHasNewMessagesBelow(true);
+  }, [hasMessages, loading, messages, scrollToBottom]);
+
+  /* ── Submit question ── */
+  const submitQuestion = useCallback(
+    async (question: string) => {
+      const trimmed = question.trim();
+      if (!trimmed) return;
+
+      setInput("");
+      setError(null);
+      shouldStickToBottomRef.current = true;
+      setHasNewMessagesBelow(false);
+      setMessages((prev) => [...prev, { role: "user", content: trimmed }]);
+      setLoading(true);
+
+      // Create a new history session on the first message of a fresh conversation
+      let sessionId = sessionIdRef.current;
+      if (!sessionId) {
+        const bookTitles = books
+          .filter((b) => sessionBookIds.includes(b.id))
+          .map((b) => b.title);
+        sessionId = chatHistory.createSession({ sessionBookIds, bookTitles, firstMessage: trimmed });
+        sessionIdRef.current = sessionId;
+        onSessionCreated(sessionId);
+      }
+
+      const startTime = Date.now();
+
+      try {
+        const filters = sessionBookIds.length > 0 ? { book_ids: sessionBookIds } : undefined;
+        const res: QueryResponse = await queryTextbook({
+          question: trimmed,
+          filters,
+          model: selectedModel,
+          top_k: 5,
+        });
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: res.answer,
+            sources: res.sources,
+            trace: res.trace,
+          },
+        ]);
+
+        // Persist both messages to chat history
+        if (sessionId) {
+          chatHistory.appendMessages(sessionId, [
+            { role: "user", content: trimmed },
+            { role: "assistant", content: res.answer, sources: res.sources, trace: res.trace },
+          ]);
+        }
+
+        // Log query to Payload QueryLogs (fire-and-forget)
+        const latencyMs = Date.now() - startTime;
+        fetch('/api/query-logs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            user: currentUser?.id ?? null,
+            question: trimmed,
+            answer: res.answer,
+            sources: res.sources,
+            trace: res.trace,
+            model: selectedModel,
+            latencyMs,
+          }),
+        }).catch(() => { /* ignore logging errors */ });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Unknown error");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [sessionBookIds, selectedModel, currentUser, books, chatHistory, onSessionCreated],
+  );
+
+  /** Go back to the book picker — ends the session */
+  const resetConversation = useCallback(() => {
+    setMessages([]);
+    setInput("");
+    setLoading(false);
+    setError(null);
+    setHasNewMessagesBelow(false);
+    setIsNearBottom(true);
+    shouldStickToBottomRef.current = true;
+    sessionIdRef.current = null;
+    dispatch({ type: "RESET_SESSION" });
+  }, [dispatch]);
+
+  const runDemo = useCallback(async () => {
+    setError(null);
+    setLoading(true);
+    shouldStickToBottomRef.current = true;
+    setHasNewMessagesBelow(false);
+    try {
+      const res = await fetchDemo();
+      dispatch({ type: "SET_BOOK", bookId: 36 });
+      setMessages([
+        { role: "user", content: res.trace.question },
+        {
+          role: "assistant",
+          content: res.answer,
+          sources: res.sources,
+          trace: res.trace,
+        },
+      ]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Demo failed");
+    } finally {
+      setLoading(false);
+    }
+  }, [dispatch]);
+
+  const selectedSourceLabel = selectedSource
+    ? `${selectedSource.chapter_title ?? selectedSource.book_title} | p.${selectedSource.page_number}`
+    : null;
+
+  return (
+    <div className="relative flex h-full min-h-0 flex-col overflow-hidden bg-background">
+      {/* ── Header ── */}
+      <ChatHeader
+        sessionBooks={sessionBooks}
+        chatMode={chatMode}
+        selectedModel={selectedModel}
+        models={models}
+        loading={loading}
+        selectedSourceLabel={selectedSourceLabel}
+        onModeChange={(mode) => dispatch({ type: "SET_CHAT_MODE", mode })}
+        onModelChange={(model) => dispatch({ type: "SET_MODEL", model })}
+        onNewChat={resetConversation}
+      />
+
+      {/* ── Message thread ── */}
+      <div
+        ref={threadRef}
+        className="chat-thread relative flex-1 overflow-y-auto px-4 pb-44 pt-6"
+        onScroll={updateNearBottom}
+      >
+        {!hasMessages && !loading ? (
+          <WelcomeScreen
+            sessionBooks={sessionBooks}
+            suggestions={suggestions}
+            loading={loading}
+            onSubmitQuestion={(q) => void submitQuestion(q)}
+            onRunDemo={() => void runDemo()}
+          />
+        ) : (
+          <div className="mx-auto flex max-w-3xl flex-col gap-3">
+            {messages.map((message, index) => (
+              <div key={`${message.role}-${index}`} className="space-y-2">
+                <MessageBubble
+                  role={message.role}
+                  content={message.content}
+                  sources={message.sources}
+                />
+                {message.role === "assistant" && chatMode === "trace" && message.trace && (
+                  <TracePanel trace={message.trace} />
+                )}
+                {message.role === "assistant" && message.trace && (
+                  <ThinkingProcessPanel trace={message.trace} />
+                )}
+              </div>
+            ))}
+
+            {loading && (
+              <div className="flex items-start gap-3">
+                <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-4l-3 3-3-3Z" />
+                  </svg>
+                </div>
+                <div className="rounded-2xl rounded-tl-md border border-border bg-card px-4 py-3 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="flex gap-1">
+                      <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.2s]" />
+                      <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.1s]" />
+                      <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground" />
+                    </div>
+                    <span className="text-sm text-muted-foreground">
+                      Searching the books and drafting an answer...
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {error && (
+              <div className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive shadow-sm">
+                {error}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {hasNewMessagesBelow && !isNearBottom && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-44 flex justify-center px-4">
+            <button
+            type="button"
+            onClick={() => scrollToBottom("smooth")}
+            className="pointer-events-auto rounded-full border border-border bg-card px-4 py-1.5 text-xs font-medium text-foreground shadow-sm transition hover:bg-accent"
+          >
+            ↓ Jump to latest
+          </button>
+        </div>
+      )}
+
+      {/* ── Input area ── */}
+      <ChatInput
+        sessionBooks={sessionBooks}
+        input={input}
+        loading={loading}
+        onInputChange={setInput}
+        onSubmit={(q) => void submitQuestion(q)}
+      />
+    </div>
+  );
+}

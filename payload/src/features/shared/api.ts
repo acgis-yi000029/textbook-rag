@@ -84,6 +84,70 @@ export async function fetchModels(): Promise<ModelInfo[]> {
 
 // ─── Query (Engine FastAPI) ──────────────────────────────────────────────────
 
+/**
+ * Transform an engine per-strategy hit into the frontend TraceChunkHit shape.
+ */
+function mapTraceHit(h: any): { rank: number; chunk_id: string; score: number | null; snippet: string; page_number: number | null; book_title: string } {
+  return {
+    rank: h.rank ?? 0,
+    chunk_id: h.chunk_id ?? '',
+    score: h.score ?? null,
+    snippet: h.snippet ?? '',
+    page_number: h.page_number ?? null,
+    book_title: h.book_title ?? '',
+  }
+}
+
+/**
+ * Transform engine v2 trace → frontend QueryTrace shape.
+ *
+ * Engine returns:  { retrieval: { per_strategy: { fts5_bm25: { hits: [...] }, vector: {...}, ... }, fused_count, ... }, generation: {...} }
+ * Frontend wants:  { retrieval: { fts_results: [], vector_results: [], toc_results: [], fused_results: [] }, generation: {...} }
+ */
+function normaliseTrace(raw: any, req: QueryRequest, sources: any[]): any {
+  const retr = raw?.retrieval ?? {}
+  const perStrategy = retr.per_strategy ?? {}
+  const gen = raw?.generation ?? {}
+
+  // Map engine strategy names → frontend array keys
+  const ftsHits    = (perStrategy['fts5_bm25']?.hits ?? []).map(mapTraceHit)
+  const vectorHits = (perStrategy['vector']?.hits ?? []).map(mapTraceHit)
+  const tocHits    = (perStrategy['toc_heading']?.hits ?? []).map(mapTraceHit)
+
+  // Build fused results from the top-level sources (which are the final fused chunks)
+  const fusedResults = sources.map((s: any, i: number) => ({
+    rank: i + 1,
+    chunk_id: s.source_id ?? '',
+    score: s.confidence ?? null,
+    snippet: s.snippet ?? '',
+    page_number: s.page_number ?? null,
+    book_title: s.book_title ?? '',
+  }))
+
+  // FTS query used (grab from fts5_bm25 strategy if available)
+  const ftsQuery = perStrategy['fts5_bm25']?.query_used ?? req.question
+
+  return {
+    question: retr.question ?? req.question,
+    top_k: retr.top_k ?? req.top_k ?? 5,
+    filters: retr.filters ?? req.filters ?? null,
+    active_book_title: null,
+    retrieval: {
+      fetch_k: retr.fetch_k ?? (req.top_k ?? 5) * 3,
+      fts_query: ftsQuery,
+      fts_results: ftsHits,
+      vector_results: vectorHits,
+      toc_results: tocHits,
+      fused_results: fusedResults,
+    },
+    generation: {
+      model: gen.model ?? req.model ?? '',
+      system_prompt: gen.custom_system_prompt ?? '',
+      user_prompt: '',
+    },
+  }
+}
+
 export async function queryTextbook(req: QueryRequest): Promise<QueryResponse> {
   // Engine returns v2.0 format — we map it to v1.1 QueryResponse shape
   const res = await request<any>(`${ENGINE}/engine/query`, {
@@ -116,28 +180,12 @@ export async function queryTextbook(req: QueryRequest): Promise<QueryResponse> {
     answer: res.answer ?? '',
     sources,
     retrieval_stats: {
-      fts_hits: res.stats?.fts_hits ?? 0,
+      fts_hits: res.stats?.fts5_bm25_hits ?? res.stats?.fts_hits ?? 0,
       vector_hits: res.stats?.vector_hits ?? 0,
-      pageindex_hits: res.stats?.pageindex_hits ?? 0,
-      metadata_hits: res.stats?.metadata_hits ?? 0,
+      toc_hits: res.stats?.toc_heading_hits ?? 0,
       fused_count: sources.length,
     },
-    trace: res.trace ?? {
-      question: req.question,
-      top_k: req.top_k ?? 5,
-      filters: req.filters ?? null,
-      active_book_title: null,
-      retrieval: {
-        fetch_k: req.top_k ?? 5,
-        fts_query: req.question,
-        fts_results: [],
-        vector_results: [],
-        pageindex_results: [],
-        metadata_results: [],
-        fused_results: [],
-      },
-      generation: { model: req.model ?? '', system_prompt: '', user_prompt: '' },
-    },
+    trace: normaliseTrace(res.trace, req, sources),
   }
 }
 

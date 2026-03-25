@@ -45,13 +45,12 @@ export interface SourceInfo {
 export interface RetrievalStats {
   fts_hits: number;
   vector_hits: number;
-  pageindex_hits: number;
-  metadata_hits: number;
+  toc_hits: number;
   fused_count: number;
 }
 
 export interface TraceChunkHit {
-  strategy: "fts" | "vector" | "pageindex" | "metadata" | "fused";
+  strategy: "fts" | "vector" | "toc" | "fused";
   rank: number;
   chunk_id: string;
   book_title: string;
@@ -66,8 +65,7 @@ export interface RetrievalTrace {
   fts_query: string;
   fts_results: TraceChunkHit[];
   vector_results: TraceChunkHit[];
-  pageindex_results: TraceChunkHit[];
-  metadata_results: TraceChunkHit[];
+  toc_results: TraceChunkHit[];
   fused_results: TraceChunkHit[];
 }
 

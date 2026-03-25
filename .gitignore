@@ -67,9 +67,5 @@ htmlcov/
 
 # Data directory
 data/
-
-# Next.js
-.next/
-
-# Archive (legacy code)
-_archive/
+backend/data/chroma_db/
+textbooks.zip

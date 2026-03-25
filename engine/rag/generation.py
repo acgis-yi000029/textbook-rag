@@ -106,7 +106,14 @@ class GenerationEngine:
         return "\n\n---\n\n".join(parts)
 
     def _call_ollama(self, model: str, system: str, user: str) -> str:
-        payload = {
+        # 检测是否为"思考型"模型，如果是则禁用思考链以加速响应
+        # Detect thinking-capable models and disable CoT for faster responses
+        is_thinking_model = any(
+            tag in model.lower()
+            for tag in ("qwen3", "deepseek-r1", "qwq")
+        )
+
+        payload: dict = {
             "model": model,
             "messages": [
                 {"role": "system", "content": system},
@@ -114,9 +121,14 @@ class GenerationEngine:
             ],
             "stream": False,
         }
+
+        # 禁用思考链：放在请求顶层 / Disable CoT: must be at top level
+        if is_thinking_model:
+            payload["think"] = False
+
         url = f"{self._config.ollama_base_url}/api/chat"
         try:
-            resp = httpx.post(url, json=payload, timeout=120.0)
+            resp = httpx.post(url, json=payload, timeout=180.0)
             resp.raise_for_status()
             data = resp.json()
             return data.get("message", {}).get("content", "")

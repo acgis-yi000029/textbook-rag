@@ -13,6 +13,10 @@ import type { BookSummary, SourceInfo } from "./types";
 export interface AppState {
   books: BookSummary[];
   currentBookId: number | null;
+  /** Books locked for the current chat session (multi-select) */
+  sessionBookIds: number[];
+  /** Whether a session has been started (books were selected and locked) */
+  sessionStarted: boolean;
   currentPage: number;
   selectedSource: SourceInfo | null;
   selectedSourceNonce: number;
@@ -25,6 +29,8 @@ export interface AppState {
 const initialState: AppState = {
   books: [],
   currentBookId: null,
+  sessionBookIds: [],
+  sessionStarted: false,
   currentPage: 1,
   selectedSource: null,
   selectedSourceNonce: 0,
@@ -45,6 +51,8 @@ function loadPersistedState(): Partial<AppState> {
     const saved = JSON.parse(raw);
     return {
       currentBookId: typeof saved.currentBookId === "number" ? saved.currentBookId : null,
+      sessionBookIds: Array.isArray(saved.sessionBookIds) ? saved.sessionBookIds.filter((x: unknown) => typeof x === "number") : [],
+      sessionStarted: saved.sessionStarted === true,
       currentPage: typeof saved.currentPage === "number" ? saved.currentPage : 1,
       selectedModel:
         typeof saved.selectedModel === "string" && saved.selectedModel.trim()
@@ -64,6 +72,8 @@ function persistState(state: AppState) {
       STORAGE_KEY,
       JSON.stringify({
         currentBookId: state.currentBookId,
+        sessionBookIds: state.sessionBookIds,
+        sessionStarted: state.sessionStarted,
         currentPage: state.currentPage,
         selectedModel: state.selectedModel,
         chatMode: state.chatMode,
@@ -83,7 +93,11 @@ type Action =
   | { type: "SET_MODEL"; model: string }
   | { type: "SET_CHAT_MODE"; mode: "answer" | "trace" }
   | { type: "SET_PDF_VARIANT"; variant: "origin" | "layout" }
-  | { type: "TOGGLE_TOC" };
+  | { type: "TOGGLE_TOC" }
+  /** Lock books for this session and start the conversation */
+  | { type: "START_SESSION"; bookIds: number[] }
+  /** Exit the session — return to book picker */
+  | { type: "RESET_SESSION" };
 
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -115,6 +129,26 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, pdfVariant: action.variant };
     case "TOGGLE_TOC":
       return { ...state, showToc: !state.showToc };
+    case "START_SESSION":
+      return {
+        ...state,
+        sessionBookIds: action.bookIds,
+        sessionStarted: true,
+        currentBookId: action.bookIds[0] ?? null,
+        currentPage: 1,
+        selectedSource: null,
+        selectedSourceNonce: 0,
+      };
+    case "RESET_SESSION":
+      return {
+        ...state,
+        sessionBookIds: [],
+        sessionStarted: false,
+        currentBookId: null,
+        currentPage: 1,
+        selectedSource: null,
+        selectedSourceNonce: 0,
+      };
     default:
       return state;
   }
@@ -133,7 +167,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     persistState(state);
-  }, [state.currentBookId, state.currentPage, state.pdfVariant, state.selectedModel, state.chatMode]);
+  }, [state.currentBookId, state.sessionBookIds, state.sessionStarted, state.currentPage, state.pdfVariant, state.selectedModel, state.chatMode]);
 
   return (
     <StateCtx.Provider value={state}>

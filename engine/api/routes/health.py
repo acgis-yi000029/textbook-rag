@@ -34,6 +34,58 @@ def list_models():
     return {"models": models}
 
 
+@router.get("/models/discover")
+def discover_models():
+    """Discover all locally installed Ollama models with full details.
+    
+    Returns model name, size, modified time, and technical details
+    (parameter_size, quantization_level, family, format).
+    This allows the frontend to auto-detect local models that 
+    may not yet be registered in the CMS.
+    """
+    try:
+        resp = httpx.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=5.0)
+        raw_models = resp.json().get("models", [])
+        models = []
+        for m in raw_models:
+            models.append({
+                "name": m.get("name", ""),
+                "model": m.get("model", m.get("name", "")),
+                "size": m.get("size", 0),
+                "modified_at": m.get("modified_at", ""),
+                "digest": m.get("digest", ""),
+                "details": m.get("details", {}),
+            })
+        return {"models": models, "ollama_url": OLLAMA_BASE_URL}
+    except Exception as e:
+        return {"models": [], "error": str(e), "ollama_url": OLLAMA_BASE_URL}
+
+
+@router.delete("/models/{model_name:path}")
+def remove_model(model_name: str):
+    """Remove a model from local Ollama.
+    
+    Calls Ollama's DELETE /api/delete to uninstall a model.
+    """
+    try:
+        resp = httpx.request(
+            "DELETE",
+            f"{OLLAMA_BASE_URL}/api/delete",
+            json={"name": model_name},
+            timeout=30.0,
+        )
+        if resp.status_code == 200:
+            return {"status": "ok", "model": model_name}
+        else:
+            return {
+                "status": "error",
+                "model": model_name,
+                "error": f"Ollama returned {resp.status_code}: {resp.text}",
+            }
+    except Exception as e:
+        return {"status": "error", "model": model_name, "error": str(e)}
+
+
 @router.get("/providers")
 def list_providers():
     """List available LLM providers."""

@@ -698,7 +698,7 @@ export default function PdfViewer() {
 
   if (!currentBookId) {
     return (
-      <div className="flex h-full items-center justify-center text-gray-400 text-sm">
+      <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
         Select a textbook to view its PDF
       </div>
     );
@@ -714,11 +714,11 @@ export default function PdfViewer() {
   const scaledPageGap = Math.max(12, Math.round(PAGE_GAP * zoomScale));
 
   return (
-    <div className="relative flex h-full flex-col">
-      <div className="flex items-center gap-2 border-b bg-gray-50 px-3 py-2 text-sm">
+    <div className="relative flex h-full flex-col bg-background">
+      <div className="flex items-center gap-2 border-b border-border bg-card px-3 py-2 text-sm text-card-foreground">
         {hasToc && (
           <button
-            className="rounded px-2 py-1 hover:bg-gray-200"
+            className="rounded px-2 py-1 hover:bg-accent hover:text-accent-foreground transition-colors"
             onClick={() => dispatch({ type: "TOGGLE_TOC" })}
             title="Toggle table of contents"
           >
@@ -726,7 +726,7 @@ export default function PdfViewer() {
           </button>
         )}
         <button
-          className="rounded px-2 py-1 hover:bg-gray-200 disabled:opacity-40"
+          className="rounded px-2 py-1 hover:bg-accent hover:text-accent-foreground transition-colors disabled:opacity-40"
           disabled={currentPage <= 1}
           onClick={() => goToPage(currentPage - 1)}
         >
@@ -736,7 +736,7 @@ export default function PdfViewer() {
           Page{" "}
           <input
             type="number"
-            className="w-14 rounded border px-1 text-center"
+            className="w-14 rounded border border-input bg-background px-1 text-center text-foreground"
             min={1}
             max={numPages || undefined}
             value={currentPage}
@@ -745,7 +745,7 @@ export default function PdfViewer() {
           / {numPages || "…"}
         </span>
         <button
-          className="rounded px-2 py-1 hover:bg-gray-200 disabled:opacity-40"
+          className="rounded px-2 py-1 hover:bg-accent hover:text-accent-foreground transition-colors disabled:opacity-40"
           disabled={numPages > 0 && currentPage >= numPages}
           onClick={() => goToPage(currentPage + 1)}
         >
@@ -753,30 +753,30 @@ export default function PdfViewer() {
         </button>
         <div className="ml-auto flex items-center gap-2">
           <button
-            className="rounded bg-gray-200 px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-300"
+            className="rounded px-2 py-0.5 text-xs hover:bg-accent hover:text-accent-foreground transition-colors"
             onClick={() => applyZoom(-ZOOM_STEP)}
             title="Zoom out"
           >
             −
           </button>
           <button
-            className="min-w-[3.5rem] rounded bg-gray-200 px-2 py-0.5 text-center text-xs text-gray-700 hover:bg-gray-300"
+            className="min-w-[3.5rem] rounded px-2 py-0.5 text-center text-xs hover:bg-accent hover:text-accent-foreground transition-colors"
             onClick={resetZoom}
             title="Reset zoom"
           >
             {Math.round(zoomScale * 100)}%
           </button>
           <button
-            className="rounded bg-gray-200 px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-300"
+            className="rounded px-2 py-0.5 text-xs hover:bg-accent hover:text-accent-foreground transition-colors"
             onClick={() => applyZoom(ZOOM_STEP)}
             title="Zoom in"
           >
             +
           </button>
-          <span className="mx-1 text-gray-300">|</span>
-          <span className="text-gray-500 text-xs">PDF:</span>
+          <span className="mx-1 text-border">|</span>
+          <span className="text-muted-foreground text-xs">PDF:</span>
           <button
-            className={`rounded px-2 py-0.5 text-xs ${pdfVariant === "origin" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}`}
+            className={`rounded px-2 py-0.5 text-xs transition-colors ${pdfVariant === "origin" ? "bg-primary text-primary-foreground" : "hover:bg-accent hover:text-accent-foreground"}`}
             onClick={() =>
               dispatch({ type: "SET_PDF_VARIANT", variant: "origin" })
             }
@@ -784,7 +784,7 @@ export default function PdfViewer() {
             Original
           </button>
           <button
-            className={`rounded px-2 py-0.5 text-xs ${pdfVariant === "layout" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}`}
+            className={`rounded px-2 py-0.5 text-xs transition-colors ${pdfVariant === "layout" ? "bg-primary text-primary-foreground" : "hover:bg-accent hover:text-accent-foreground"}`}
             onClick={() =>
               dispatch({ type: "SET_PDF_VARIANT", variant: "layout" })
             }
@@ -798,10 +798,10 @@ export default function PdfViewer() {
         {hasToc && showToc && (
           <>
             <div
-              className="shrink-0 overflow-y-auto bg-white p-2 text-xs"
+              className="shrink-0 overflow-y-auto bg-card border-r border-border p-2 text-xs"
               style={{ width: tocWidth }}
             >
-              <div className="mb-2 font-semibold text-gray-700">Contents</div>
+              <div className="mb-2 font-semibold text-foreground">Contents</div>
               {tocEntries.map((entry) => {
                 const indent = entry.level * 12;
                 const isBold = entry.level <= 1;
@@ -813,10 +813,10 @@ export default function PdfViewer() {
                 return (
                   <button
                     key={entry.id}
-                    className={`block w-full truncate rounded py-0.5 pr-1 text-left hover:bg-blue-50 ${
+                    className={`block w-full truncate rounded py-0.5 pr-1 text-left hover:bg-accent hover:text-accent-foreground transition-colors ${
                       isActive
-                        ? "bg-blue-100 font-medium text-blue-700"
-                        : "text-gray-600"
+                        ? "bg-accent/80 font-medium text-foreground"
+                        : "text-muted-foreground"
                     } ${isBold ? "font-semibold" : ""}`}
                     style={{ paddingLeft: `${indent + 8}px` }}
                     title={label}
@@ -826,7 +826,7 @@ export default function PdfViewer() {
                     }}
                   >
                     {label}
-                    <span className="ml-1 font-normal text-gray-400">
+                    <span className="ml-1 font-normal opacity-60">
                       {entry.pdf_page}
                     </span>
                   </button>
@@ -844,7 +844,7 @@ export default function PdfViewer() {
 
         <div
           ref={scrollViewportRef}
-          className="min-h-0 flex-1 overflow-y-auto bg-gray-200 outline-none"
+          className="min-h-0 flex-1 overflow-y-auto bg-muted outline-none"
           tabIndex={0}
           onMouseEnter={() => setIsViewerHovered(true)}
           onMouseLeave={() => setIsViewerHovered(false)}
@@ -860,7 +860,7 @@ export default function PdfViewer() {
               onLoadSuccess={onDocumentLoadSuccess}
               loading={<Loading />}
               error={
-                <div className="p-4 text-sm text-red-600">Failed to load PDF.</div>
+                <div className="p-4 text-sm text-destructive">Failed to load PDF.</div>
               }
             >
               <div className="flex flex-col items-center" style={{ gap: scaledPageGap }}>
@@ -900,15 +900,15 @@ export default function PdfViewer() {
                         }}
                       >
                           <div
-                            className={`relative rounded bg-white shadow-sm ${
+                            className={`relative rounded bg-white shadow-sm ring-1 ring-border ${
                               pageNumber === currentPage
-                                ? "shadow-md ring-1 ring-blue-200"
+                                ? "shadow-md ring-primary/50 ring-2"
                                 : ""
                             }`}
                             style={{ width: stableRenderWidth }}
                           >
                             <div
-                              className={`absolute inset-0 rounded bg-gradient-to-br from-slate-100 via-white to-slate-100 transition-opacity duration-500 ${
+                              className={`absolute inset-0 rounded bg-gradient-to-br from-muted via-card to-muted transition-opacity duration-500 ${
                                 isPageLoaded ? "opacity-0" : "opacity-100"
                               }`}
                             />
@@ -928,16 +928,16 @@ export default function PdfViewer() {
                               </div>
                             ) : (
                               <div
-                                className="relative overflow-hidden rounded bg-gradient-to-br from-slate-100 via-white to-slate-100"
+                                className="relative overflow-hidden rounded bg-gradient-to-br from-muted via-card to-muted"
                                 style={{ height: renderedHeight }}
                               >
-                                <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.8s_infinite] bg-gradient-to-r from-transparent via-white/70 to-transparent" />
-                                <div className="flex h-full items-center justify-center text-xs text-gray-400">
+                                <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.8s_infinite] bg-gradient-to-r from-transparent via-background/40 to-transparent" />
+                                <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
                                   Page {pageNumber}
                                 </div>
                               </div>
                             )}
-                            <div className="pointer-events-none absolute right-3 top-3 rounded bg-white/85 px-2 py-0.5 text-[11px] font-medium text-gray-500 shadow-sm">
+                            <div className="pointer-events-none absolute right-3 top-3 rounded bg-background/80 px-2 py-0.5 text-[11px] font-medium text-foreground shadow-sm backdrop-blur-[2px]">
                               {pageNumber}
                             </div>
 

@@ -104,6 +104,18 @@ export const LlmModels: CollectionConfig = {
       admin: { description: 'Cost per 1K output tokens (USD), 0 for free/local' },
     },
 
+    // ── Throughput ──
+    {
+      name: 'inputTokensPerMin',
+      type: 'number',
+      admin: { description: 'Input processing throughput (tokens/min). Measured or estimated.' },
+    },
+    {
+      name: 'outputTokensPerMin',
+      type: 'number',
+      admin: { description: 'Output generation throughput (tokens/min). Measured or estimated.' },
+    },
+
     // ── Status ──
     {
       name: 'isDefault',

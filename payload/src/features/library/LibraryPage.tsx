@@ -14,12 +14,14 @@ import {
   ChevronRight,
   FolderOpen,
   Folder,
-  User,
   Hash,
   Layers,
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
+  MessageSquarePlus,
+  CheckSquare,
+  Square,
 } from 'lucide-react'
 import { useI18n } from '@/features/shared/i18n'
 import { useLibraryBooks } from './useLibraryBooks'
@@ -123,6 +125,31 @@ export default function LibraryPage() {
   /** 全字段模糊搜索 (客户端) */
   const [localSearch, setLocalSearch] = useState('')
 
+  /** 多选模式 */
+  const [selected, setSelected] = useState<Set<number>>(new Set())
+
+  const toggleSelect = (book: LibraryBook) => {
+    if (book.status !== 'indexed') return
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(book.id)) next.delete(book.id)
+      else next.add(book.id)
+      return next
+    })
+  }
+
+  const startNewChat = () => {
+    if (selected.size === 0) return
+    const state = {
+      currentBookId: [...selected][0],
+      sessionBookIds: [...selected],
+      sessionStarted: true,
+      currentPage: 1,
+    }
+    sessionStorage.setItem('textbook-rag-state', JSON.stringify(state))
+    router.push('/chat')
+  }
+
   /** 处理后的书籍列表：模糊搜索 + 排序 */
   const displayBooks = useMemo(() => {
     let filtered = books
@@ -161,14 +188,9 @@ export default function LibraryPage() {
       : <ArrowDown className="h-3 w-3 text-primary" />
   }
 
-  /** 点击书籍 → 跳转 Chat 并选中 */
+  /** 点击书籍 → 切换多选（indexed 才可选） */
   const handleSelect = (book: LibraryBook) => {
-    if (book.status !== 'indexed') return
-    sessionStorage.setItem('textbook-rag-state', JSON.stringify({
-      currentBookId: book.id,
-      currentPage: 1,
-    }))
-    router.push('/chat')
+    toggleSelect(book)
   }
 
   const activeNode = TREE_NODES.find((n) => n.key === (category === 'all' ? 'all' : category)) ?? TREE_NODES[0]
@@ -231,6 +253,32 @@ export default function LibraryPage() {
 
       {/* ════════════ Right Panel: Content ════════════ */}
       <div className="flex-1 min-w-0 flex flex-col">
+        {/* ── Floating "New Chat" action bar ── */}
+        {selected.size > 0 && (
+          <div className="shrink-0 flex items-center gap-3 px-4 py-2 bg-slate-900 text-white border-b border-slate-800 animate-in slide-in-from-top-1 duration-200">
+            <CheckSquare className="h-4 w-4 shrink-0 text-green-400" />
+            <span className="text-sm font-medium flex-1">
+              {isZh
+                ? `已选 ${selected.size} 本书`
+                : `${selected.size} book${selected.size > 1 ? 's' : ''} selected`}
+            </span>
+            <button
+              type="button"
+              onClick={() => setSelected(new Set())}
+              className="text-xs text-slate-400 hover:text-white transition-colors px-2 py-1 rounded"
+            >
+              {isZh ? '清除' : 'Clear'}
+            </button>
+            <button
+              type="button"
+              onClick={startNewChat}
+              className="flex items-center gap-2 bg-white text-slate-900 rounded-lg px-4 py-1.5 text-sm font-semibold hover:bg-slate-100 transition-colors"
+            >
+              <MessageSquarePlus className="h-4 w-4" />
+              {isZh ? '开始对话' : 'New Chat'}
+            </button>
+          </div>
+        )}
         {/* Toolbar */}
         <div className="shrink-0 px-4 py-2.5 border-b border-border bg-card/30 space-y-2">
           {/* Row 1: breadcrumb + view toggle + refresh */}
@@ -360,7 +408,25 @@ export default function LibraryPage() {
           {!loading && !error && displayBooks.length > 0 && viewMode === 'grid' && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
               {displayBooks.map((book) => (
-                <BookCard key={book.id} book={book} onSelect={handleSelect} />
+                <div key={book.id} className="relative group/card">
+                  <BookCard book={book} onSelect={handleSelect} />
+                  {book.status === 'indexed' && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); toggleSelect(book) }}
+                      className={cn(
+                        'absolute top-2 right-2 z-10 flex h-6 w-6 items-center justify-center rounded-md border-2 transition-all shadow-sm',
+                        selected.has(book.id)
+                          ? 'border-primary bg-primary text-primary-foreground'
+                          : 'border-muted-foreground/40 bg-card/80 text-transparent group-hover/card:text-muted-foreground'
+                      )}
+                    >
+                      {selected.has(book.id)
+                        ? <CheckSquare className="h-4 w-4" />
+                        : <Square className="h-4 w-4" />}
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
           )}
@@ -370,6 +436,7 @@ export default function LibraryPage() {
             <div className="rounded-lg border border-border overflow-hidden">
               {/* Sortable table header */}
               <div className="flex items-center gap-4 px-4 py-2 bg-muted/50 text-[11px] font-medium text-muted-foreground uppercase tracking-wider border-b border-border select-none">
+                <span className="w-5 shrink-0" />
                 <button
                   onClick={() => toggleSort('title')}
                   className="flex items-center gap-1 flex-1 group/th hover:text-foreground transition-colors"
@@ -411,18 +478,30 @@ export default function LibraryPage() {
               </div>
 
               {/* Table rows */}
-              {displayBooks.map((book, idx) => (
+              {displayBooks.map((book, idx) => {
+                const isChecked = selected.has(book.id)
+                return (
                 <button
                   key={book.id}
                   type="button"
                   onClick={() => handleSelect(book)}
                   className={cn(
                     'flex items-center gap-4 w-full px-4 py-2.5 text-left transition-colors',
-                    'hover:bg-secondary/50',
+                    isChecked ? 'bg-primary/5 hover:bg-primary/10' : 'hover:bg-secondary/50',
                     idx > 0 && 'border-t border-border',
                     book.status !== 'indexed' && 'opacity-60'
                   )}
                 >
+                  {/* Checkbox */}
+                  <div className={cn(
+                    'flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors',
+                    isChecked
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-muted-foreground/30'
+                  )}>
+                    {isChecked && <CheckSquare className="h-3.5 w-3.5" />}
+                  </div>
+
                   <div className="flex items-center gap-2.5 flex-1 min-w-0">
                     <BookOpen className="h-4 w-4 text-muted-foreground shrink-0" />
                     <span className="text-sm text-foreground truncate">
@@ -454,7 +533,7 @@ export default function LibraryPage() {
                     <StatusBadge status={book.status} />
                   </div>
                 </button>
-              ))}
+              )})}
             </div>
           )}
         </div>
