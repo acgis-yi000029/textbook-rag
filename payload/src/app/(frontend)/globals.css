@@ -158,3 +158,26 @@
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInFromTop {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Utility class for flowchart expand animation */
+.animate-in {
+  animation-duration: 200ms;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+}
+.fade-in {
+  animation-name: fadeIn;
+}
+.slide-in-from-top-2 {
+  animation-name: slideInFromTop;
+}
+

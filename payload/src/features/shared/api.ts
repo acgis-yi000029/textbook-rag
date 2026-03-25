@@ -192,3 +192,34 @@ export async function queryTextbook(req: QueryRequest): Promise<QueryResponse> {
 export async function fetchDemo(): Promise<QueryResponse> {
   return queryTextbook({ question: 'What is BM25?', top_k: 3 })
 }
+
+// ─── Auto-generated Questions ────────────────────────────────────────────────
+
+export interface GeneratedQuestion {
+  question: string
+  book_id: number
+  book_title: string
+  topic_hint: string
+}
+
+export async function fetchGeneratedQuestions(
+  bookIds: number[],
+  count = 6,
+  model?: string,
+): Promise<GeneratedQuestion[]> {
+  try {
+    const body: Record<string, unknown> = { book_ids: bookIds, count }
+    if (model) body.model = model
+    const data = await request<{ questions: GeneratedQuestion[] }>(
+      `${ENGINE}/engine/questions`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      },
+    )
+    return data.questions ?? []
+  } catch {
+    return []
+  }
+}

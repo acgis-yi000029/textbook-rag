@@ -97,7 +97,7 @@ export async function registerModel(model: {
   family?: string | null
   sizeBytes?: number | null
 }): Promise<LlmModel> {
-  // 生成友好的 displayName: "qwen2.5:7b" → "Qwen2.5 7B"
+  // 生成友好的 displayName: "qwen3.5:4b" → "Qwen3.5 4B"
   const displayName = model.name
     .replace(/:latest$/, '')
     .split(':')

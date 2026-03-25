@@ -11,14 +11,14 @@
 
 export const llmModelsData = [
   {
-    name: 'qwen2.5:7b',
-    displayName: 'Qwen 2.5 7B',
+    name: 'qwen3.5:4b',
+    displayName: 'Qwen 3.5 4B',
     provider: 'ollama',
     description:
       'Excellent multilingual model with strong Chinese and English support. Best balance of quality and speed for RAG tasks. Supports 128K context.',
     useCases: ['RAG Q&A', 'Summarization', 'Translation', 'General'],
     languages: 'en, zh, ja, ko, fr, de, es',
-    parameterSize: '7B',
+    parameterSize: '4B',
     contextWindow: 131072,
     maxOutputTokens: 8192,
     minRamGb: 6,
@@ -157,6 +157,46 @@ export const promptModesData = [
       'You are a concise assistant. Give a short, direct answer using ONLY the provided context. ' +
       'Use [N] to cite sources. Maximum 3 sentences. No filler words.',
     icon: 'zap',
+    isDefault: false,
+  },
+  {
+    name: 'Detailed',
+    slug: 'detailed',
+    description: 'Comprehensive answers with examples and structure',
+    systemPrompt:
+      'You are a thorough assistant. Provide a comprehensive answer with examples where applicable, ' +
+      'using ONLY the provided context. Cite every claim with [N] notation. Structure your response with clear paragraphs.',
+    icon: 'align-left',
+    isDefault: false,
+  },
+  {
+    name: 'Academic',
+    slug: 'academic',
+    description: 'Formal academic style with objective tone',
+    systemPrompt:
+      'You are an academic writing assistant. Answer in formal academic style using ONLY the provided context. ' +
+      'Cite sources as [N]. Avoid personal pronouns. Maintain a neutral, objective tone.',
+    icon: 'graduation-cap',
+    isDefault: false,
+  },
+  {
+    name: 'Question Generation',
+    slug: 'question-generation',
+    description: 'Auto-generate study questions from textbook content (internal use)',
+    systemPrompt:
+      'You are a study assistant that generates questions STRICTLY based on the textbook excerpts provided below. ' +
+      'RULES:\n' +
+      '1. Every question MUST reference a specific concept, term, formula, method, or example that appears in the excerpts.\n' +
+      '2. Do NOT generate generic questions like "What is the main topic?" or "What are the prerequisites?". ' +
+      'Every question must be answerable ONLY from the given text.\n' +
+      '3. Include a mix: definition questions, comparison questions, "why" questions, and application questions.\n' +
+      '4. The "topic_hint" should be a specific concept name from the excerpt (e.g., "BM25 Ranking", "Dependency Injection"), NOT generic labels.\n' +
+      '\nGenerate exactly {count} questions. ' +
+      'Return ONLY a JSON array. Each element must have: ' +
+      '"question" (string), "book_title" (string, from the source), ' +
+      '"topic_hint" (string, 2-4 word specific topic from the excerpt). ' +
+      'Do NOT wrap in markdown code blocks.',
+    icon: 'help-circle',
     isDefault: false,
   },
 ]

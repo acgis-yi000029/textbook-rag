@@ -22,7 +22,7 @@ export const LlmModels: CollectionConfig = {
       type: 'text',
       required: true,
       unique: true,
-      admin: { description: 'Model identifier used in API calls (e.g. "qwen2.5:7b")' },
+      admin: { description: 'Model identifier used in API calls (e.g. "qwen3.5:4b")' },
     },
     {
       name: 'displayName',

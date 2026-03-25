@@ -9,14 +9,14 @@ import {
   useCallback,
   useEffect,
 } from "react";
-import { queryTextbook, fetchSuggestions, fetchDemo } from "@/features/shared/api";
+import { queryTextbook, fetchDemo } from "@/features/shared/api";
 import { fetchAvailableModels } from "@/features/models";
 import { useAppDispatch, useAppState } from "@/features/shared/AppContext";
 import { useAuth } from "@/features/shared/AuthProvider";
 import type { ModelInfo, QueryResponse } from "@/features/shared/types";
 
 import type { Message } from "../types";
-import { FALLBACK_SUGGESTIONS, NEAR_BOTTOM_THRESHOLD } from "../types";
+import { NEAR_BOTTOM_THRESHOLD } from "../types";
 import { useChatHistoryContext } from "../history/ChatHistoryContext";
 import { TracePanel, ThinkingProcessPanel } from "../trace";
 
@@ -47,7 +47,6 @@ export default function ChatPanel({
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [suggestions, setSuggestions] = useState<string[]>(FALLBACK_SUGGESTIONS);
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [isNearBottom, setIsNearBottom] = useState(true);
   const [hasNewMessagesBelow, setHasNewMessagesBelow] = useState(false);
@@ -111,20 +110,7 @@ export default function ChatPanel({
       .catch(() => setModels([]));
   }, [dispatch, selectedModel]);
 
-  /* ── Fetch suggestions ── */
-  useEffect(() => {
-    const firstBook = sessionBookIds[0] ?? currentBookId;
-    if (!firstBook) {
-      setSuggestions(FALLBACK_SUGGESTIONS);
-      return;
-    }
 
-    fetchSuggestions(firstBook)
-      .then((nextSuggestions) =>
-        setSuggestions(nextSuggestions.length ? nextSuggestions : FALLBACK_SUGGESTIONS),
-      )
-      .catch(() => setSuggestions(FALLBACK_SUGGESTIONS));
-  }, [currentBookId, sessionBookIds]);
 
   /* ── Auto-scroll ── */
   useEffect(() => {
@@ -283,7 +269,6 @@ export default function ChatPanel({
         {!hasMessages && !loading ? (
           <WelcomeScreen
             sessionBooks={sessionBooks}
-            suggestions={suggestions}
             loading={loading}
             onSubmitQuestion={(q) => void submitQuestion(q)}
             onRunDemo={() => void runDemo()}

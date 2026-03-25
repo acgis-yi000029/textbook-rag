@@ -1,4 +1,5 @@
 {
+  "include": ["engine", "scripts"],
   "pythonPath": ".venv/Scripts/python.exe",
   "venvPath": ".",
   "venv": ".venv",

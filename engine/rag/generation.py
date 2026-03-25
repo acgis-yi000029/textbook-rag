@@ -11,46 +11,12 @@ import json
 import httpx
 
 from engine.rag.config import (
-    PROMPT_ACADEMIC,
-    PROMPT_CONCISE,
-    PROMPT_DEFAULT,
-    PROMPT_DETAILED,
     QueryConfig,
     RAGConfig,
 )
 from engine.rag.types import ChunkHit
 
-# ---------------------------------------------------------------------------
-# Built-in prompt templates
-# ---------------------------------------------------------------------------
-_TEMPLATES: dict[str, str] = {
-    PROMPT_DEFAULT: (
-        "You are a knowledgeable assistant. Answer the user's question based ONLY on "
-        "the provided context. Cite sources using [N] notation. "
-        "If the context does not contain sufficient information, say so honestly."
-    ),
-    PROMPT_CONCISE: (
-        "You are a concise assistant. Give a short, direct answer using ONLY the provided "
-        "context. Use [N] to cite sources. Maximum 3 sentences."
-    ),
-    PROMPT_DETAILED: (
-        "You are a thorough assistant. Provide a comprehensive answer with examples where "
-        "applicable, using ONLY the provided context. Cite every claim with [N] notation. "
-        "Structure your response with clear paragraphs."
-    ),
-    PROMPT_ACADEMIC: (
-        "You are an academic writing assistant. Answer in formal academic style using ONLY "
-        "the provided context. Cite sources as [N]. Avoid personal pronouns. "
-        "Maintain a neutral, objective tone."
-    ),
-}
-
-BUILTIN_TEMPLATES = [
-    {"id": k, "name": k.capitalize(), "description": v[:80] + "..."}
-    for k, v in _TEMPLATES.items()
-]
-
-
+# Templates have been moved to Payload CMS Database Seed
 class GenerationEngine:
     """Builds the prompt and calls Ollama to generate an answer."""
 
@@ -86,10 +52,14 @@ class GenerationEngine:
         return response
 
     def _resolve_system_prompt(self, config: QueryConfig) -> str:
-        """Return the system prompt: custom override → template → default."""
+        """Return the system prompt: custom override → fallback default."""
         if config.custom_system_prompt:
             return config.custom_system_prompt
-        return _TEMPLATES.get(config.prompt_template, _TEMPLATES[PROMPT_DEFAULT])
+        return (
+            "You are a knowledgeable assistant. Answer the user's question based ONLY on "
+            "the provided context. Cite sources using [N] notation. "
+            "If the context does not contain sufficient information, say so honestly."
+        )
 
     def _build_context(self, chunks: list[ChunkHit]) -> str:
         parts = []
@@ -137,6 +107,3 @@ class GenerationEngine:
         except (json.JSONDecodeError, KeyError):
             return "[Generation error: unexpected Ollama response format]"
 
-    @staticmethod
-    def list_templates() -> list[dict]:
-        return BUILTIN_TEMPLATES

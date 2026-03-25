@@ -25,12 +25,9 @@ ALL_STRATEGIES = [
 DEFAULT_STRATEGIES = [STRATEGY_FTS5, STRATEGY_VECTOR, STRATEGY_TOC]
 
 # ---------------------------------------------------------------------------
-# Prompt template IDs
+# Prompt template
+# Now handled via Payload CMS Seed; default behavior expects custom_system_prompt
 # ---------------------------------------------------------------------------
-PROMPT_DEFAULT = "default"
-PROMPT_CONCISE = "concise"
-PROMPT_DETAILED = "detailed"
-PROMPT_ACADEMIC = "academic"
 
 
 @dataclass
@@ -39,7 +36,7 @@ class RAGConfig:
 
     db_path: str = ""
     ollama_base_url: str = "http://127.0.0.1:11434"
-    default_model: str = "llama3.2:3b"
+    default_model: str = "qwen3.5:4b"
     embedding_model: str = "all-MiniLM-L6-v2"
     chroma_persist_dir: str = ""
     mineru_output_dir: str = ""
@@ -73,14 +70,18 @@ class QueryConfig:
     rrf_k: int = 60
     filters: QueryFilters = field(default_factory=QueryFilters)
     model: str | None = None  # None → RAGConfig.default_model
-    prompt_template: str = PROMPT_DEFAULT
-    custom_system_prompt: str | None = None  # overrides template if set
+    prompt_template: str = "default"
+    custom_system_prompt: str | None = None  # main way to set system prompt
     active_book_title: str | None = None
 
     @property
     def effective_fetch_k(self) -> int:
-        return self.fetch_k if self.fetch_k is not None else self.top_k * 3
+        fk = self.fetch_k
+        return fk if fk is not None else self.top_k * 3
 
     @property
     def effective_strategies(self) -> list[str]:
-        return self.enabled_strategies if self.enabled_strategies is not None else DEFAULT_STRATEGIES
+        es = self.enabled_strategies
+        if es is not None:
+            return es
+        return DEFAULT_STRATEGIES

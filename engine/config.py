@@ -37,7 +37,7 @@ MINERU_OUTPUT_DIR: Path = Path(
 # Ollama (v1.1 保留)
 # ---------------------------------------------------------------------------
 OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
-OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
+OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL", "qwen3.5:4b")
 EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
 
 # ---------------------------------------------------------------------------
