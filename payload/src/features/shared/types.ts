@@ -31,6 +31,16 @@ export interface TocEntry {
   pdf_page: number;
 }
 
+export interface BboxEntry {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+  page_width: number;
+  page_height: number;
+  page_number: number;
+}
+
 export interface SourceInfo {
   source_id: string;
   book_id: number;
@@ -41,6 +51,7 @@ export interface SourceInfo {
   page_number: number;
   snippet: string;
   bbox: { x0: number; y0: number; x1: number; y1: number } | null;
+  bboxes?: BboxEntry[];
   page_dim: { width: number; height: number } | null;
   confidence: number;
   citation_label?: string;
@@ -107,9 +118,11 @@ export interface QueryRequest {
   filters?: QueryFilters;
   top_k?: number;
   model?: string;
+  provider?: string;
 }
 
 export interface ModelInfo {
   name: string;
   is_default: boolean;
+  provider?: string;
 }

@@ -73,7 +73,7 @@ class CitationEngine:
                 continue
             chunk = chunks[idx]
 
-            # Build primary bbox from first source_locator
+            # Build primary bbox from first source_locator (backward compat)
             bbox = None
             page_num = chunk.primary_page_number
             if chunk.source_locators:
@@ -88,6 +88,23 @@ class CitationEngine:
                 }
                 page_num = loc.get("page_number", page_num)
 
+            # Build full bboxes array from ALL source_locators (cross-page)
+            bboxes = []
+            for loc in chunk.source_locators:
+                loc_page = loc.get("page_number", chunk.primary_page_number)
+                bboxes.append({
+                    "x0": loc.get("x0"),
+                    "y0": loc.get("y0"),
+                    "x1": loc.get("x1"),
+                    "y1": loc.get("y1"),
+                    "page_width": loc.get("width"),
+                    "page_height": loc.get("height"),
+                    # 0-indexed → 1-indexed for react-pdf
+                    "page_number": (loc_page + 1) if loc_page is not None else None,
+                })
+
+            # page_num from DB is 0-indexed (MinerU convention);
+            # react-pdf uses 1-indexed pages, so add 1 at the API boundary.
             sources.append({
                 "citation_index": n,
                 "chunk_id": chunk.chunk_id,
@@ -95,10 +112,11 @@ class CitationEngine:
                 "book_id_string": chunk.book_id_string,
                 "book_title": chunk.book_title,
                 "chapter_title": chunk.chapter_title,
-                "page_number": page_num,
+                "page_number": (page_num + 1) if page_num is not None else None,
                 "content_type": chunk.content_type,
                 "snippet": chunk.text[:300],
                 "bbox": bbox,
+                "bboxes": bboxes,
                 "rrf_score": chunk.rrf_score,
                 "fts_score": chunk.fts_score,
                 "vec_distance": chunk.vec_distance,

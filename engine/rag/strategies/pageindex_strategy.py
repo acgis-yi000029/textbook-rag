@@ -143,11 +143,10 @@ class PageIndexStrategy(RetrievalStrategy):
             f"SELECT id, page_number FROM pages WHERE page_number IN ({ph})",
             page_indices,
         ).fetchall()
-        # page_number in DB is 1-indexed; MinerU page_idx is 0-indexed
+        # page_number in DB is 0-indexed (same as MinerU page_idx)
         page_id_score: dict[int, float] = {}
         for pr in page_rows:
-            idx_0 = pr["page_number"] - 1
-            page_id_score[pr["id"]] = page_idx_score.get(idx_0, 0.0)
+            page_id_score[pr["id"]] = page_idx_score.get(pr["page_number"], 0.0)
 
         if not page_id_score:
             return StrategyResult(strategy=self.name, hits=[], query_used=query)

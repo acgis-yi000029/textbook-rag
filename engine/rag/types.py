@@ -15,6 +15,7 @@ class ChunkHit:
     book_id: int
     text: str
     content_type: str = "text"
+    text_level: int | None = None  # 1 = heading; None = body text
     reading_order: int = 0
 
     # Metadata (populated by _enrich_metadata)

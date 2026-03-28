@@ -92,6 +92,8 @@ export interface UseModelsReturn {
   registerDiscoveredModel: (name: string) => Promise<LlmModel | null>
   /** 从 Ollama 移除本地模型 / Remove a model from local Ollama */
   removeOllamaModel: (name: string) => Promise<void>
+  /** 设为默认模型 / Set a model as the default */
+  setDefaultModel: (modelId: number) => Promise<void>
 }
 
 export function useModels(options: UseModelsOptions = {}): UseModelsReturn {
@@ -331,6 +333,37 @@ export function useModels(options: UseModelsOptions = {}): UseModelsReturn {
     }
   }, [])
 
+  // ── 设为默认模型 / Set as default model ──────────────────────────────────
+  const setDefaultModel = useCallback(async (modelId: number) => {
+    // Optimistic update: set isDefault locally first
+    setModels((prev) =>
+      prev.map((m) => ({ ...m, isDefault: m.id === modelId }))
+    )
+    try {
+      // Unset all other defaults, then set the new one
+      const currentDefaults = models.filter((m) => m.isDefault && m.id !== modelId)
+      await Promise.all(
+        currentDefaults.map((m) =>
+          fetch(`/api/llm-models/${m.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ isDefault: false }),
+          })
+        )
+      )
+      await fetch(`/api/llm-models/${modelId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ isDefault: true }),
+      })
+    } catch {
+      // Revert on failure
+      if (mountedRef.current) await loadAndCheck()
+    }
+  }, [models, loadAndCheck])
+
   return {
     models,
     loading,
@@ -350,5 +383,6 @@ export function useModels(options: UseModelsOptions = {}): UseModelsReturn {
     deleteModel,
     registerDiscoveredModel,
     removeOllamaModel,
+    setDefaultModel,
   }
 }

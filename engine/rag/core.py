@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 import sqlite3
 import time
+from collections.abc import Generator
+from typing import Any
 
 from engine.rag.config import QueryConfig, RAGConfig
 from engine.rag.types import RAGResponse
@@ -179,6 +181,92 @@ class RAGCore:
             stats=retrieval_result.stats,
         )
 
+    def query_stream(
+        self, question: str, config: QueryConfig | None = None,
+    ) -> Generator[dict[str, Any], None, None]:
+        """Execute RAG pipeline with streaming generation.
+
+        Yields SSE-style event dicts:
+          {"event": "retrieval_done", "data": {stats}}
+          {"event": "token",         "data": {"t": "..."}}
+          {"event": "done",          "data": {answer, sources, trace, warnings}}
+
+        Retrieval runs synchronously (fast), then generation streams tokens.
+        Citation processing happens after all tokens are collected.
+        """
+        cfg = config or QueryConfig()
+        trace = self._get_trace()
+        db = self._get_db()
+
+        logger.info("═══ RAG stream query start: %s", question[:80])
+
+        try:
+            # 0. Resolve string book IDs → integer IDs
+            cfg.filters.resolve_book_ids(db)
+
+            # 1. Retrieve (non-streaming, fast)
+            t0 = time.perf_counter()
+            retrieval_result = self._get_retriever().retrieve(question, cfg, db)
+            t_retrieve = time.perf_counter() - t0
+            logger.info(
+                "  [1/3] Retrieve: %.2fs | %d chunks",
+                t_retrieve, len(retrieval_result.chunks),
+            )
+            trace.record_retrieval(question, cfg, retrieval_result)
+
+            yield {
+                "event": "retrieval_done",
+                "data": {
+                    "stats": retrieval_result.stats,
+                    "chunk_count": len(retrieval_result.chunks),
+                },
+            }
+
+            # 2. Stream generate tokens
+            t0 = time.perf_counter()
+            model = cfg.model or self._config.default_model
+            token_parts: list[str] = []
+            for token in self._get_generator().generate_stream(
+                question, retrieval_result.chunks, cfg
+            ):
+                token_parts.append(token)
+                yield {"event": "token", "data": {"t": token}}
+            raw_answer = "".join(token_parts)
+            t_generate = time.perf_counter() - t0
+            logger.info(
+                "  [2/3] Generate (stream): %.2fs | model=%s, answer_len=%d",
+                t_generate, model, len(raw_answer),
+            )
+            trace.record_generation(cfg, raw_answer)
+
+            # 3. Citation & Quality (post-generation)
+            citation_result = self._get_citation().process(
+                raw_answer, retrieval_result.chunks
+            )
+            warnings = self._get_quality().check(
+                retrieval_result, citation_result
+            )
+            trace.record_citations(citation_result)
+
+        finally:
+            db.close()
+
+        logger.info("═══ RAG stream query done")
+
+        yield {
+            "event": "done",
+            "data": {
+                "answer": citation_result.cleaned_answer,
+                "sources": citation_result.sources,
+                "trace": trace.get_trace(),
+                "warnings": [
+                    {"level": w.level, "code": w.code, "message": w.message}
+                    for w in warnings
+                ],
+                "stats": retrieval_result.stats,
+            },
+        }
+
     # ------------------------------------------------------------------
     # Utility
     # ------------------------------------------------------------------
@@ -186,3 +274,4 @@ class RAGCore:
     def list_strategies(self) -> list[dict]:
         """Return metadata for all registered strategies."""
         return self._get_retriever().registry.list_all()
+

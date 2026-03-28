@@ -35,6 +35,7 @@ def query(req: QueryRequest):
         rrf_k=req.rrf_k,
         filters=filters,
         model=req.model,
+        provider=req.provider,
         prompt_template=req.prompt_template,
         custom_system_prompt=req.custom_system_prompt,
     )

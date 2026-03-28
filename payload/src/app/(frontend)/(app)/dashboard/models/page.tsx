@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react'
 import {
   Brain, Loader2, AlertCircle, RefreshCw, CheckCircle2, XCircle,
   Cpu, Globe, Zap, DollarSign, Activity,
-  Search, Wifi, WifiOff, HardDrive, Clock, Trash2, Plus,
+  Search, Wifi, WifiOff, HardDrive, Clock, Trash2, Plus, Star,
 } from 'lucide-react'
 import { cn } from '@/features/shared/utils'
 import { SidebarLayout, type ViewMode, type SidebarItem } from '@/features/shared/components/SidebarLayout'
@@ -27,6 +27,7 @@ export default function Page() {
     deleteModel,
     registerDiscoveredModel,
     removeOllamaModel,
+    setDefaultModel,
   } = useModels({ autoLoad: true, autoCheck: true, pollInterval: 0 })
 
   const [filter, setFilter] = useState<FilterKey>('all')
@@ -174,12 +175,12 @@ export default function Page() {
           {viewMode === 'cards' ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
               {displayModels.map((m) => (
-                <RegisteredModelCard key={m.id} model={m} onDelete={deleteModel} />
+                <RegisteredModelCard key={m.id} model={m} onDelete={deleteModel} onSetDefault={setDefaultModel} />
               ))}
             </div>
           ) : (
             /* ── Table view ── */
-            <ModelTable models={displayModels} onDelete={deleteModel} />
+            <ModelTable models={displayModels} onDelete={deleteModel} onSetDefault={setDefaultModel} />
           )}
 
           {displayModels.length === 0 && (
@@ -215,9 +216,10 @@ export default function Page() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /** 已注册模型卡片 / Registered model card */
-function RegisteredModelCard({ model: m, onDelete }: { model: RuntimeModel; onDelete: (id: number) => Promise<void> }) {
+function RegisteredModelCard({ model: m, onDelete, onSetDefault }: { model: RuntimeModel; onDelete: (id: number) => Promise<void>; onSetDefault: (id: number) => Promise<void> }) {
   const [deleting, setDeleting] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [settingDefault, setSettingDefault] = useState(false)
   const prov = PROVIDER_CONFIGS[m.provider] || PROVIDER_CONFIGS.other
   const avail = m.availability
   const isAvailable = avail.status === 'available'
@@ -324,6 +326,25 @@ function RegisteredModelCard({ model: m, onDelete }: { model: RuntimeModel; onDe
         <div className="flex items-center gap-2">
           {m.quantization && <span className="text-[10px] text-muted-foreground font-mono">{m.quantization}</span>}
           {!m.isEnabled && <span className="text-[10px] text-red-400">已禁用</span>}
+          {/* Set as default button — only for available, non-default models */}
+          {isAvailable && !m.isDefault && (
+            <button
+              onClick={async () => {
+                setSettingDefault(true)
+                try { await onSetDefault(m.id) } finally { setSettingDefault(false) }
+              }}
+              disabled={settingDefault}
+              className={cn(
+                'inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium transition-colors',
+                'text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10',
+                settingDefault && 'opacity-50 cursor-not-allowed',
+              )}
+              title="设为默认模型"
+            >
+              {settingDefault ? <Loader2 className="h-3 w-3 animate-spin" /> : <Star className="h-3 w-3" />}
+              设为默认
+            </button>
+          )}
           {isUnavailable && (
             <button
               onClick={handleDelete}
@@ -354,7 +375,7 @@ function RegisteredModelCard({ model: m, onDelete }: { model: RuntimeModel; onDe
 }
 
 /** 模型表格视图 / Model table view */
-function ModelTable({ models, onDelete }: { models: RuntimeModel[]; onDelete: (id: number) => Promise<void> }) {
+function ModelTable({ models, onDelete, onSetDefault }: { models: RuntimeModel[]; onDelete: (id: number) => Promise<void>; onSetDefault: (id: number) => Promise<void> }) {
   return (
     <div className="rounded-xl border border-border overflow-hidden">
       <table className="w-full text-sm">
@@ -372,7 +393,7 @@ function ModelTable({ models, onDelete }: { models: RuntimeModel[]; onDelete: (i
         </thead>
         <tbody>
           {models.map((m) => (
-            <ModelTableRow key={m.id} model={m} onDelete={onDelete} />
+            <ModelTableRow key={m.id} model={m} onDelete={onDelete} onSetDefault={onSetDefault} />
           ))}
         </tbody>
       </table>
@@ -380,8 +401,9 @@ function ModelTable({ models, onDelete }: { models: RuntimeModel[]; onDelete: (i
   )
 }
 
-function ModelTableRow({ model: m, onDelete }: { model: RuntimeModel; onDelete: (id: number) => Promise<void> }) {
+function ModelTableRow({ model: m, onDelete, onSetDefault }: { model: RuntimeModel; onDelete: (id: number) => Promise<void>; onSetDefault: (id: number) => Promise<void> }) {
   const [deleting, setDeleting] = useState(false)
+  const [settingDefault, setSettingDefault] = useState(false)
   const prov = PROVIDER_CONFIGS[m.provider] || PROVIDER_CONFIGS.other
   const avail = m.availability
   const isAvailable = avail.status === 'available'
@@ -431,19 +453,35 @@ function ModelTableRow({ model: m, onDelete }: { model: RuntimeModel; onDelete: 
           )}
         </div>
       </td>
-      <td className="px-4 py-3 text-right">
-        {isUnavailable && (
-          <button
-            onClick={handleDelete}
-            disabled={deleting}
-            className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
-            title="删除此模型"
-          >
-            {deleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
-            删除
-          </button>
-        )}
-      </td>
+        <td className="px-4 py-3 text-right">
+          <div className="flex items-center justify-end gap-1.5">
+            {m.availability.status === 'available' && !m.isDefault && (
+              <button
+                onClick={async () => {
+                  setSettingDefault(true)
+                  try { await onSetDefault(m.id) } finally { setSettingDefault(false) }
+                }}
+                disabled={settingDefault}
+                className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10 transition-colors disabled:opacity-50"
+                title="设为默认模型"
+              >
+                {settingDefault ? <Loader2 className="h-3 w-3 animate-spin" /> : <Star className="h-3 w-3" />}
+                默认
+              </button>
+            )}
+            {isUnavailable && (
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                title="删除此模型"
+              >
+                {deleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                删除
+              </button>
+            )}
+          </div>
+        </td>
     </tr>
   )
 }

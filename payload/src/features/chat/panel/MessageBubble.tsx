@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import Markdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
+import rehypeKatex from "rehype-katex";
+import remarkMath from "remark-math";
 import type { SourceInfo } from "@/features/shared/types";
 import { useAppDispatch } from "@/features/shared/AppContext";
 
@@ -9,15 +11,17 @@ interface Props {
   content: string;
   sources?: SourceInfo[];
   onRetry?: (content: string) => void;
+  isStreaming?: boolean;
 }
 
-function injectCitationLinks(text: string, maxCitation: number): string {
+function injectCitationLinks(text: string, maxCitation: number, tooltips: Map<number, string>): string {
   return text.replace(
     /\[(\d+)\]/g,
     (_, n) => {
       const index = Number.parseInt(n, 10);
       if (index >= 1 && index <= maxCitation) {
-        return `<cite data-ref="${n}">[${n}]</cite>`;
+        const tip = tooltips.get(index) ?? "";
+        return `<cite data-ref="${n}" data-tip="${tip.replace(/"/g, '&quot;')}">[${n}]</cite>`;
       }
 
       return `<span data-invalid-cite="${n}" title="Citation ${n} is not available in this response"><sup>[${n}]</sup></span>`;
@@ -25,12 +29,26 @@ function injectCitationLinks(text: string, maxCitation: number): string {
   );
 }
 
-export default function MessageBubble({ role, content, sources, onRetry }: Props) {
+/**
+ * Convert LaTeX delimiters that remark-math doesn't recognize:
+ *   \( ... \)  →  $ ... $   (inline math)
+ *   \[ ... \]  →  $$ ... $$ (display math)
+ */
+function convertLatexDelimiters(text: string): string {
+  // Display math first (\[ ... \]) — may span multiple lines
+  text = text.replace(/\\\[([\s\S]*?)\\\]/g, (_m, math) => `$$${math}$$`);
+  // Inline math (\( ... \)) — single line only
+  text = text.replace(/\\\((.+?)\\\)/g, (_m, math) => `$${math}$`);
+  return text;
+}
+
+export default function MessageBubble({ role, content, sources, onRetry, isStreaming }: Props) {
   const isUser = role === "user";
   const dispatch = useAppDispatch();
 
   // Build a map from citation_index → source for correct lookup
   const citationMap = new Map<number, SourceInfo>();
+  const tooltipMap = new Map<number, string>();
   let maxCitation = 0;
   if (sources) {
     for (const s of sources) {
@@ -38,6 +56,9 @@ export default function MessageBubble({ role, content, sources, onRetry }: Props
       if (ci != null) {
         citationMap.set(ci, s);
         maxCitation = Math.max(maxCitation, ci);
+        const bookName = s.book_title || "Unknown";
+        const pagePart = s.page_number ? ` · p.${s.page_number}` : "";
+        tooltipMap.set(ci, `${bookName}${pagePart}`);
       }
     }
     // Fallback: if no citation_index, use legacy array-based mapping
@@ -45,6 +66,9 @@ export default function MessageBubble({ role, content, sources, onRetry }: Props
       maxCitation = sources.length;
       for (let i = 0; i < sources.length; i++) {
         citationMap.set(i + 1, sources[i]);
+        const bookName = sources[i].book_title || "Unknown";
+        const pagePart = sources[i].page_number ? ` · p.${sources[i].page_number}` : "";
+        tooltipMap.set(i + 1, `${bookName}${pagePart}`);
       }
     }
   }
@@ -83,10 +107,21 @@ export default function MessageBubble({ role, content, sources, onRetry }: Props
           }`}
         >
           {isUser ? (
-            <div className="whitespace-pre-wrap leading-6">{content}</div>
+            <div className="leading-6 [&_p]:my-0.5 [&_.katex]:text-[0.95em]">
+              <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                {convertLatexDelimiters(content)}
+              </Markdown>
+            </div>
+          ) : isStreaming ? (
+            /* Streaming: lightweight plain-text render — no heavy Markdown re-parse */
+            <div className="whitespace-pre-wrap leading-7 text-foreground">
+              {content}
+              <span className="ml-0.5 inline-block h-[1.1em] w-[2px] translate-y-[2px] animate-pulse bg-blue-500" />
+            </div>
           ) : (
             <Markdown
-              rehypePlugins={[rehypeRaw]}
+              remarkPlugins={[remarkMath]}
+              rehypePlugins={[rehypeKatex, rehypeRaw]}
               components={{
                 h2({ children }) {
                   return <h2 className="mt-4 mb-2 text-base font-bold text-foreground">{children}</h2>;
@@ -146,15 +181,18 @@ export default function MessageBubble({ role, content, sources, onRetry }: Props
                 }: {
                   children?: ReactNode;
                   "data-ref"?: string;
+                  "data-tip"?: string;
                 }) {
                   const ref = props["data-ref"];
                   if (ref) {
                     const citIndex = Number.parseInt(ref, 10);
+                    const tip = props["data-tip"] || undefined;
                     return (
                       <button
                         type="button"
                         className="inline-flex cursor-pointer items-center border-0 bg-transparent p-0 text-[0.72em] font-semibold text-blue-600 align-super hover:text-blue-800"
                         onClick={() => handleCitationClick(citIndex)}
+                        title={tip}
                       >
                         {children}
                       </button>
@@ -164,7 +202,7 @@ export default function MessageBubble({ role, content, sources, onRetry }: Props
                 },
               }}
             >
-              {injectCitationLinks(content, maxCitation)}
+              {injectCitationLinks(convertLatexDelimiters(content), maxCitation, tooltipMap)}
             </Markdown>
           )}
         </div>

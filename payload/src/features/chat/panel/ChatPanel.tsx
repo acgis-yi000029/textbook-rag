@@ -9,21 +9,23 @@ import {
   useCallback,
   useEffect,
 } from "react";
-import { queryTextbook, fetchDemo } from "@/features/shared/api";
+import { queryTextbookStream, fetchDemo } from "@/features/shared/api";
 import { fetchAvailableModels } from "@/features/models";
 import { useAppDispatch, useAppState } from "@/features/shared/AppContext";
 import { useAuth } from "@/features/shared/AuthProvider";
-import type { ModelInfo, QueryResponse } from "@/features/shared/types";
+import type { ModelInfo } from "@/features/shared/types";
 
 import type { Message } from "../types";
 import { NEAR_BOTTOM_THRESHOLD } from "../types";
 import { useChatHistoryContext } from "../history/ChatHistoryContext";
 import { TracePanel, ThinkingProcessPanel } from "../trace";
+import { useSmoothText } from "../hooks/useSmoothText";
 
 import ChatHeader from "./ChatHeader";
 import ChatInput from "./ChatInput";
 import WelcomeScreen from "./WelcomeScreen";
 import MessageBubble from "./MessageBubble";
+import SourceCard from "./SourceCard";
 
 export default function ChatPanel({
   activeSessionId,
@@ -37,6 +39,7 @@ export default function ChatPanel({
     selectedSource,
     books,
     selectedModel,
+    selectedProvider,
     chatMode,
     sessionBookIds,
   } = useAppState();
@@ -50,6 +53,19 @@ export default function ChatPanel({
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [isNearBottom, setIsNearBottom] = useState(true);
   const [hasNewMessagesBelow, setHasNewMessagesBelow] = useState(false);
+  const [streamingContent, setStreamingContent] = useState("");
+  const [isStreaming, setIsStreaming] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+  // Token accumulator — ref avoids re-renders per token; RAF batches at 60fps
+  const tokenBufferRef = useRef("");
+  const rafIdRef = useRef<number | null>(null);
+
+  // Smooth text reveal — à la Coze/GPT typewriter effect
+  const { displayText: smoothedText, isRevealing } = useSmoothText({
+    text: streamingContent,
+    isStreaming,
+    speed: 12,
+  });
 
   const threadRef = useRef<HTMLDivElement>(null);
   const shouldStickToBottomRef = useRef(true);
@@ -98,17 +114,23 @@ export default function ChatPanel({
     fetchAvailableModels()
       .then((availableModels) => {
         setModels(availableModels);
-        if (
-          availableModels.length > 0 &&
-          !availableModels.some((model) => model.name === selectedModel)
-        ) {
-          const preferred =
-            availableModels.find((model) => model.is_default) ?? availableModels[0];
-          dispatch({ type: "SET_MODEL", model: preferred.name });
+        if (availableModels.length > 0) {
+          const currentMatch = availableModels.find((m) => m.name === selectedModel);
+          if (currentMatch) {
+            // Model still available — sync provider in case it drifted (e.g. stale sessionStorage)
+            if (currentMatch.provider && currentMatch.provider !== selectedProvider) {
+              dispatch({ type: "SET_MODEL", model: currentMatch.name, provider: currentMatch.provider });
+            }
+          } else {
+            // Model no longer available — fall back to default
+            const preferred =
+              availableModels.find((model) => model.is_default) ?? availableModels[0];
+            dispatch({ type: "SET_MODEL", model: preferred.name, provider: preferred.provider });
+          }
         }
       })
       .catch(() => setModels([]));
-  }, [dispatch, selectedModel]);
+  }, [dispatch, selectedModel, selectedProvider]);
 
 
 
@@ -124,7 +146,7 @@ export default function ChatPanel({
       return;
     }
     setHasNewMessagesBelow(true);
-  }, [hasMessages, loading, messages, scrollToBottom]);
+  }, [hasMessages, loading, messages, smoothedText, scrollToBottom]);
 
   /* ── Submit question ── */
   const submitQuestion = useCallback(
@@ -138,6 +160,14 @@ export default function ChatPanel({
       setHasNewMessagesBelow(false);
       setMessages((prev) => [...prev, { role: "user", content: trimmed }]);
       setLoading(true);
+      setStreamingContent("");
+      tokenBufferRef.current = "";
+      setIsStreaming(true);
+
+      // Abort any previous stream
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
 
       // Create a new history session on the first message of a fresh conversation
       let sessionId = sessionIdRef.current;
@@ -152,60 +182,84 @@ export default function ChatPanel({
 
       const startTime = Date.now();
 
-      try {
-        // Map Payload CMS IDs → engine book_id strings for correct filtering
-        const engineBookIdStrings = sessionBookIds
-          .map((pid) => books.find((b) => b.id === pid)?.book_id)
-          .filter((s): s is string => !!s);
-        const filters = engineBookIdStrings.length > 0 ? { book_id_strings: engineBookIdStrings } : undefined;
-        const res: QueryResponse = await queryTextbook({
-          question: trimmed,
-          filters,
-          model: selectedModel,
-          top_k: 5,
-        });
+      // Map Payload CMS IDs → engine book_id strings for correct filtering
+      const engineBookIdStrings = sessionBookIds
+        .map((pid) => books.find((b) => b.id === pid)?.book_id)
+        .filter((s): s is string => !!s);
+      const filters = engineBookIdStrings.length > 0 ? { book_id_strings: engineBookIdStrings } : undefined;
 
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "assistant",
-            content: res.answer,
-            sources: res.sources,
-            trace: res.trace,
+      await queryTextbookStream(
+        { question: trimmed, filters, model: selectedModel, provider: selectedProvider, top_k: 5 },
+        {
+          signal: controller.signal,
+          onToken: (token) => {
+            // Accumulate in ref (no re-render), flush to state via RAF
+            tokenBufferRef.current += token;
+            if (rafIdRef.current === null) {
+              rafIdRef.current = requestAnimationFrame(() => {
+                setStreamingContent(tokenBufferRef.current);
+                rafIdRef.current = null;
+              });
+            }
           },
-        ]);
+          onDone: (res) => {
+            setMessages((prev) => [
+              ...prev,
+              {
+                role: "assistant",
+                content: res.answer,
+                sources: res.sources,
+                trace: res.trace,
+              },
+            ]);
+            setStreamingContent("");
+            tokenBufferRef.current = "";
+            if (rafIdRef.current !== null) {
+              cancelAnimationFrame(rafIdRef.current);
+              rafIdRef.current = null;
+            }
+            setIsStreaming(false);
+            setLoading(false);
 
-        // Persist both messages to chat history
-        if (sessionId) {
-          chatHistory.appendMessages(sessionId, [
-            { role: "user", content: trimmed },
-            { role: "assistant", content: res.answer, sources: res.sources, trace: res.trace },
-          ]);
-        }
+            // Persist both messages to chat history
+            if (sessionId) {
+              chatHistory.appendMessages(sessionId, [
+                { role: "user", content: trimmed },
+                { role: "assistant", content: res.answer, sources: res.sources, trace: res.trace },
+              ]);
+            }
 
-        // Log query to Payload QueryLogs (fire-and-forget)
-        const latencyMs = Date.now() - startTime;
-        fetch('/api/query-logs', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            user: currentUser?.id ?? null,
-            question: trimmed,
-            answer: res.answer,
-            sources: res.sources,
-            trace: res.trace,
-            model: selectedModel,
-            latencyMs,
-          }),
-        }).catch(() => { /* ignore logging errors */ });
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Unknown error");
-      } finally {
-        setLoading(false);
-      }
+            // Log query to Payload QueryLogs (fire-and-forget)
+            const latencyMs = Date.now() - startTime;
+            fetch('/api/query-logs', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({
+                user: currentUser?.id ?? null,
+                question: trimmed,
+                answer: res.answer,
+                sources: res.sources,
+                trace: res.trace,
+                model: selectedModel,
+                latencyMs,
+              }),
+            }).catch(() => { /* ignore logging errors */ });
+          },
+          onError: (err) => {
+            setError(err.message);
+            tokenBufferRef.current = "";
+            if (rafIdRef.current !== null) {
+              cancelAnimationFrame(rafIdRef.current);
+              rafIdRef.current = null;
+            }
+            setIsStreaming(false);
+            setLoading(false);
+          },
+        },
+      );
     },
-    [sessionBookIds, selectedModel, currentUser, books, chatHistory, onSessionCreated],
+    [sessionBookIds, selectedModel, selectedProvider, currentUser, books, chatHistory, onSessionCreated],
   );
 
   /** Go back to the book picker — ends the session */
@@ -260,7 +314,7 @@ export default function ChatPanel({
         loading={loading}
         selectedSourceLabel={selectedSourceLabel}
         onModeChange={(mode) => dispatch({ type: "SET_CHAT_MODE", mode })}
-        onModelChange={(model) => dispatch({ type: "SET_MODEL", model })}
+        onModelChange={(model, provider) => dispatch({ type: "SET_MODEL", model, provider })}
         onNewChat={resetConversation}
       />
 
@@ -287,6 +341,29 @@ export default function ChatPanel({
                   sources={message.sources}
                   onRetry={message.role === "user" && !loading ? (q) => void submitQuestion(q) : undefined}
                 />
+                {message.role === "assistant" && message.sources && message.sources.length > 0 && (() => {
+                  // Deduplicate sources by citation_index (keep first occurrence)
+                  const seen = new Set<number>();
+                  const uniqueSources = message.sources.filter((s) => {
+                    const ci = (s as any).citation_index as number | undefined;
+                    const key = ci ?? -1;
+                    if (key !== -1 && seen.has(key)) return false;
+                    if (key !== -1) seen.add(key);
+                    return true;
+                  });
+                  return (
+                    <div className="ml-11 mt-1 flex flex-wrap gap-2">
+                      {uniqueSources.map((s, i) => (
+                        <SourceCard
+                          key={`src-${index}-${(s as any).citation_index ?? i}`}
+                          source={s}
+                          index={i}
+                          isActive={selectedSource?.source_id === s.source_id}
+                        />
+                      ))}
+                    </div>
+                  );
+                })()}
                 {message.role === "assistant" && chatMode === "trace" && message.trace && (
                   <TracePanel trace={message.trace} />
                 )}
@@ -296,7 +373,18 @@ export default function ChatPanel({
               </div>
             ))}
 
-            {loading && (
+            {/* Streaming bubble — shown while tokens arrive */}
+            {isStreaming && smoothedText && (
+              <div className="space-y-2">
+                <MessageBubble
+                  role="assistant"
+                  content={smoothedText}
+                  isStreaming={isRevealing}
+                />
+              </div>
+            )}
+
+            {loading && !isStreaming && (
               <div className="flex items-start gap-3">
                 <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
@@ -311,7 +399,7 @@ export default function ChatPanel({
                       <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground" />
                     </div>
                     <span className="text-sm text-muted-foreground">
-                      Searching the books and drafting an answer...
+                      Searching the books…
                     </span>
                   </div>
                 </div>

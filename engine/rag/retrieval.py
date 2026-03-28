@@ -124,7 +124,8 @@ class RetrievalOrchestrator:
                     b.title        AS book_title,
                     b.category     AS category,
                     ch.title       AS chapter_title,
-                    p.page_number  AS page_number
+                    p.page_number  AS page_number,
+                    c.text_level   AS text_level
                 FROM chunks c
                 LEFT JOIN books    b  ON b.id  = c.book_id
                 LEFT JOIN chapters ch ON ch.id = c.chapter_id
@@ -142,7 +143,8 @@ class RetrievalOrchestrator:
                     b.title        AS book_title,
                     '' AS category,
                     ch.title       AS chapter_title,
-                    p.page_number  AS page_number
+                    p.page_number  AS page_number,
+                    c.text_level   AS text_level
                 FROM chunks c
                 LEFT JOIN books    b  ON b.id  = c.book_id
                 LEFT JOIN chapters ch ON ch.id = c.chapter_id
@@ -178,6 +180,7 @@ class RetrievalOrchestrator:
             hit.category = meta.get("category") or hit.category
             hit.chapter_title = meta.get("chapter_title")
             hit.primary_page_number = meta.get("page_number")
+            hit.text_level = meta.get("text_level")
             hit.source_locators = loc_map.get(hit.id, [])
 
         return hits

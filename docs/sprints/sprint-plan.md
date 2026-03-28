@@ -263,7 +263,7 @@ graph TD
 - `payload/package.json`
 - `payload/src/payload.config.ts`
 - `payload/tsconfig.json`
-- `payload/.env`
+- `.env` (root)
 
 ---
 

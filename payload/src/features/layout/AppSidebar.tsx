@@ -16,6 +16,7 @@ import {
   MessageSquare,
   Trash2,
   Zap,
+  MessageSquareDot,
 } from 'lucide-react'
 import { useState } from 'react'
 import { useI18n } from '@/features/shared/i18n'
@@ -296,6 +297,7 @@ export default function AppSidebar() {
           )}
           <nav className="flex flex-col gap-0.5">
             {navLink('/library', Library, String(t.navLibrary))}
+            {navLink('/dashboard/questions', MessageSquareDot, String(t.navQuestions))}
           </nav>
 
           {isAdmin && (

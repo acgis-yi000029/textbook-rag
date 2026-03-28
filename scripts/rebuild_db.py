@@ -148,6 +148,7 @@ CREATE TABLE IF NOT EXISTS chunks (
     chapter_id          INTEGER REFERENCES chapters(id),
     primary_page_id     INTEGER REFERENCES pages(id),
     content_type        TEXT    NOT NULL DEFAULT 'text',
+    text_level          INTEGER,
     text                TEXT    NOT NULL DEFAULT '',
     reading_order       INTEGER NOT NULL DEFAULT 0,
     chroma_document_id  TEXT
@@ -481,6 +482,7 @@ def ingest_book(
 
         # Map content type
         content_type = item_type  # text, equation, table, image
+        text_level = item.get("text_level")  # 1 = heading, None = body
 
         # Determine chapter
         ch_list_idx = assign_chapter(page_idx, chapter_ranges)
@@ -493,9 +495,9 @@ def ingest_book(
 
         cur.execute(
             "INSERT INTO chunks "
-            "(chunk_id, book_id, chapter_id, primary_page_id, content_type, text, reading_order) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (chunk_id, book_pk, chapter_pk, page_pk, content_type, text, reading_order),
+            "(chunk_id, book_id, chapter_id, primary_page_id, content_type, text_level, text, reading_order) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (chunk_id, book_pk, chapter_pk, page_pk, content_type, text_level, text, reading_order),
         )
         chunk_pk = cur.lastrowid
 

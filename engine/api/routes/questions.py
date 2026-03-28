@@ -163,7 +163,9 @@ def _generate_questions_via_llm(
     model: str,
     ollama_url: str,
 ) -> list[dict[str, Any]]:
-    """Call Ollama to generate questions from sampled chunks."""
+    """Call LLM (Ollama or Azure OpenAI) to generate questions from sampled chunks."""
+    from engine.rag.llm_client import chat as llm_chat
+
     # Build context from chunks
     context_parts = []
     for i, c in enumerate(chunks, 1):
@@ -178,36 +180,22 @@ def _generate_questions_via_llm(
     prompt_template = _fetch_question_prompt()
     system_prompt = prompt_template.replace("{count}", str(count))
 
-    # Detect thinking-capable models and disable CoT for faster responses
-    is_thinking_model = any(
-        tag in model.lower()
-        for tag in ("qwen3", "qwen3.5", "deepseek-r1", "qwq")
-    )
-
-    payload: dict[str, Any] = {
-        "model": model,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"Textbook excerpts:\n\n{context}"},
-        ],
-        "stream": False,
-    }
-    if is_thinking_model:
-        payload["think"] = False
+    user_content = f"Textbook excerpts:\n\n{context}"
 
     try:
-        logger.info("Calling Ollama model=%s at %s", model, ollama_url)
-        resp = httpx.post(f"{ollama_url}/api/chat", json=payload, timeout=60.0)
-        resp.raise_for_status()
-        content = resp.json().get("message", {}).get("content", "")
+        logger.info("Generating questions via llm_client, model=%s", model)
+        content = llm_chat(
+            model=model,
+            system=system_prompt,
+            user=user_content,
+            timeout=60.0,
+        )
+        if content.startswith("[Generation error"):
+            logger.error("LLM returned error: %s", content)
+            return []
         questions = _extract_json_array(content)
         if isinstance(questions, list):
             return questions[:count]
-    except httpx.HTTPStatusError as e:
-        logger.error(
-            "Ollama returned HTTP %s for model=%s: %s",
-            e.response.status_code, model, e.response.text[:300],
-        )
     except Exception as e:
         logger.exception("LLM question generation failed (model=%s): %s", model, e)
 
@@ -251,4 +239,91 @@ def generate_questions(req: GenerateQuestionsRequest):
             "topic_hint": q.get("topic_hint", ""),
         })
 
+    # 自动保存到 Payload CMS / Auto-persist to Payload for analysis
+    if questions:
+        _persist_to_payload(questions, model)
+
     return {"questions": questions}
+
+
+def _persist_to_payload(questions: list[dict[str, Any]], model: str) -> None:
+    """Save generated questions to Payload CMS, then auto-score each one.
+
+    Flow: create doc → score via LLM → PATCH scores back.
+    """
+    if not PAYLOAD_URL:
+        return
+
+    from engine.rag.llm_client import chat as llm_chat
+
+    api_url = f"{PAYLOAD_URL}/api/questions"
+    for q in questions:
+        doc = {
+            "question": q.get("question", ""),
+            "bookId": q.get("book_id", ""),
+            "bookTitle": q.get("book_title", ""),
+            "topicHint": q.get("topic_hint", ""),
+            "source": "ai",
+            "likes": 0,
+            "model": model,
+        }
+        try:
+            resp = httpx.post(api_url, json=doc, timeout=5.0)
+            if resp.status_code >= 400:
+                logger.warning("Payload save failed (%s): %s", resp.status_code, resp.text[:200])
+                continue
+
+            # Auto-score the question / 自动评分
+            doc_id = resp.json().get("doc", {}).get("id")
+            if doc_id:
+                scores = _score_question(q.get("question", ""), q.get("book_title", ""), model)
+                if scores:
+                    httpx.patch(
+                        f"{api_url}/{doc_id}",
+                        json=scores,
+                        timeout=5.0,
+                    )
+        except Exception as e:
+            logger.debug("Failed to persist/score question: %s", e)
+
+
+_SCORE_SYSTEM_PROMPT = (
+    "You are a question quality evaluator. "
+    "Score the following study question on 3 dimensions (1-5 scale):\n"
+    "- relevance: Is it based on specific textbook content? (1=generic, 5=very specific)\n"
+    "- clarity: Is the question clearly written and unambiguous? (1=confusing, 5=crystal clear)\n"
+    "- difficulty: How hard is it to answer? (1=trivial, 5=very challenging)\n\n"
+    "Return ONLY a JSON object: {\"relevance\": N, \"clarity\": N, \"difficulty\": N}\n"
+    "No explanation, no markdown."
+)
+
+
+def _score_question(question: str, book_title: str, model: str) -> dict[str, Any] | None:
+    """Call LLM to auto-score a question on relevance, clarity, difficulty."""
+    from engine.rag.llm_client import chat as llm_chat
+
+    user_prompt = f"Book: {book_title}\nQuestion: {question}"
+    try:
+        raw = llm_chat(
+            model=model,
+            system=_SCORE_SYSTEM_PROMPT,
+            user=user_prompt,
+            timeout=15.0,
+        )
+        # Parse JSON from response
+        data = json.loads(raw.strip().strip("`").replace("json\n", ""))
+        rel = min(5, max(1, int(data.get("relevance", 3))))
+        cla = min(5, max(1, int(data.get("clarity", 3))))
+        dif = min(5, max(1, int(data.get("difficulty", 3))))
+        overall = round((rel + cla) / 2, 1)
+        logger.info("Scored question: rel=%d cla=%d dif=%d → overall=%.1f", rel, cla, dif, overall)
+        return {
+            "scoreRelevance": rel,
+            "scoreClarity": cla,
+            "scoreDifficulty": dif,
+            "scoreOverall": overall,
+        }
+    except Exception as e:
+        logger.debug("Auto-score failed: %s", e)
+        return None
+

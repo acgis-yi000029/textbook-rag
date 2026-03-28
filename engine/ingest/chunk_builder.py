@@ -25,6 +25,7 @@ class ChunkData:
     page_idx: int
     bbox: list[float]           # [x0, y0, x1, y1] in PDF points
     chapter_key: str | None = None
+    text_level: int | None = None  # 1 = heading; None = body text
 
 
 @dataclass
@@ -136,6 +137,7 @@ def build_chunks(
             page_idx=page_idx,
             bbox=bbox,
             chapter_key=chapter_key,
+            text_level=item.get("text_level"),
         ))
         reading_order += 1
 

@@ -335,6 +335,7 @@ export async function checkAllModels(
   })
 }
 
+
 /**
  * 根据 provider 健康状态和模型信息推断可用性
  * Resolve availability based on provider health and model info
@@ -403,11 +404,11 @@ function resolveAvailability(
  * 兼容旧的 fetchModels() 接口
  * Backward-compatible fetchModels() — used by ChatPanel
  *
- * 返回 { name, is_default }[] 但只包含真正可用的模型
- * Returns { name, is_default }[] but only actually available models
+ * 返回 { name, is_default, provider }[] 但只包含真正可用的模型
+ * Returns { name, is_default, provider }[] but only actually available models
  */
 export async function fetchAvailableModels(): Promise<
-  { name: string; is_default: boolean }[]
+  { name: string; is_default: boolean; provider?: string }[]
 > {
   try {
     const runtimeModels = await checkAllModels()
@@ -419,6 +420,7 @@ export async function fetchAvailableModels(): Promise<
       return available.map((m) => ({
         name: m.name,
         is_default: m.isDefault,
+        provider: m.provider,
       }))
     }
 
@@ -429,6 +431,7 @@ export async function fetchAvailableModels(): Promise<
       .map((m) => ({
         name: m.name,
         is_default: m.isDefault,
+        provider: m.provider,
       }))
   } catch {
     // 完全失败时 fallback 到 engine models 端点
@@ -440,12 +443,14 @@ export async function fetchAvailableModels(): Promise<
       return (data.models || []).map((name: string, i: number) => ({
         name,
         is_default: i === 0,
+        provider: 'ollama',
       }))
     } catch {
-      return [{ name: 'llama3.2:3b', is_default: true }]
+      return [{ name: 'llama3.2:3b', is_default: true, provider: 'ollama' }]
     }
   }
 }
+
 
 // ── 4. 本地模型自动探测 / Local model auto-discovery ─────────────────────────────
 

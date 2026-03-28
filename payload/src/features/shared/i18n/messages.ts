@@ -66,6 +66,7 @@ export interface Messages {
   // ── Sidebar Nav ──
   navNewChat: string
   navLibrary: string
+  navQuestions: string
   navGroupChat: string
   navGroupResources: string
   navGroupAdmin: string
@@ -130,6 +131,7 @@ const en: Messages = {
 
   navNewChat: 'New Chat',
   navLibrary: 'Library',
+  navQuestions: 'Questions',
   navGroupChat: 'Chat',
   navGroupResources: 'Resources',
   navGroupAdmin: 'Admin',
@@ -194,6 +196,7 @@ const zh: Messages = {
 
   navNewChat: '新对话',
   navLibrary: '资料库',
+  navQuestions: '问题库',
   navGroupChat: '对话',
   navGroupResources: '资源',
   navGroupAdmin: '管理',

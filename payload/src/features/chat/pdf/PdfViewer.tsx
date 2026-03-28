@@ -13,7 +13,8 @@ import "react-pdf/dist/esm/Page/TextLayer.css";
 import { getPdfUrl, fetchToc } from "@/features/shared/api";
 import { useAppState, useAppDispatch } from "@/features/shared/AppContext";
 import ResizeHandle from "@/features/shared/ResizeHandle";
-import type { TocEntry } from "@/features/shared/types";
+import type { TocEntry, BboxEntry } from "@/features/shared/types";
+import BboxOverlay from "./BboxOverlay";
 
 function Loading() {
   return (
@@ -268,6 +269,19 @@ export default function PdfViewer() {
   } | null>(null);
 
   const hasToc = tocEntries.length > 0;
+
+  // Build a map: pageNumber → BboxEntry[] for overlay rendering
+  const bboxesByPage = useMemo(() => {
+    const map = new Map<number, BboxEntry[]>();
+    if (!selectedSource?.bboxes) return map;
+    for (const b of selectedSource.bboxes) {
+      if (b.page_number == null) continue;
+      const existing = map.get(b.page_number) ?? [];
+      existing.push(b);
+      map.set(b.page_number, existing);
+    }
+    return map;
+  }, [selectedSource?.bboxes]);
 
   // Map Payload numeric ID → engine string book_id for PDF/TOC APIs
   const engineBookId = useMemo(
@@ -571,7 +585,9 @@ export default function PdfViewer() {
       behavior: "smooth",
     });
 
-    if (!pending.hasBbox) {
+    // If not waiting for text-layer highlighting (i.e. no legacy bbox, or we use MinerU bboxes), clear the pending jump
+    const hasMinerUBboxes = selectedSource?.bboxes && selectedSource.bboxes.length > 0;
+    if (!pending.hasBbox || hasMinerUBboxes) {
       pendingSourceScrollRef.current = null;
     }
   }, [
@@ -583,6 +599,8 @@ export default function PdfViewer() {
 
   useEffect(() => {
     if (!selectedSource?.snippet) return;
+    // Skip text-layer matching when MinerU bboxes are available — BboxOverlay handles it
+    if (selectedSource.bboxes && selectedSource.bboxes.length > 0) return;
     // Allow highlight if book matches (by engine ID or if already on the correct book)
     const highlightBookMatches = !selectedSource.book_id_string || selectedSource.book_id_string === engineBookId;
     if (!highlightBookMatches) return;
@@ -623,7 +641,19 @@ export default function PdfViewer() {
     });
 
     observer.observe(pageNode, { childList: true, subtree: true });
-    return () => observer.disconnect();
+
+    // Fallback: retry after a delay in case observer misses the text layer render
+    const retryTimer = window.setTimeout(() => {
+      if (matchedTextNonceRef.current === selectedSourceNonce) return;
+      if (tryHighlight()) {
+        observer.disconnect();
+      }
+    }, 1500);
+
+    return () => {
+      observer.disconnect();
+      window.clearTimeout(retryTimer);
+    };
   }, [
     currentBookId,
     loadedPages,
@@ -944,6 +974,26 @@ export default function PdfViewer() {
                             <div className="pointer-events-none absolute right-3 top-3 rounded bg-background/80 px-2 py-0.5 text-[11px] font-medium text-foreground shadow-sm backdrop-blur-[2px]">
                               {pageNumber}
                             </div>
+
+                            {/* MinerU bbox overlays for this page */}
+                            {bboxesByPage.get(pageNumber)?.map((b, bIdx) => {
+                              const rh = pageDims
+                                ? Math.round((pageDims.height / pageDims.width) * stableRenderWidth)
+                                : estimatedPageHeight;
+                              return (
+                                <BboxOverlay
+                                  key={`bbox-${pageNumber}-${bIdx}`}
+                                  bbox={b}
+                                  pageWidth={b.page_width}
+                                  pageHeight={b.page_height}
+                                  renderedWidth={stableRenderWidth}
+                                  renderedHeight={rh}
+                                  coordWidth={b.page_width}
+                                  coordHeight={b.page_height}
+                                  citationLabel={selectedSource?.citation_label}
+                                />
+                              );
+                            })}
 
                           </div>
                       </div>

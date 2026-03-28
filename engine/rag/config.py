@@ -36,7 +36,7 @@ class RAGConfig:
 
     db_path: str = ""
     ollama_base_url: str = "http://127.0.0.1:11434"
-    default_model: str = "qwen3.5:4b"
+    default_model: str = "gpt-4o-mini"
     embedding_model: str = "all-MiniLM-L6-v2"
     chroma_persist_dir: str = ""
     mineru_output_dir: str = ""
@@ -92,6 +92,7 @@ class QueryConfig:
     rrf_k: int = 60
     filters: QueryFilters = field(default_factory=QueryFilters)
     model: str | None = None  # None → RAGConfig.default_model
+    provider: str | None = None  # None → auto-detect ("ollama" | "azure_openai")
     prompt_template: str = "default"
     custom_system_prompt: str | None = None  # main way to set system prompt
     active_book_title: str | None = None

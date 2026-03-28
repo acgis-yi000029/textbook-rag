@@ -21,6 +21,7 @@ export interface AppState {
   selectedSource: SourceInfo | null;
   selectedSourceNonce: number;
   selectedModel: string;
+  selectedProvider: string;
   chatMode: "answer" | "trace";
   pdfVariant: "origin" | "layout";
   showToc: boolean;
@@ -35,6 +36,7 @@ const initialState: AppState = {
   selectedSource: null,
   selectedSourceNonce: 0,
   selectedModel: "llama3.2:3b",
+  selectedProvider: "ollama",
   chatMode: "answer",
   pdfVariant: "origin",
   showToc: true,
@@ -58,6 +60,10 @@ function loadPersistedState(): Partial<AppState> {
         typeof saved.selectedModel === "string" && saved.selectedModel.trim()
           ? saved.selectedModel
           : initialState.selectedModel,
+      selectedProvider:
+        typeof saved.selectedProvider === "string" && saved.selectedProvider.trim()
+          ? saved.selectedProvider
+          : initialState.selectedProvider,
       chatMode: saved.chatMode === "trace" ? "trace" : "answer",
       pdfVariant: saved.pdfVariant === "layout" ? "layout" : "origin",
     };
@@ -76,6 +82,7 @@ function persistState(state: AppState) {
         sessionStarted: state.sessionStarted,
         currentPage: state.currentPage,
         selectedModel: state.selectedModel,
+        selectedProvider: state.selectedProvider,
         chatMode: state.chatMode,
         pdfVariant: state.pdfVariant,
       }),
@@ -90,7 +97,7 @@ type Action =
   | { type: "SET_BOOK"; bookId: number | null }
   | { type: "SET_PAGE"; page: number }
   | { type: "SELECT_SOURCE"; source: SourceInfo | null }
-  | { type: "SET_MODEL"; model: string }
+  | { type: "SET_MODEL"; model: string; provider?: string }
   | { type: "SET_CHAT_MODE"; mode: "answer" | "trace" }
   | { type: "SET_PDF_VARIANT"; variant: "origin" | "layout" }
   | { type: "TOGGLE_TOC" }
@@ -129,7 +136,7 @@ function reducer(state: AppState, action: Action): AppState {
       };
     }
     case "SET_MODEL":
-      return { ...state, selectedModel: action.model };
+      return { ...state, selectedModel: action.model, selectedProvider: action.provider ?? state.selectedProvider };
     case "SET_CHAT_MODE":
       return { ...state, chatMode: action.mode };
     case "SET_PDF_VARIANT":
@@ -174,7 +181,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     persistState(state);
-  }, [state.currentBookId, state.sessionBookIds, state.sessionStarted, state.currentPage, state.pdfVariant, state.selectedModel, state.chatMode]);
+  }, [state.currentBookId, state.sessionBookIds, state.sessionStarted, state.currentPage, state.pdfVariant, state.selectedModel, state.selectedProvider, state.chatMode]);
 
   return (
     <StateCtx.Provider value={state}>

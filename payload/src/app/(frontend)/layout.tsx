@@ -3,6 +3,7 @@ import React from 'react'
 
 import { Providers } from '@/features/shared/Providers'
 
+import 'katex/dist/katex.min.css'
 import './globals.css'
 
 /**

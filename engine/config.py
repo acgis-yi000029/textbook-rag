@@ -10,9 +10,12 @@ import os
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
-# Project root: one level up from engine/config.py
+# Load .env from project root (before any os.getenv calls)
 # ---------------------------------------------------------------------------
+from dotenv import load_dotenv
+
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
+load_dotenv(_PROJECT_ROOT / ".env", override=False)
 
 # ---------------------------------------------------------------------------
 # Data paths — 所有持久化数据统一在 data/ 目录
@@ -45,7 +48,7 @@ EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
 # ---------------------------------------------------------------------------
 AZURE_OAI_ENDPOINT: str = os.getenv("AZURE_OAI_ENDPOINT", "")
 AZURE_OAI_KEY: str = os.getenv("AZURE_OAI_KEY", "")
-AZURE_OAI_DEPLOYMENT: str = os.getenv("AZURE_OAI_DEPLOYMENT", "gpt-4o")
+AZURE_OAI_DEPLOYMENT: str = os.getenv("AZURE_OAI_DEPLOYMENT", "gpt-4o-mini")
 AZURE_OAI_API_VERSION: str = os.getenv("AZURE_OAI_API_VERSION", "2024-08-01-preview")
 
 # ---------------------------------------------------------------------------

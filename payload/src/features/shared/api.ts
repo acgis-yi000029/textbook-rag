@@ -15,6 +15,7 @@ import type {
   QueryRequest,
   QueryResponse,
   TocEntry,
+  BboxEntry,
 } from './types'
 
 const ENGINE = process.env.NEXT_PUBLIC_ENGINE_URL || 'http://localhost:8000'
@@ -101,6 +102,41 @@ function mapTraceHit(h: any): { rank: number; chunk_id: string; score: number | 
   }
 }
 
+/** Map a single engine source dict → SourceInfo. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function normaliseSource(s: any) {
+  const bboxes: BboxEntry[] = (s.bboxes ?? [])
+    .filter((b: any) => b.x0 != null && b.y0 != null && b.x1 != null && b.y1 != null)
+    .map((b: any) => ({
+      x0: b.x0,
+      y0: b.y0,
+      x1: b.x1,
+      y1: b.y1,
+      page_width: b.page_width ?? 0,
+      page_height: b.page_height ?? 0,
+      page_number: b.page_number ?? 1,
+    }))
+
+  return {
+    source_id: s.chunk_id ?? String(s.page_number),
+    book_id: s.book_id ?? 0,
+    book_id_string: s.book_id_string ?? '',
+    citation_index: s.citation_index ?? undefined,
+    book_title: s.book_title ?? '',
+    chapter_title: s.chapter_title ?? null,
+    page_number: s.page_number ?? 1,
+    snippet: s.text ?? s.snippet ?? '',
+    bbox: s.bbox
+      ? { x0: s.bbox.x0, y0: s.bbox.y0, x1: s.bbox.x1, y1: s.bbox.y1 }
+      : null,
+    bboxes: bboxes.length > 0 ? bboxes : undefined,
+    page_dim: s.bbox?.page_width && s.bbox?.page_height
+      ? { width: s.bbox.page_width, height: s.bbox.page_height }
+      : null,
+    confidence: s.score ?? 1,
+  }
+}
+
 /**
  * Transform engine v2 trace → frontend QueryTrace shape.
  *
@@ -161,27 +197,12 @@ export async function queryTextbook(req: QueryRequest): Promise<QueryResponse> {
       top_k: req.top_k ?? 5,
       filters: req.filters ?? {},
       model: req.model,
+      provider: req.provider,
     }),
   })
 
   // Normalise Engine v2.0 response → v1.1 QueryResponse
-  const sources = (res.sources ?? []).map((s: any) => ({
-    source_id: s.chunk_id ?? String(s.page_number),
-    book_id: s.book_id ?? 0,
-    book_id_string: s.book_id_string ?? '',
-    citation_index: s.citation_index ?? undefined,
-    book_title: s.book_title ?? '',
-    chapter_title: s.chapter_title ?? null,
-    page_number: s.page_number ?? 1,
-    snippet: s.text ?? s.snippet ?? '',
-    bbox: s.bbox
-      ? { x0: s.bbox.x0, y0: s.bbox.y0, x1: s.bbox.x1, y1: s.bbox.y1 }
-      : null,
-    page_dim: s.bbox?.page_width && s.bbox?.page_height
-      ? { width: s.bbox.page_width, height: s.bbox.page_height }
-      : null,
-    confidence: s.score ?? 1,
-  }))
+  const sources = (res.sources ?? []).map(normaliseSource)
 
   return {
     answer: res.answer ?? '',
@@ -193,6 +214,99 @@ export async function queryTextbook(req: QueryRequest): Promise<QueryResponse> {
       fused_count: sources.length,
     },
     trace: normaliseTrace(res.trace, req, sources),
+  }
+}
+
+/**
+ * Streaming query via SSE — calls onToken for each token, onDone at end.
+ *
+ * SSE events from engine:
+ *   event: retrieval_done → { stats, chunk_count }
+ *   event: token          → { t: "..." }
+ *   event: done           → { answer, sources, trace, warnings, stats }
+ */
+export async function queryTextbookStream(
+  req: QueryRequest,
+  callbacks: {
+    onToken: (token: string) => void
+    onRetrievalDone?: (stats: Record<string, number>) => void
+    onDone: (result: QueryResponse) => void
+    onError: (error: Error) => void
+    signal?: AbortSignal
+  },
+): Promise<void> {
+  try {
+    const res = await fetch(`${ENGINE}/engine/query/stream`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        question: req.question,
+        top_k: req.top_k ?? 5,
+        filters: req.filters ?? {},
+        model: req.model,
+        provider: req.provider,
+      }),
+      signal: callbacks.signal,
+    })
+
+    if (!res.ok) {
+      const body = await res.text()
+      throw new Error(`${res.status}: ${body}`)
+    }
+
+    const reader = res.body?.getReader()
+    if (!reader) throw new Error('No response body')
+
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() ?? ''
+
+      let currentEvent = ''
+      for (const line of lines) {
+        if (line.startsWith('event: ')) {
+          currentEvent = line.slice(7).trim()
+        } else if (line.startsWith('data: ')) {
+          const jsonStr = line.slice(6)
+          try {
+            const data = JSON.parse(jsonStr)
+
+            if (currentEvent === 'token') {
+              callbacks.onToken(data.t ?? '')
+            } else if (currentEvent === 'retrieval_done') {
+              callbacks.onRetrievalDone?.(data.stats ?? {})
+            } else if (currentEvent === 'done') {
+              // Normalise the done payload same as queryTextbook
+              const sources = (data.sources ?? []).map(normaliseSource)
+
+              callbacks.onDone({
+                answer: data.answer ?? '',
+                sources,
+                retrieval_stats: {
+                  fts_hits: data.stats?.fts5_bm25_hits ?? data.stats?.fts_hits ?? 0,
+                  vector_hits: data.stats?.vector_hits ?? 0,
+                  toc_hits: data.stats?.toc_heading_hits ?? 0,
+                  fused_count: sources.length,
+                },
+                trace: normaliseTrace(data.trace, req, sources),
+              })
+            }
+          } catch {
+            // Skip malformed JSON
+          }
+          currentEvent = ''
+        }
+      }
+    }
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') return
+    callbacks.onError(err instanceof Error ? err : new Error(String(err)))
   }
 }
 

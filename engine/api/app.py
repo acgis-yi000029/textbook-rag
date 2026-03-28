@@ -22,7 +22,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from engine.config import CORS_ORIGINS
-from engine.api.routes import books, chunks, health, ingest, pipeline_preview, query, questions, reindex, sync
+from engine.api.routes import books, chunks, health, ingest, pipeline_preview, query, query_stream, questions, reindex, sync
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +61,7 @@ def create_app() -> FastAPI:
 
     app.include_router(health.router, prefix="/engine")
     app.include_router(query.router, prefix="/engine")
+    app.include_router(query_stream.router, prefix="/engine")
     app.include_router(ingest.router, prefix="/engine")
     app.include_router(books.router, prefix="/engine")
     app.include_router(chunks.router, prefix="/engine")

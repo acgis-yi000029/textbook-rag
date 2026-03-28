@@ -12,6 +12,9 @@ import { useState, useEffect } from "react";
 import type { BookSummary } from "@/features/shared/types";
 import { fetchGeneratedQuestions, type GeneratedQuestion } from "@/features/shared/api";
 import { Database, Layers, Bot, Sparkles, Check, Loader2 } from "lucide-react";
+import Markdown from "react-markdown";
+import rehypeKatex from "rehype-katex";
+import remarkMath from "remark-math";
 
 /* ── Color palette for topic hints ── */
 const TOPIC_COLORS = [
@@ -76,7 +79,7 @@ export default function WelcomeScreen({
     setGenerated(false);
     setFailed(false);
 
-    fetchGeneratedQuestions(bookIds, 6).then((qs) => {
+    fetchGeneratedQuestions(bookIds, 3).then((qs) => {
       setAiQuestions(qs);
       setGenerating(false);
       setGenerated(true);
@@ -162,9 +165,11 @@ export default function WelcomeScreen({
                         {q.topic_hint}
                       </span>
                     )}
-                    <p className="text-sm leading-snug text-muted-foreground group-hover:text-foreground">
-                      {q.question}
-                    </p>
+                    <div className="text-sm leading-snug text-muted-foreground group-hover:text-foreground [&_p]:my-0 [&_.katex]:text-[0.85em]">
+                      <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                        {q.question}
+                      </Markdown>
+                    </div>
                   </div>
                 </div>
               </button>

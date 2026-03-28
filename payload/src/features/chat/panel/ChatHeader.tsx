@@ -13,7 +13,7 @@ interface Props {
   loading: boolean;
   selectedSourceLabel: string | null;
   onModeChange: (mode: "answer" | "trace") => void;
-  onModelChange: (model: string) => void;
+  onModelChange: (model: string, provider?: string) => void;
   onNewChat: () => void;
 }
 
@@ -57,7 +57,11 @@ export default function ChatHeader({
           <select
             className="rounded-md border border-border bg-background px-2 py-1.5 text-[12px] font-medium text-foreground outline-none transition focus:border-primary"
             value={selectedModel}
-            onChange={(event) => onModelChange(event.target.value)}
+            onChange={(event) => {
+              const name = event.target.value;
+              const found = models.find((m) => m.name === name);
+              onModelChange(name, found?.provider);
+            }}
             disabled={loading || models.length === 0}
             suppressHydrationWarning
           >
