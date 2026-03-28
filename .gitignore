@@ -70,3 +70,4 @@ data/
 backend/data/chroma_db/
 textbooks.zip
 payload/.next/
+.github/
