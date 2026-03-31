@@ -54,12 +54,19 @@ function makeTitle(firstMessage: string): string {
 /* ── Hook ── */
 
 export function useChatHistory() {
-  const [sessions, setSessions] = useState<ChatSession[]>(() => loadSessions());
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [isMounted, setIsMounted] = useState(false);
+
+  /** Load sessions only on client to avoid hydration mismatch */
+  useEffect(() => {
+    setSessions(loadSessions());
+    setIsMounted(true);
+  }, []);
 
   /** Persist whenever sessions change */
   useEffect(() => {
-    saveSessions(sessions);
-  }, [sessions]);
+    if (isMounted) saveSessions(sessions);
+  }, [sessions, isMounted]);
 
   /** Create a brand-new session (called when first user message is sent) */
   const createSession = useCallback(

@@ -1,4 +1,8 @@
-import type { Question, QuestionsApiResponse } from './types'
+import type { Question, GeneratedQuestion, QuestionsApiResponse } from './types'
+
+const ENGINE = process.env.NEXT_PUBLIC_ENGINE_URL || 'http://localhost:8000'
+
+// ─── CRUD (Payload CMS REST API) ────────────────────────────────────────────
 
 /**
  * Fetch all questions from Payload CMS REST API.
@@ -10,6 +14,39 @@ export async function fetchQuestions(limit = 500): Promise<Question[]> {
 
   const data: QuestionsApiResponse = await res.json()
   return data.docs.map(mapDoc)
+}
+
+/**
+ * Fetch high-quality questions for a set of books.
+ * 从 Payload CMS 拉取已评分的高质量问题，供 Chat 模块直接展示。
+ *
+ * - Filters by bookId ∈ bookIds
+ * - Filters by scoreOverall >= minScore (default 3)
+ * - Sorted by scoreOverall desc, likes desc
+ * - Returns at most `limit` questions
+ */
+export async function fetchHighQualityQuestions(
+  bookIds: string[],
+  limit = 6,
+  minScore = 3,
+): Promise<Question[]> {
+  if (bookIds.length === 0) return []
+
+  // Build Payload where clause: bookId in bookIds AND scoreOverall >= minScore
+  const whereParams = bookIds
+    .map((id, i) => `where[or][${i}][bookId][equals]=${encodeURIComponent(id)}`)
+    .join('&')
+  const scoreFilter = `where[and][1][scoreOverall][greater_than_equal]=${minScore}`
+  const url = `/api/questions?${whereParams}&${scoreFilter}&sort=-scoreOverall,-likes&limit=${limit}`
+
+  try {
+    const res = await fetch(url)
+    if (!res.ok) return []
+    const data: QuestionsApiResponse = await res.json()
+    return data.docs.map(mapDoc)
+  } catch {
+    return []
+  }
 }
 
 /**
@@ -39,8 +76,6 @@ export async function deleteQuestion(id: number): Promise<void> {
  * 批量删除所有问题。
  */
 export async function deleteAllQuestions(ids: number[]): Promise<void> {
-  // Payload CMS bulk delete: DELETE /api/questions with where clause
-  // We delete in parallel batches for speed
   const batchSize = 10
   for (let i = 0; i < ids.length; i += batchSize) {
     const batch = ids.slice(i, i + batchSize)
@@ -49,6 +84,59 @@ export async function deleteAllQuestions(ids: number[]): Promise<void> {
     ))
   }
 }
+
+// ─── Generation (Engine FastAPI) ─────────────────────────────────────────────
+
+/**
+ * Call the engine to generate new study questions via LLM.
+ * 调用 engine 后端用 LLM 从书籍内容生成学习问题。
+ *
+ * The engine also auto-scores + persists to Payload, so this is fire-and-forget
+ * from the frontend perspective — the questions will appear in Payload with scores.
+ */
+export async function generateQuestions(
+  bookIds: string[],
+  count = 6,
+  model?: string,
+): Promise<GeneratedQuestion[]> {
+  try {
+    const body: Record<string, unknown> = { book_ids: bookIds, count }
+    if (model) body.model = model
+    const res = await fetch(`${ENGINE}/engine/questions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    if (!res.ok) return []
+    const data = await res.json()
+    return data.questions ?? []
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Save a single generated question to Payload CMS (fire-and-forget).
+ * 将生成的问题保存到 Payload CMS。
+ */
+export async function saveQuestionToPayload(doc: {
+  question: string
+  bookId: string
+  bookTitle: string
+  topicHint: string
+  source: 'ai' | 'manual'
+  likes: number
+  category?: string
+  subcategory?: string
+}): Promise<void> {
+  await fetch('/api/questions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(doc),
+  })
+}
+
+// ─── Internal helpers ────────────────────────────────────────────────────────
 
 /** Map Payload doc → typed Question / 映射 Payload 文档到类型化 Question */
 function mapDoc(d: Record<string, any>): Question {

@@ -1,5 +1,5 @@
 /**
- * Question — AI-generated or user-submitted study question.
+ * Question — AI-generated or user-submitted study question (Payload CMS doc).
  * 存储自动生成或用户提交的学习问题，用于后续分析和复习。
  */
 export interface Question {
@@ -18,6 +18,17 @@ export interface Question {
   scoreDifficulty: number | null
   scoreOverall: number | null
   createdAt: string
+}
+
+/**
+ * GeneratedQuestion — raw question from LLM generation (engine response shape).
+ * LLM 生成返回的原始问题结构，尚未入库。
+ */
+export interface GeneratedQuestion {
+  question: string
+  book_id: string
+  book_title: string
+  topic_hint: string
 }
 
 /** Payload REST API response shape for questions collection */

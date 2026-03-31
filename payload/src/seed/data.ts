@@ -11,26 +11,6 @@
 
 export const llmModelsData = [
   {
-    name: 'qwen3.5:4b',
-    displayName: 'Qwen 3.5 4B',
-    provider: 'ollama',
-    description:
-      'Excellent multilingual model with strong Chinese and English support. Best balance of quality and speed for RAG tasks. Supports 128K context.',
-    useCases: ['RAG Q&A', 'Summarization', 'Translation', 'General'],
-    languages: 'en, zh, ja, ko, fr, de, es',
-    parameterSize: '4B',
-    contextWindow: 131072,
-    maxOutputTokens: 8192,
-    minRamGb: 6,
-    quantization: 'Q4_K_M',
-    isFree: true,
-    costPer1kInput: 0,
-    costPer1kOutput: 0,
-    isDefault: false,
-    isEnabled: true,
-    sortOrder: 1,
-  },
-  {
     name: 'qwen2.5:14b',
     displayName: 'Qwen 2.5 14B',
     provider: 'ollama',
@@ -48,7 +28,7 @@ export const llmModelsData = [
     costPer1kOutput: 0,
     isDefault: false,
     isEnabled: true,
-    sortOrder: 2,
+    sortOrder: 1,
   },
   {
     name: 'llama3.1:8b',
@@ -68,7 +48,7 @@ export const llmModelsData = [
     costPer1kOutput: 0,
     isDefault: false,
     isEnabled: true,
-    sortOrder: 3,
+    sortOrder: 2,
   },
   {
     name: 'deepseek-r1:8b',
@@ -88,7 +68,7 @@ export const llmModelsData = [
     costPer1kOutput: 0,
     isDefault: false,
     isEnabled: true,
-    sortOrder: 4,
+    sortOrder: 3,
   },
   {
     name: 'gpt-4o-mini',
@@ -108,7 +88,7 @@ export const llmModelsData = [
     costPer1kOutput: 0.0006,
     isDefault: true,
     isEnabled: true,
-    sortOrder: 9,
+    sortOrder: 4,
   },
   {
     name: 'gpt-4o',
@@ -128,7 +108,7 @@ export const llmModelsData = [
     costPer1kOutput: 0.01,
     isDefault: false,
     isEnabled: true,
-    sortOrder: 10,
+    sortOrder: 5,
   },
 ]
 

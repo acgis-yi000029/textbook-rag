@@ -314,33 +314,7 @@ export async function fetchDemo(): Promise<QueryResponse> {
   return queryTextbook({ question: 'What is BM25?', top_k: 3 })
 }
 
-// ─── Auto-generated Questions ────────────────────────────────────────────────
-
-export interface GeneratedQuestion {
-  question: string
-  book_id: string
-  book_title: string
-  topic_hint: string
-}
-
-export async function fetchGeneratedQuestions(
-  bookIds: string[],
-  count = 6,
-  model?: string,
-): Promise<GeneratedQuestion[]> {
-  try {
-    const body: Record<string, unknown> = { book_ids: bookIds, count }
-    if (model) body.model = model
-    const data = await request<{ questions: GeneratedQuestion[] }>(
-      `${ENGINE}/engine/questions`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      },
-    )
-    return data.questions ?? []
-  } catch {
-    return []
-  }
-}
+// ─── Auto-generated Questions (re-exported from questions module) ────────────
+// 问题生成已移至 @/features/questions 模块，此处保留 re-export 兼容旧引用
+export { generateQuestions as fetchGeneratedQuestions } from '@/features/questions'
+export type { GeneratedQuestion } from '@/features/questions'
