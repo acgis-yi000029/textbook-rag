@@ -10,6 +10,15 @@ textbook-rag/
 │   ├── __init__.py            # 版本号 + 模块文档
 │   ├── settings.py            # LlamaIndex Settings singleton + env config
 │   ├── schema.py              # 项目特定类型 (BookMeta, RAGResponse, SourceLocator)
+│   ├── chunking/              # ← llama_index.core.node_parser (aliased)
+│   │   ├── __init__.py        # Barrel: extract_chapters, build_chapter_ranges, assign_chapter
+│   │   └── chapter_extractor.py # Chapter/section heading detection + assignment
+│   ├── embeddings/            # ← llama_index.core.embeddings
+│   │   ├── __init__.py        # Barrel: resolve_embed_model, get_embed_info
+│   │   └── resolver.py        # HuggingFace / OpenAI embedding model resolver
+│   ├── toc/                   # (project-specific)
+│   │   ├── __init__.py        # Barrel: extract_toc, load_content_list
+│   │   └── extractor.py       # TOC extraction from MinerU content_list.json
 │   ├── readers/               # ← llama_index.core.readers
 │   │   └── mineru_reader.py   # MinerUReader(BaseReader) → Document[]
 │   ├── ingestion/             # ← llama_index.core.ingestion
@@ -32,6 +41,7 @@ textbook-rag/
 │       ├── deps.py            # DI: singleton QueryEngine
 │       └── routes/
 │           ├── health.py      # GET  /engine/health
+│           ├── books.py       # GET  /engine/books, /books/{id}/pdf, /books/{id}/toc
 │           ├── query.py       # POST /engine/query
 │           ├── ingest.py      # POST /engine/ingest
 │           ├── retrievers.py  # POST /engine/retrievers/search
@@ -53,16 +63,19 @@ textbook-rag/
 │   │   │   │   ├── login/     # 登录页
 │   │   │   │   ├── seed/      # 数据初始化
 │   │   │   │   └── engine/    # Engine Dashboard
-│   │   │   │       ├── page.tsx           # Dashboard 总览
-│   │   │   │       ├── analytics/         # 使用统计
-│   │   │   │       ├── evaluation/        # 质量评估
-│   │   │   │       ├── feedback/          # 反馈管理
-│   │   │   │       ├── ingestion/         # 数据摄入
-│   │   │   │       ├── llms/              # 模型管理
-│   │   │   │       ├── query_engine/      # 查询引擎
-│   │   │   │       ├── question_gen/      # 问题生成
-│   │   │   │       ├── response_synthesizers/ # Prompt 管理
-│   │   │   │       └── retrievers/        # 检索器调试
+│   │   │   │   ├── page.tsx           # Dashboard 总览
+│   │   │   │   ├── analytics/         # Analytics (project-specific)
+│   │   │   │   ├── chunking/          # Chunking (#1)
+│   │   │   │   ├── embeddings/        # Embeddings (#2)
+│   │   │   │   ├── toc/               # TOC (#3)
+│   │   │   │   ├── evaluation/        # Evaluation
+│   │   │   │   ├── feedback/          # Feedback (project-specific)
+│   │   │   │   ├── ingestion/         # Ingestion
+│   │   │   │   ├── llms/              # LLMs
+│   │   │   │   ├── query_engine/      # Query Engine
+│   │   │   │   ├── question_gen/      # Question Gen
+│   │   │   │   ├── response_synthesizers/ # Response Synthesizers
+│   │   │   │   └── retrievers/        # Retrievers
 │   │   │   └── (payload)/     # Payload Admin 自动生成
 │   │   ├── collections/       # Payload CMS collections
 │   │   │   ├── Books.ts
@@ -80,9 +93,13 @@ textbook-rag/
 │   │   │   ├── auth/          # 认证
 │   │   │   ├── chat/          # 聊天功能 (ChatPage, history, panel)
 │   │   │   ├── home/          # 首页
-│   │   │   ├── seed/          # 初始化数据
+│   │   │   ├── seed/          # 初始化数据 (SidebarLayout: preset/sync 分类)
+│   │   │   │   └── SeedPage.tsx # SidebarLayout 分类: All/预置(Users→users,LLMs→llms,Prompts→prompts)/Engine同步(Books→books)
 │   │   │   ├── engine/        # ⭐ Engine Dashboard 前端
-│   │   │   │   ├── index.ts   # Barrel export (mirrors engine_v2/ 8 modules)
+│   │   │   │   ├── index.ts   # Barrel export (mirrors engine_v2/ 11 modules)
+│   │   │   │   ├── chunking/
+│   │   │   │   ├── embeddings/
+│   │   │   │   ├── toc/
 │   │   │   │   ├── readers/
 │   │   │   │   ├── ingestion/
 │   │   │   │   ├── retrievers/
@@ -92,7 +109,9 @@ textbook-rag/
 │   │   │   │   ├── evaluation/
 │   │   │   │   └── question_gen/
 │   │   │   ├── shared/        # 公共 (Providers, AuthProvider, AppContext, i18n, theme)
-│   │   │   │   ├── components/ui/  # shadcn/ui 组件
+│   │   │   │   ├── components/
+│   │   │   │   │   ├── SidebarLayout.tsx # ⭐ 通用 sidebar+content 布局 (Library, Seed, Questions 复用)
+│   │   │   │   │   └── ui/        # shadcn/ui 组件
 │   │   │   │   ├── hooks/
 │   │   │   │   ├── i18n/
 │   │   │   │   ├── config/
@@ -110,7 +129,7 @@ textbook-rag/
 │   ├── raw_pdfs/              # 原始 PDF (textbooks/, ecdev/, real_estate/)
 │   ├── mineru_output/         # MinerU 解析输出
 │   ├── chroma_persist/        # ChromaDB 向量持久化
-│   └── textbook_rag.sqlite3   # Engine v1 SQLite (v2 不用)
+│   └── textbook_rag.sqlite3   # Engine v1 SQLite (v2 不用, 将废弃)
 │
 ├── .env                       # 环境变量 (v1 + v2 共用)
 ├── pyproject.toml             # Python 依赖 (含 llama-index-*)

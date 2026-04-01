@@ -76,15 +76,15 @@ def init_settings() -> None:
     Call once at startup (in api/app.py lifespan or script entry).
     Configures:
         Settings.llm        → resolved via llms.resolver (Azure or Ollama)
-        Settings.embed_model → HuggingFaceEmbedding
+        Settings.embed_model → resolved via embeddings.resolver (HuggingFace)
     """
     from llama_index.core.settings import Settings
-    from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
+    from engine_v2.embeddings import resolve_embed_model
     from engine_v2.llms.resolver import resolve_llm
 
-    # Embedding model (always local)
-    Settings.embed_model = HuggingFaceEmbedding(model_name=EMBEDDING_MODEL)
+    # Embedding model (delegates to embeddings/ module)
+    Settings.embed_model = resolve_embed_model()
 
     # LLM: delegate to llms/ module for provider routing
     Settings.llm = resolve_llm()

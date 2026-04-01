@@ -77,8 +77,8 @@ export default function StatusBadge({ status }: { status: BookStatus }) {
 }
 
 /**
- * StageDot — 单个阶段的状态小圆点
- * 用于表格中每个阶段字段
+ * StageDot — single-stage status dot (for table cells)
+ * Shows a colored dot with hover tooltip
  */
 export function StageDot({ value, label }: { value: StageStatus; label?: string }) {
   return (
@@ -107,28 +107,42 @@ export function StageDot({ value, label }: { value: StageStatus; label?: string 
   )
 }
 
+/* ── Stage pill style map ────────────────────────────────────────────── */
+const stageStyle: Record<StageStatus, {
+  bg: string; text: string; icon: typeof Check
+}> = {
+  done:    { bg: 'bg-emerald-500/10', text: 'text-emerald-500', icon: Check },
+  error:   { bg: 'bg-red-500/10',     text: 'text-red-500',     icon: AlertCircle },
+  pending: { bg: 'bg-muted',          text: 'text-muted-foreground/50', icon: Clock },
+}
+
 /**
- * PipelineProgress — 5 阶段横向进度 (用于卡片视图)
- * 从独立字段读取每个阶段状态
+ * PipelineProgress — compact inline stage pills
+ *
+ * Renders: [✓ Chunked] [✓ TOC] [✓ Vector]
+ * Each pill is self-descriptive — no hover required.
  */
 export function PipelineProgress({ pipeline }: { pipeline: PipelineStages }) {
   return (
-    <div className="flex items-center gap-1">
-      {PIPELINE_STAGE_CONFIGS.map((cfg, idx) => (
-        <div key={cfg.key} className="flex items-center">
-          {idx > 0 && (
-            <div
-              className={cn(
-                'w-3 h-px mx-0.5',
-                pipeline[cfg.key] === 'done' ? 'bg-emerald-500/50' :
-                pipeline[cfg.key] === 'error' ? 'bg-red-500/50' :
-                'bg-border'
-              )}
-            />
-          )}
-          <StageDot value={pipeline[cfg.key]} label={cfg.label} />
-        </div>
-      ))}
+    <div className="flex items-center gap-1 flex-wrap">
+      {PIPELINE_STAGE_CONFIGS.map((cfg) => {
+        const status = pipeline[cfg.key]
+        const style = stageStyle[status]
+        const Icon = style.icon
+
+        return (
+          <span
+            key={cfg.key}
+            className={cn(
+              'inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium',
+              style.bg, style.text,
+            )}
+          >
+            <Icon className="h-2.5 w-2.5" />
+            {cfg.label}
+          </span>
+        )
+      })}
     </div>
   )
 }

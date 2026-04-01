@@ -9,16 +9,15 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 from pathlib import Path
 from typing import Any, Iterable
 
 from llama_index.core.readers.base import BaseReader
 from llama_index.core.schema import Document
 
-logger = logging.getLogger(__name__)
+from engine_v2.chunking import assign_chapter, build_chapter_ranges, extract_chapters
 
-MAX_CHAPTERS_PER_BOOK = 80
+logger = logging.getLogger(__name__)
 
 
 class MinerUReader(BaseReader):
@@ -104,7 +103,7 @@ class MinerUReader(BaseReader):
         )
 
     # ------------------------------------------------------------------
-    # Internal helpers
+    # Internal helpers — text extraction and bbox normalisation
     # ------------------------------------------------------------------
 
     @staticmethod
@@ -158,74 +157,28 @@ class MinerUReader(BaseReader):
             ]
         return [float(v) for v in raw_bbox[:4]]
 
+    # ------------------------------------------------------------------
+    # Chapter structure — delegates to chunking/ module
+    # ------------------------------------------------------------------
+
     @staticmethod
     def _extract_chapters(content_list: list[dict]) -> list[dict]:
-        """Extract chapter headings from content_list."""
-        chapters: list[dict] = []
-        seen: set[str] = set()
-
-        for item in content_list:
-            if item.get("type") != "text" or item.get("text_level") != 1:
-                continue
-            text = item.get("text", "").strip()
-            if not (3 <= len(text) <= 300):
-                continue
-
-            m = re.match(
-                r"(?:chapter\s+)?(\d+)[.:\s]+(.{3,120})", text, re.IGNORECASE
-            )
-            if m:
-                key = f"ch{m.group(1).zfill(2)}"
-                if key not in seen:
-                    seen.add(key)
-                    chapters.append({
-                        "chapter_key": key,
-                        "title": m.group(2).strip().rstrip(".,: "),
-                        "page_idx": item.get("page_idx", 0),
-                    })
-                continue
-
-            m = re.match(
-                r"appendix\s+([A-Z])[.:\s]*(.{3,120})", text, re.IGNORECASE
-            )
-            if m:
-                key = f"app{m.group(1)}"
-                if key not in seen:
-                    seen.add(key)
-                    chapters.append({
-                        "chapter_key": key,
-                        "title": m.group(2).strip().rstrip(".,: "),
-                        "page_idx": item.get("page_idx", 0),
-                    })
-
-        return chapters[:MAX_CHAPTERS_PER_BOOK]
+        """Extract chapter headings (delegates to chunking.extract_chapters)."""
+        return extract_chapters(content_list)
 
     @staticmethod
     def _build_chapter_ranges(
         content_list: list[dict],
         chapters: list[dict],
     ) -> list[tuple[str, int, int]]:
-        """Build (chapter_key, start_page, end_page) ranges."""
-        if not chapters:
-            return []
-
-        max_page = max((item.get("page_idx", 0) for item in content_list), default=0)
-        total_pages = max_page + 1
-
-        ranges = []
-        for i, ch in enumerate(chapters):
-            start = ch["page_idx"]
-            end = chapters[i + 1]["page_idx"] if i + 1 < len(chapters) else total_pages
-            ranges.append((ch["chapter_key"], start, end))
-        return ranges
+        """Build chapter page ranges (delegates to chunking.build_chapter_ranges)."""
+        return build_chapter_ranges(content_list, chapters)
 
     @staticmethod
     def _assign_chapter(
         page_idx: int,
         ranges: list[tuple[str, int, int]],
     ) -> str | None:
-        """Assign a chapter key to a page index."""
-        for key, start, end in ranges:
-            if start <= page_idx < end:
-                return key
-        return None
+        """Assign chapter key to page (delegates to chunking.assign_chapter)."""
+        return assign_chapter(page_idx, ranges)
+

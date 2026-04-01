@@ -155,13 +155,21 @@ def _push_chunks_to_payload(nodes: list[BaseNode], book_id: int) -> None:
 
 
 def _update_book_status(book_id: int, chunk_count: int) -> None:
-    """Mark book as indexed in Payload CMS."""
+    """Mark book as indexed in Payload CMS with 3-stage pipeline."""
     import httpx
 
     try:
         httpx.patch(
             f"{PAYLOAD_URL}/api/books/{book_id}",
-            json={"status": "indexed", "chunkCount": chunk_count},
+            json={
+                "status": "indexed",
+                "chunkCount": chunk_count,
+                "pipeline": {
+                    "chunked": "done",
+                    "toc": "done",
+                    "vector": "done",
+                },
+            },
             headers=_payload_headers(),
             timeout=30.0,
         ).raise_for_status()

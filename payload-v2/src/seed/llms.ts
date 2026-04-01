@@ -1,6 +1,6 @@
 /**
  * seed/llms.ts — Default seed data for the LLMs collection.
- * Aligned with: engine-v2/llms/
+ * Aligned with: engine_v2/llms/
  */
 
 export const llmsData = [

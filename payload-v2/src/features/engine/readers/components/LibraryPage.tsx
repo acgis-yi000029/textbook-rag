@@ -22,9 +22,8 @@ import {
 import { useI18n } from '@/features/shared/i18n'
 import { useLibraryBooks } from '../useLibraryBooks'
 import type { LibraryBook, BookCategory } from '../types'
-import { PIPELINE_STAGE_CONFIGS } from '../types'
 import BookCard from './BookCard'
-import StatusBadge, { StageDot } from './StatusBadge'
+import { PipelineProgress } from './StatusBadge'
 import { cn } from '@/features/shared/utils'
 import { SidebarLayout, type SidebarItem, type ViewMode } from '@/features/shared/components/SidebarLayout'
 import { PipelineActions } from '@/features/engine/ingestion'
@@ -361,6 +360,7 @@ export default function LibraryPage() {
           {/* Sortable table header */}
           <div className="flex items-center gap-4 px-4 py-2 bg-muted/50 text-[11px] font-medium text-muted-foreground uppercase tracking-wider border-b border-border select-none">
             <span className="w-5 shrink-0" />
+            <span className="w-8 shrink-0" /> {/* cover thumbnail column */}
             <button
               onClick={() => toggleSort('title')}
               className="flex items-center gap-1 flex-1 group/th hover:text-foreground transition-colors"
@@ -370,7 +370,7 @@ export default function LibraryPage() {
             </button>
             <button
               onClick={() => toggleSort('authors')}
-              className="w-28 hidden sm:block text-right group/th hover:text-foreground transition-colors"
+              className="w-32 hidden sm:block text-right group/th hover:text-foreground transition-colors"
             >
               {isZh ? '作者' : 'Author'}
             </button>
@@ -386,19 +386,10 @@ export default function LibraryPage() {
             >
               Chunks
             </button>
-            {/* 5 pipeline stage columns */}
-            {PIPELINE_STAGE_CONFIGS.map((cfg) => (
-              <span key={cfg.key} className="w-10 hidden xl:block text-center" title={cfg.label}>
-                {cfg.label}
-              </span>
-            ))}
-            <button
-              onClick={() => toggleSort('status')}
-              className="flex items-center justify-center gap-1 w-20 group/th hover:text-foreground transition-colors"
-            >
-              {isZh ? '状态' : 'Status'}
-              <SortIcon field="status" />
-            </button>
+            {/* Pipeline column */}
+            <span className="w-36 hidden xl:block text-center">
+              Pipeline
+            </span>
           </div>
 
           {/* Table rows */}
@@ -426,15 +417,30 @@ export default function LibraryPage() {
                 {isChecked && <CheckSquare className="h-3.5 w-3.5" />}
               </div>
 
-              <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                <BookOpen className="h-4 w-4 text-muted-foreground shrink-0" />
-                <span className="text-sm text-foreground truncate">
-                  {book.title}
-                  <span className="text-muted-foreground">.pdf</span>
-                </span>
+              {/* Cover thumbnail */}
+              <div className="w-8 h-10 shrink-0 rounded overflow-hidden bg-muted">
+                {book.coverImage?.sizes?.thumbnail?.url ? (
+                  <img
+                    src={book.coverImage.sizes.thumbnail.url}
+                    alt={book.title}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <BookOpen className="h-3.5 w-3.5 text-muted-foreground/40" />
+                  </div>
+                )}
               </div>
 
-              <span className="w-28 hidden sm:block text-xs text-muted-foreground truncate text-right">
+              <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                <div className="min-w-0">
+                  <span className="text-sm text-foreground truncate block">
+                    {book.title}
+                  </span>
+                </div>
+              </div>
+
+              <span className="w-32 hidden sm:block text-xs text-muted-foreground truncate text-right">
                 {book.authors || '—'}
               </span>
 
@@ -446,15 +452,9 @@ export default function LibraryPage() {
                 {book.chunkCount || '—'}
               </span>
 
-              {/* 5 pipeline stage dots */}
-              {PIPELINE_STAGE_CONFIGS.map((cfg) => (
-                <div key={cfg.key} className="w-10 hidden xl:flex justify-center shrink-0">
-                  <StageDot value={book.pipeline[cfg.key]} label={cfg.label} />
-                </div>
-              ))}
-
-              <div className="w-20 flex justify-center shrink-0">
-                <StatusBadge status={book.status} />
+              {/* Pipeline progress pills */}
+              <div className="w-36 hidden xl:flex justify-center shrink-0">
+                <PipelineProgress pipeline={book.pipeline} />
               </div>
             </button>
           )})}

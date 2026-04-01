@@ -1,9 +1,10 @@
 /**
- * seed/endpoint.ts
+ * collections/endpoints/seed.ts
  * Payload Custom Endpoint: POST /api/seed
  *
  * Seeds default data into Payload collections using Local API.
- * Follows Payload's endpoint pattern (see: packages/payload/src/queues/endpoints/).
+ * Uses overrideAccess to bypass auth — seed runs during initial setup
+ * before any admin user exists.
  *
  * Body (optional): { collections?: string[] }
  *   - If omitted, seeds all collections
@@ -19,6 +20,7 @@ interface SeedResult {
   label: string
   created: number
   updated: number
+  skipped: number
   errors: string[]
 }
 
@@ -31,6 +33,7 @@ async function seedOne(
     label: col.label,
     created: 0,
     updated: 0,
+    skipped: 0,
     errors: [],
   }
 
@@ -38,23 +41,33 @@ async function seedOne(
     try {
       const uniqueValue = item[col.uniqueField] as string
 
+      // Use overrideAccess: true to bypass auth during seed
       const existing = await payload.find({
         collection: col.slug as any,
         where: { [col.uniqueField]: { equals: uniqueValue } },
         limit: 1,
+        overrideAccess: true,
       })
 
       if (existing.docs.length > 0) {
+        // For auth collections (users), skip update to avoid overwriting
+        // the user's potentially changed password
+        if (col.slug === 'users') {
+          result.skipped++
+          continue
+        }
         await payload.update({
           collection: col.slug as any,
           id: existing.docs[0].id,
           data: item as any,
+          overrideAccess: true,
         })
         result.updated++
       } else {
         await payload.create({
           collection: col.slug as any,
           data: item as any,
+          overrideAccess: true,
         })
         result.created++
       }

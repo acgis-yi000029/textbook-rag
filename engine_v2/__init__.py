@@ -3,8 +3,11 @@ Textbook RAG Engine v2 — LlamaIndex-native rewrite.
 
 Module naming follows llama_index.core.* conventions:
 
-    readers/                 — MinerUReader → Document[]
-    ingestion/               — IngestionPipeline + transformations → ChromaDB
+    chunking/                — Chapter extraction + text splitting (core.node_parser alias)
+    embeddings/              — Embedding model management (core.embeddings)
+    toc/                     — TOC extraction and structuring (project-specific)
+    readers/                 — MinerUReader → Document[] (uses chunking/)
+    ingestion/               — IngestionPipeline + transformations → ChromaDB (uses embeddings/)
     retrievers/              — HybridRetriever (BM25 + Vector → RRF)
     response_synthesizers/   — CitationSynthesizer (citation-aware generation)
     query_engine/            — RetrieverQueryEngine (retriever + synthesizer)

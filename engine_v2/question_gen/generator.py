@@ -18,8 +18,6 @@ from llama_index.core.settings import Settings
 from engine_v2.settings import (
     CHROMA_COLLECTION,
     CHROMA_PERSIST_DIR,
-    PAYLOAD_API_KEY,
-    PAYLOAD_URL,
 )
 
 logger = logging.getLogger(__name__)

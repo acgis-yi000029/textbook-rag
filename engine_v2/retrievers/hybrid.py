@@ -41,6 +41,9 @@ def get_hybrid_retriever(
     Both retrievers share the same VectorStoreIndex so they operate
     on the same set of nodes.
 
+    Falls back to vector-only retrieval when the collection is empty
+    (no documents ingested yet) to avoid BM25 crash on empty corpus.
+
     Args:
         similarity_top_k: Number of results to return.
         collection_name: ChromaDB collection name.
@@ -65,23 +68,42 @@ def get_hybrid_retriever(
     # Vector retriever
     vector_retriever = index.as_retriever(similarity_top_k=similarity_top_k)
 
-    # BM25 retriever (operates on the same nodes)
-    bm25_retriever = BM25Retriever.from_defaults(
-        index=index,
-        similarity_top_k=similarity_top_k,
-    )
+    # Check if the collection has documents before building BM25
+    # BM25Retriever crashes with ValueError on empty corpus (bm25s bug)
+    doc_count = collection.count()
+    retrievers_list = [vector_retriever]
+    weights = [1.0]
+
+    if doc_count > 0:
+        try:
+            bm25_retriever = BM25Retriever.from_defaults(
+                index=index,
+                similarity_top_k=similarity_top_k,
+            )
+            retrievers_list.append(bm25_retriever)
+            weights = [0.5, 0.5]
+            logger.info("BM25 retriever initialised (%d docs)", doc_count)
+        except (ValueError, Exception) as exc:
+            logger.warning("BM25 retriever unavailable, vector-only mode: %s", exc)
+    else:
+        logger.warning(
+            "Collection '%s' is empty — using vector-only retrieval. "
+            "Run ingestion to enable hybrid BM25+Vector mode.",
+            collection_name,
+        )
 
     # Fuse with Reciprocal Rank Fusion (k=60, industry standard)
     hybrid_retriever = QueryFusionRetriever(
-        retrievers=[vector_retriever, bm25_retriever],
-        retriever_weights=[0.5, 0.5],
+        retrievers=retrievers_list,
+        retriever_weights=weights,
         similarity_top_k=similarity_top_k,
         num_queries=1,  # no query augmentation, just fuse the two retrievers
         mode=FUSION_MODES.RECIPROCAL_RANK,
         use_async=False,
     )
 
+    mode = "hybrid BM25+Vector" if len(retrievers_list) > 1 else "vector-only"
     logger.info(
-        "HybridRetriever ready: vector + BM25 → RRF (top_k=%d)", similarity_top_k
+        "HybridRetriever ready: %s → RRF (top_k=%d)", mode, similarity_top_k
     )
     return hybrid_retriever

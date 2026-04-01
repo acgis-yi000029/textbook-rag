@@ -83,7 +83,7 @@ export async function generateQuestions(
   try {
     const body: Record<string, unknown> = { book_ids: bookIds, count }
     if (model) body.model = model
-    const res = await fetch(`${ENGINE}/engine/questions`, {
+    const res = await fetch(`${ENGINE}/engine/questions/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

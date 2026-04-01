@@ -2,12 +2,12 @@
 
 import { BookOpen, User, Hash, Layers } from 'lucide-react'
 import type { LibraryBook } from '../types'
-import StatusBadge, { PipelineProgress } from './StatusBadge'
+import { PipelineProgress } from './StatusBadge'
 
 /**
- * BookCard — 单本教材卡片
+ * BookCard — 单本教材卡片 (带封面 + 作者)
  *
- * 显示书名、作者、分类、chunk 数量、状态
+ * 显示封面、书名、作者、分类、chunk 数量、pipeline 进度、状态
  * 点击触发 onSelect 回调（跳转到 Chat 或展开详情）
  */
 interface BookCardProps {
@@ -21,76 +21,117 @@ const categoryLabels: Record<string, { label: string; color: string }> = {
   real_estate: { label: 'Real Estate', color: 'bg-teal-500/10 text-teal-400' },
 }
 
+/** Generate a consistent gradient from book title for placeholder covers */
+function titleToGradient(title: string): string {
+  let hash = 0
+  for (let i = 0; i < title.length; i++) {
+    hash = title.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  const h1 = Math.abs(hash) % 360
+  const h2 = (h1 + 40) % 360
+  return `linear-gradient(135deg, hsl(${h1}, 45%, 25%), hsl(${h2}, 55%, 18%))`
+}
+
+/** Extract initials from title for placeholder covers */
+function titleInitials(title: string): string {
+  return title
+    .split(/[\s_\-]+/)
+    .filter((w) => w.length > 0)
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join('')
+}
+
 export default function BookCard({ book, onSelect }: BookCardProps) {
   const cat = categoryLabels[book.category] ?? categoryLabels.textbook
   const pageCount = book.metadata?.pageCount ?? 0
   const chapterCount = book.metadata?.chapterCount ?? 0
+  const coverUrl =
+    book.coverImage?.sizes?.card?.url ??
+    book.coverImage?.sizes?.thumbnail?.url ??
+    book.coverImage?.url ??
+    null
 
   return (
     <button
       type="button"
       onClick={() => onSelect?.(book)}
-      className="relative w-full text-left group p-4 rounded-xl border border-border bg-card hover:bg-secondary/50
-                 transition-all duration-200 hover:shadow-md hover:border-primary/20"
+      className="relative w-full text-left group rounded-xl border border-border bg-card hover:bg-secondary/50
+                 transition-all duration-200 hover:shadow-md hover:border-primary/20 overflow-hidden"
     >
-      {/* Top row: category badge */}
-      <div className="mb-3">
-        <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${cat.color}`}>
+      {/* Cover image or gradient placeholder */}
+      <div className="relative w-full h-36 overflow-hidden">
+        {coverUrl ? (
+          <img
+            src={coverUrl}
+            alt={book.title}
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+        ) : (
+          <div
+            className="w-full h-full flex items-center justify-center transition-transform duration-300 group-hover:scale-105"
+            style={{ background: titleToGradient(book.title) }}
+          >
+            <span className="text-3xl font-bold text-white/30 select-none tracking-widest">
+              {titleInitials(book.title)}
+            </span>
+          </div>
+        )}
+        {/* Gradient overlay for readability */}
+        <div className="absolute inset-0 bg-gradient-to-t from-card/90 via-transparent to-transparent" />
+
+        {/* Category badge — overlaid on cover */}
+        <span
+          className={`absolute top-2 left-2 inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider backdrop-blur-sm ${cat.color}`}
+        >
           {cat.label}
         </span>
       </div>
 
-      {/* Title */}
-      <h3 className="text-sm font-semibold text-foreground line-clamp-2 mb-2 group-hover:text-primary transition-colors">
-        <BookOpen className="inline h-4 w-4 mr-1.5 -mt-0.5 text-muted-foreground" />
-        {book.title}
-      </h3>
+      {/* Content below the cover */}
+      <div className="p-4 pt-2">
+        {/* Title */}
+        <h3 className="text-sm font-semibold text-foreground line-clamp-2 mb-1 group-hover:text-primary transition-colors">
+          {book.title}
+        </h3>
 
-      {/* Author */}
-      {book.authors && (
+        {/* Author */}
         <p className="text-xs text-muted-foreground mb-3 truncate">
-          <User className="inline h-3 w-3 mr-1 -mt-0.5" />
-          {book.authors}
+          <User className="inline h-3 w-3 mr-1 -mt-0.5 opacity-60" />
+          {book.authors || 'Unknown Author'}
         </p>
-      )}
 
-      {/* Stats row */}
-      <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-        {pageCount > 0 && (
-          <span className="flex items-center gap-1">
-            <Hash className="h-3 w-3" />
-            {pageCount} pages
-          </span>
-        )}
-        {chapterCount > 0 && (
-          <span className="flex items-center gap-1">
-            <Layers className="h-3 w-3" />
-            {chapterCount} chapters
-          </span>
-        )}
-        {book.chunkCount && book.chunkCount > 0 && (
-          <span className="flex items-center gap-1">
-            <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="3" width="7" height="7" rx="1" />
-              <rect x="14" y="3" width="7" height="7" rx="1" />
-              <rect x="3" y="14" width="7" height="7" rx="1" />
-              <rect x="14" y="14" width="7" height="7" rx="1" />
-            </svg>
-            {book.chunkCount} chunks
-          </span>
-        )}
-      </div>
+        {/* Stats row */}
+        <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+          {pageCount > 0 && (
+            <span className="flex items-center gap-1">
+              <Hash className="h-3 w-3" />
+              {pageCount} pages
+            </span>
+          )}
+          {chapterCount > 0 && (
+            <span className="flex items-center gap-1">
+              <Layers className="h-3 w-3" />
+              {chapterCount} ch
+            </span>
+          )}
+          {book.chunkCount && book.chunkCount > 0 && (
+            <span className="flex items-center gap-1">
+              <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="3" width="7" height="7" rx="1" />
+                <rect x="14" y="3" width="7" height="7" rx="1" />
+                <rect x="3" y="14" width="7" height="7" rx="1" />
+                <rect x="14" y="14" width="7" height="7" rx="1" />
+              </svg>
+              {book.chunkCount}
+            </span>
+          )}
+        </div>
 
-      {/* Pipeline progress (visible when processing or indexed) */}
-      {(book.status === 'processing' || book.status === 'indexed') && (
+        {/* Pipeline stage pills */}
         <div className="mt-3 pt-3 border-t border-border">
           <PipelineProgress pipeline={book.pipeline} />
         </div>
-      )}
-
-      {/* Status badge — bottom-right */}
-      <div className="absolute bottom-3 right-3">
-        <StatusBadge status={book.status} />
       </div>
     </button>
   )

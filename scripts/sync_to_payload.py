@@ -312,10 +312,8 @@ def sync(args: argparse.Namespace):
             "chunkCount": book["chunk_count"],
             "pipeline": {
                 "chunked": "done",
-                "stored": "done",
-                "vector": "done",
-                "fts": "done",
                 "toc": "done",
+                "vector": "done",
             },
             "metadata": {
                 "pageCount": book["page_count"],
@@ -397,7 +395,7 @@ def fix_pipeline(args: argparse.Namespace):
     for doc in docs:
         pipeline = doc.get("pipeline") or {}
         # Skip if already has pipeline data
-        has_data = any(pipeline.get(k) and pipeline[k] != "pending" for k in ["chunked", "stored", "vector", "fts", "toc"])
+        has_data = any(pipeline.get(k) and pipeline[k] != "pending" for k in ["chunked", "toc", "vector"])
         if has_data:
             continue
 
@@ -412,10 +410,8 @@ def fix_pipeline(args: argparse.Namespace):
         client.update("books", doc["id"], {
             "pipeline": {
                 "chunked": stage_val,
-                "stored": stage_val,
-                "vector": stage_val,
-                "fts": stage_val,
                 "toc": stage_val,
+                "vector": stage_val,
             },
         })
         fixed += 1

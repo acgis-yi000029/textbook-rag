@@ -25,6 +25,9 @@ description: textbook-rag v2 演进路线图 — 从 LlamaIndex 基础到 Agenti
 - ✅ Evaluation (Faithfulness + Relevancy + Correctness)
 - ✅ QuestionGenerator (LLM-based study questions)
 - ✅ Payload 3 + PostgreSQL + GPT-style frontend
+- ✅ chunking/ — chapter/section extraction from MinerU content_list (node_parser alias)
+- ✅ embeddings/ — resolve_embed_model + get_embed_info (HuggingFace)
+- ✅ toc/ — TOC extraction and structuring (project-specific)
 
 ---
 
@@ -123,7 +126,7 @@ Orchestrator Agent
 ## 设计原则
 
 1. **LlamaIndex-native first** — 优先使用 LlamaIndex 内置组件，只在必要时自定义
-2. **三层对齐** — engine_v2 子包 ↔ llama_index.core.* ↔ features/engine/*
+2. **四层对齐** — engine_v2 子包 ↔ llama_index.core.* ↔ features/engine/* ↔ i18n keys
 3. **渐进式改造** — 每个 phase 独立可交付、可回滚
 4. **Settings singleton** — 所有模块通过 `Settings.llm` / `Settings.embed_model` 共享配置
 5. **API 薄层** — FastAPI routes 只是 thin wrapper，核心逻辑在子模块内

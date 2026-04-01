@@ -283,7 +283,7 @@ def stage_sync(
             "category": cat,
             "status": "indexed",
             "chunkCount": b["chunk_count"],
-            "pipeline": {k: "done" for k in ["chunked", "stored", "vector", "fts", "toc"]},
+            "pipeline": {k: "done" for k in ["chunked", "toc", "vector"]},
             "metadata": {
                 "pageCount": b["page_count"],
                 "chapterCount": b["chapter_count"],

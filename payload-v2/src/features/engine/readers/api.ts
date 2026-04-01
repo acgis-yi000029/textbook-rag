@@ -5,7 +5,7 @@
  * Payload CMS REST API wrappers for Books collection.
  */
 
-import type { LibraryBook, BookCategory, BookStatus } from './types'
+import type { LibraryBook, BookCategory, BookStatus, CoverImage } from './types'
 
 const PAYLOAD_BASE = '' // same-origin, proxied by Next.js
 
@@ -60,6 +60,19 @@ export async function deleteBook(id: number): Promise<void> {
   if (!res.ok) throw new Error(`Failed to delete book: ${res.status}`)
 }
 
+// ── Internal: map cover image from Payload response ─────────────────────────
+function mapCoverImage(raw: any): CoverImage | null {
+  if (!raw) return null
+  // Payload returns either an ID (number) or a populated object
+  if (typeof raw === 'number') return null
+  return {
+    id: raw.id,
+    url: raw.url ?? '',
+    alt: raw.alt ?? undefined,
+    sizes: raw.sizes ?? undefined,
+  }
+}
+
 // ── Internal: map Payload response → typed interface ────────────────────────
 function mapPayloadBook(raw: any): LibraryBook {
   const p = raw.pipeline ?? {}
@@ -70,6 +83,7 @@ function mapPayloadBook(raw: any): LibraryBook {
     title: raw.title ?? '(untitled)',
     authors: raw.authors ?? null,
     isbn: raw.isbn ?? null,
+    coverImage: mapCoverImage(raw.coverImage),
     category: raw.category ?? 'textbook',
     subcategory: raw.subcategory ?? null,
     status: raw.status ?? 'pending',
@@ -77,10 +91,8 @@ function mapPayloadBook(raw: any): LibraryBook {
     metadata: raw.metadata ?? null,
     pipeline: {
       chunked: p.chunked ?? 'pending',
-      stored: p.stored ?? 'pending',
-      vector: p.vector ?? 'pending',
-      fts: p.fts ?? 'pending',
       toc: p.toc ?? 'pending',
+      vector: p.vector ?? 'pending',
     },
     createdAt: raw.createdAt ?? '',
     updatedAt: raw.updatedAt ?? '',

@@ -9,7 +9,7 @@ export const Books: CollectionConfig = {
   endpoints: [syncEngineEndpoint],
   admin: {
     useAsTitle: 'title',
-    defaultColumns: ['title', 'category', 'subcategory', 'status', 'chunkCount', 'updatedAt'],
+    defaultColumns: ['title', 'authors', 'category', 'subcategory', 'status', 'chunkCount', 'updatedAt'],
     group: 'Content',
   },
   access: {
@@ -29,7 +29,7 @@ export const Books: CollectionConfig = {
       type: 'text',
       unique: true,
       index: true,
-      admin: { description: 'Maps to engine SQLite book_id (e.g. ramalho_fluent_python)' },
+      admin: { description: 'Maps to engine book_id (e.g. ramalho_fluent_python)' },
     },
     {
       name: 'title',
@@ -43,6 +43,12 @@ export const Books: CollectionConfig = {
     {
       name: 'isbn',
       type: 'text',
+    },
+    {
+      name: 'coverImage',
+      type: 'upload',
+      relationTo: 'media',
+      admin: { description: 'Book cover image (auto-generated or manually uploaded)' },
     },
     {
       name: 'category',
@@ -77,12 +83,15 @@ export const Books: CollectionConfig = {
       type: 'number',
       admin: { readOnly: true },
     },
-    // ── Pipeline stage status (一阶段一字段) ──
+    // ── Pipeline stage status (v2: 3 stages only) ──
+    // chunked: MinerUReader → Document[]
+    // toc:     TOC extraction from headings
+    // vector:  IngestionPipeline → ChromaDB (includes BM25 in-memory)
     {
       name: 'pipeline',
       type: 'group',
       admin: {
-        description: 'Processing pipeline stage status',
+        description: 'Processing pipeline stage status (chunked → toc → vector)',
       },
       fields: [
         {
@@ -94,40 +103,7 @@ export const Books: CollectionConfig = {
             { label: 'Done', value: 'done' },
             { label: 'Error', value: 'error' },
           ],
-          admin: { readOnly: true, width: '20%' },
-        },
-        {
-          name: 'stored',
-          type: 'select',
-          defaultValue: 'pending',
-          options: [
-            { label: 'Pending', value: 'pending' },
-            { label: 'Done', value: 'done' },
-            { label: 'Error', value: 'error' },
-          ],
-          admin: { readOnly: true, width: '20%' },
-        },
-        {
-          name: 'vector',
-          type: 'select',
-          defaultValue: 'pending',
-          options: [
-            { label: 'Pending', value: 'pending' },
-            { label: 'Done', value: 'done' },
-            { label: 'Error', value: 'error' },
-          ],
-          admin: { readOnly: true, width: '20%' },
-        },
-        {
-          name: 'fts',
-          type: 'select',
-          defaultValue: 'pending',
-          options: [
-            { label: 'Pending', value: 'pending' },
-            { label: 'Done', value: 'done' },
-            { label: 'Error', value: 'error' },
-          ],
-          admin: { readOnly: true, width: '20%' },
+          admin: { readOnly: true, width: '33%' },
         },
         {
           name: 'toc',
@@ -138,7 +114,18 @@ export const Books: CollectionConfig = {
             { label: 'Done', value: 'done' },
             { label: 'Error', value: 'error' },
           ],
-          admin: { readOnly: true, width: '20%' },
+          admin: { readOnly: true, width: '33%' },
+        },
+        {
+          name: 'vector',
+          type: 'select',
+          defaultValue: 'pending',
+          options: [
+            { label: 'Pending', value: 'pending' },
+            { label: 'Done', value: 'done' },
+            { label: 'Error', value: 'error' },
+          ],
+          admin: { readOnly: true, width: '33%' },
         },
       ],
     },

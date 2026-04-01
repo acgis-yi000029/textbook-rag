@@ -175,7 +175,7 @@ export async function registerModel(model: {
  * Remove a model from local Ollama installation via Engine API
  */
 export async function removeOllamaModel(modelName: string): Promise<void> {
-  const res = await fetch(`${ENGINE}/engine/models/${encodeURIComponent(modelName)}`, {
+  const res = await fetch(`${ENGINE}/engine/llms/models/${encodeURIComponent(modelName)}`, {
     method: 'DELETE',
     timeout: 30_000,
   } as RequestInit)
@@ -193,9 +193,9 @@ export async function removeOllamaModel(modelName: string): Promise<void> {
  * Detect availability for all providers via Engine API proxy
  *
  * Engine 暴露:
- *   GET /engine/models        → Ollama 本地模型列表
- *   GET /engine/providers     → 可用的 provider 列表
- *   GET /engine/models/check  → 完整的可用性检测（我们在此新建）
+ *   GET /engine/llms/models        → Ollama 本地模型列表
+ *   GET /engine/llms/providers     → 可用的 provider 列表
+ *   GET /engine/llms/models/check  → 完整的可用性检测（我们在此新建）
  */
 
 /** 检测 Ollama 本地模型可用性 / Check Ollama local model availability */
@@ -203,7 +203,7 @@ export async function checkOllamaModels(): Promise<ProviderHealth> {
   const start = Date.now()
   try {
     const data = await request<{ models: string[] }>(
-      `${ENGINE}/engine/models`
+      `${ENGINE}/engine/llms/models`
     )
     return {
       provider: 'ollama',
@@ -230,7 +230,7 @@ export async function checkCloudProviders(): Promise<ProviderHealth[]> {
   const start = Date.now()
   try {
     const data = await request<{ providers: string[] }>(
-      `${ENGINE}/engine/providers`
+      `${ENGINE}/engine/llms/providers`
     )
     const providers = data.providers || []
     const results: ProviderHealth[] = []
@@ -438,7 +438,7 @@ export async function fetchAvailableModels(): Promise<
     // Complete failure: fallback to engine /models endpoint
     try {
       const data = await request<{ models: string[] }>(
-        `${ENGINE}/engine/models`
+        `${ENGINE}/engine/llms/models`
       )
       return (data.models || []).map((name: string, i: number) => ({
         name,
@@ -485,7 +485,7 @@ export async function discoverLocalModels(): Promise<OllamaModelDetail[]> {
     // 先尝试 Engine 提供的详细端点
     // Try Engine's detailed endpoint first
     const data = await request<{ models: OllamaModelDetail[] }>(
-      `${ENGINE}/engine/models/discover`
+      `${ENGINE}/engine/llms/models/discover`
     )
     return data.models || []
   } catch {
@@ -493,7 +493,7 @@ export async function discoverLocalModels(): Promise<OllamaModelDetail[]> {
     // Fallback: use old endpoint, names only
     try {
       const data = await request<{ models: string[] }>(
-        `${ENGINE}/engine/models`
+        `${ENGINE}/engine/llms/models`
       )
       return (data.models || []).map((name) => ({
         name,

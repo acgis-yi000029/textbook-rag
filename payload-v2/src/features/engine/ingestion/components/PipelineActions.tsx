@@ -166,7 +166,7 @@ export default function PipelineActions({
       key: 'sync',
       icon: Database,
       label: isZh ? '同步 Engine → CMS' : 'Sync Engine → CMS',
-      desc: isZh ? '将 SQLite 数据同步到 Payload' : 'Sync SQLite data to Payload',
+      desc: isZh ? '扫描 Engine 文件系统同步到 Payload' : 'Sync Engine books to Payload',
       disabled: isRunning,
       onClick: handleSync,
     },

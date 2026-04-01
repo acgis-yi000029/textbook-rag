@@ -39,20 +39,55 @@ description: textbook-rag v2 开发工作流 — LlamaIndex-native 架构、Payl
 | L3 | `features/engine/` 子目录 + 路由路径 | = L2 子包名 |
 | L4 | i18n key + AppSidebar `titleKey` | `nav` + PascalCase(L2 子包名) |
 
+**L4 显示名规则**: Sidebar 显示名 = LlamaIndex 模块名的可读形式 (英文保持不变，中文也用英文模块名)。
+
 **四层对齐表:**
 
-| # | LlamaIndex Module | engine_v2/ | features/engine/ | Route | i18n Key | 显示名 (en/zh) |
-|---|-------------------|------------|------------------|-------|----------|----------------|
-| 1 | `core.readers` | `readers/` | `readers/` | `/readers` | `navReaders` | Library / 资料库 |
-| 2 | `core.ingestion` | `ingestion/` | `ingestion/` | `/engine/ingestion` | `navIngestion` | Ingestion / 数据导入 |
-| 3 | `core.retrievers` | `retrievers/` | `retrievers/` | `/engine/retrievers` | `navRetrievers` | Retrievers / 检索器 |
-| 4 | `core.response_synthesizers` | `response_synthesizers/` | `response_synthesizers/` | `/engine/response_synthesizers` | `navResponseSynthesizers` | Prompts / Prompt 管理 |
-| 5 | `core.query_engine` | `query_engine/` | `query_engine/` | `/engine/query_engine` | `navQueryEngine` | Query Engine / 查询引擎 |
-| 6 | `core.llms` | `llms/` | `llms/` | `/engine/llms` | `navLlms` | LLMs / LLMs |
-| 7 | `core.evaluation` | `evaluation/` | `evaluation/` | `/engine/evaluation` | `navEvaluation` | Evaluation / 质量评估 |
-| 8 | `core.question_gen` | `question_gen/` | `question_gen/` | `/engine/question_gen` | `navQuestionGen` | Questions / 问题库 |
+| # | LlamaIndex Module | engine_v2/ | features/engine/ | Route | i18n Key | 显示名 |
+|---|-------------------|------------|------------------|-------|----------|--------|
+| 1 | `core.node_parser` | `chunking/` ★ | `chunking/` | `/engine/chunking` | `navChunking` | Chunking |
+| 2 | `core.embeddings` | `embeddings/` | `embeddings/` | `/engine/embeddings` | `navEmbeddings` | Embeddings |
+| 3 | *(project)* | `toc/` | `toc/` | `/engine/toc` | `navToc` | TOC |
+| 4 | `core.readers` | `readers/` | `readers/` | `/readers` | `navReaders` | Readers |
+| 5 | `core.ingestion` | `ingestion/` | `ingestion/` | `/engine/ingestion` | `navIngestion` | Ingestion |
+| 6 | `core.retrievers` | `retrievers/` | `retrievers/` | `/engine/retrievers` | `navRetrievers` | Retrievers |
+| 7 | `core.response_synthesizers` | `response_synthesizers/` | `response_synthesizers/` | `/engine/response_synthesizers` | `navResponseSynthesizers` | Response Synthesizers |
+| 8 | `core.query_engine` | `query_engine/` | `query_engine/` | `/engine/query_engine` | `navQueryEngine` | Query Engine |
+| 9 | `core.llms` | `llms/` | `llms/` | `/engine/llms` | `navLlms` | LLMs |
+| 10 | `core.evaluation` | `evaluation/` | `evaluation/` | `/engine/evaluation` | `navEvaluation` | Evaluation |
+| 11 | `core.question_gen` | `question_gen/` | `question_gen/` | `/engine/question_gen` | `navQuestionGen` | Question Gen |
+
+> ★ `chunking` 是 `core.node_parser` 的别名（convention over alignment — 业界通用叫法）。
+
+**非 LlamaIndex 对齐页面 (project-specific):**
+
+| 模块 | Route | 说明 |
+|------|-------|------|
+| analytics | `/engine/analytics` | 使用统计 (project-specific) |
+| feedback | `/engine/feedback` | 反馈管理 (project-specific) |
+| chat | `/chat` | 聊天主页面 |
+| seed | `/seed` | 数据初始化 |
+| settings | `/settings` | 用户设置 |
 
 > **新增模块时**: 必须同时创建 L2 子包 + L3 feature 子目录 + L3 路由页面 + L4 i18n key + L4 AppSidebar entry。缺一不可。
+
+### Engine v2 API 路由映射 (FastAPI → 前端调用)
+
+**router prefix 规则**: 对齐 LlamaIndex 的子模块带 prefix 挂载。前端调用时必须包含 prefix。
+
+| FastAPI Router | prefix | 实际路径示例 | 前端调用 URL |
+|----------------|--------|--------------|--------------|
+| `health.router` | `/engine` | `GET /engine/health` | `${ENGINE}/engine/health` |
+| `books.router` | `/engine` | `GET /engine/books/{id}/toc` | `${ENGINE}/engine/books/{id}/toc` |
+| `query.router` | `/engine` | `POST /engine/query` | `${ENGINE}/engine/query` |
+| `ingest.router` | `/engine` | `POST /engine/ingest` | `${ENGINE}/engine/ingest` |
+| `questions.router` | `/engine` | `POST /engine/questions/generate` | `${ENGINE}/engine/questions/generate` |
+| `llms.router` | `/engine` + `/llms` | `GET /engine/llms/models` | `${ENGINE}/engine/llms/models` |
+| | | `GET /engine/llms/providers` | `${ENGINE}/engine/llms/providers` |
+| `retrievers.router` | `/engine` | `POST /engine/retrievers/search` | `${ENGINE}/engine/retrievers/search` |
+| `evaluation.router` | `/engine` | `POST /engine/evaluation/single` | `${ENGINE}/engine/evaluation/single` |
+
+> ⚠️ `llms.router` 自带 `prefix="/llms"`，所以最终路径是 `/engine/llms/...`，不是 `/engine/models`。前端 API 文件中的 URL 必须与此表一致。
 
 ### 代码质量底线
 
@@ -61,6 +96,14 @@ description: textbook-rag v2 开发工作流 — LlamaIndex-native 架构、Payl
 - 无 magic number，无 console.log，无硬编码密钥
 - Engine v2: docstring 对齐 LlamaIndex 模块（`"""Aligns with llama_index.core.xxx."""`）
 - Payload v2: 使用语义 Tailwind token（`bg-card` 不是 `bg-gray-800`）
+
+### 已知坑 (Known Gotchas)
+
+| 坑 | 触发条件 | 解决方案 |
+|----|----------|----------|
+| BM25 空语料崩溃 | ChromaDB collection 为空时调用 `BM25Retriever.from_defaults()` | `hybrid.py` 已加 `collection.count()` 前置检查，自动降级 vector-only 模式 |
+| 前端 404 路由不匹配 | 前端用 `/engine/models` 但后端是 `/engine/llms/models` | 前端 API 文件 URL 必须包含 router prefix (见路由映射表) |
+| `NEXT_PUBLIC_ENGINE_URL` 未设置 | Payload v2 前端调用 Engine API | 默认 `http://localhost:8000`，v2 应改为 `http://localhost:8001` |
 
 ### 代码溯源（Textbook + Source Code）
 

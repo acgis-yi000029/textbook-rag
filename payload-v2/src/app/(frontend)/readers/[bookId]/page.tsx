@@ -8,6 +8,8 @@ import {
 } from 'lucide-react'
 import { useI18n } from '@/features/shared/i18n/I18nProvider'
 import { cn } from '@/features/shared/utils'
+import { PipelineProgress } from '@/features/engine/readers/components/StatusBadge'
+import type { PipelineStages } from '@/features/engine/readers/types'
 
 interface BookInfo {
   id: number
@@ -16,13 +18,7 @@ interface BookInfo {
   category: string
   status: string
   chunkCount: number
-  pipeline: {
-    chunked: string
-    stored: string
-    vector: string
-    fts: string
-    toc: string
-  }
+  pipeline: PipelineStages
 }
 
 interface Chapter {
@@ -51,18 +47,7 @@ const CONTENT_TYPE_ICON: Record<string, typeof Type> = {
   code: FileText,
 }
 
-function PipelineBadge({ stage, status }: { stage: string; status: string }) {
-  return (
-    <span className={cn(
-      'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium',
-      status === 'done' ? 'bg-emerald-500/10 text-emerald-400' :
-      status === 'error' ? 'bg-red-500/10 text-red-400' :
-      'bg-muted text-muted-foreground'
-    )}>
-      {stage}: {status}
-    </span>
-  )
-}
+
 
 export default function Page({ params }: { params: Promise<{ bookId: string }> }) {
   const resolvedParams = use(params)
@@ -97,10 +82,8 @@ export default function Page({ params }: { params: Promise<{ bookId: string }> }
           chunkCount: b.chunkCount ?? 0,
           pipeline: {
             chunked: b.pipeline?.chunked ?? 'pending',
-            stored: b.pipeline?.stored ?? 'pending',
-            vector: b.pipeline?.vector ?? 'pending',
-            fts: b.pipeline?.fts ?? 'pending',
             toc: b.pipeline?.toc ?? 'pending',
+            vector: b.pipeline?.vector ?? 'pending',
           },
         })
       }
@@ -179,12 +162,8 @@ export default function Page({ params }: { params: Promise<{ bookId: string }> }
           <span>{chapters.length} {isZh ? '章节' : 'chapters'}</span>
         </div>
 
-        <div className="flex items-center gap-2 mt-2">
-          <PipelineBadge stage="Chunk" status={book.pipeline.chunked} />
-          <PipelineBadge stage="Store" status={book.pipeline.stored} />
-          <PipelineBadge stage="Vector" status={book.pipeline.vector} />
-          <PipelineBadge stage="FTS" status={book.pipeline.fts} />
-          <PipelineBadge stage="TOC" status={book.pipeline.toc} />
+        <div className="mt-2 max-w-xs">
+          <PipelineProgress pipeline={book.pipeline} />
         </div>
       </div>
 

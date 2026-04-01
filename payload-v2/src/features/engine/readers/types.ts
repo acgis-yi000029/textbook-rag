@@ -15,24 +15,23 @@ export type BookCategory = 'textbook' | 'ecdev' | 'real_estate'
 export type StageStatus = 'pending' | 'done' | 'error'
 
 /**
- * Pipeline stages — maps to engine-v2/ingestion/pipeline.py
+ * Pipeline stages — maps to engine-v2/ingestion/pipeline.py (v2, LlamaIndex-native)
  *
- *   chunked — MinerU → chunks[]
- *   stored  — chunks → Payload PG
- *   vector  — chunks → ChromaDB
- *   fts     — chunks → SQLite FTS5
- *   toc     — TOC extraction
+ *   chunked — MinerUReader → Document[] (BaseReader.load_data)
+ *   toc     — TOC extraction from headings (project-specific)
+ *   vector  — IngestionPipeline → ChromaDB (includes BM25 in-memory)
+ *
+ * v1 had 5 stages (chunked/stored/vector/fts/toc).
+ * v2 drops "stored" (atomic in IngestionPipeline) and "fts" (BM25 is in-memory).
  */
 export interface PipelineStages {
   chunked: StageStatus
-  stored: StageStatus
-  vector: StageStatus
-  fts: StageStatus
   toc: StageStatus
+  vector: StageStatus
 }
 
 // ── Stage keys and display config ───────────────────────────────────────────
-export const PIPELINE_STAGE_KEYS = ['chunked', 'stored', 'vector', 'fts', 'toc'] as const
+export const PIPELINE_STAGE_KEYS = ['chunked', 'toc', 'vector'] as const
 export type PipelineStageKey = (typeof PIPELINE_STAGE_KEYS)[number]
 
 export interface PipelineStageConfig {
@@ -43,11 +42,20 @@ export interface PipelineStageConfig {
 
 export const PIPELINE_STAGE_CONFIGS: PipelineStageConfig[] = [
   { key: 'chunked', label: 'Chunked', labelZh: '分块' },
-  { key: 'stored',  label: 'Stored',  labelZh: '存储' },
-  { key: 'vector',  label: 'Vector',  labelZh: '向量' },
-  { key: 'fts',     label: 'FTS',     labelZh: 'FTS' },
   { key: 'toc',     label: 'TOC',     labelZh: 'TOC' },
+  { key: 'vector',  label: 'Vector',  labelZh: '向量' },
 ]
+
+// ── Cover image from Payload Media upload ───────────────────────────────────
+export interface CoverImage {
+  id: number
+  url: string
+  alt?: string
+  sizes?: {
+    thumbnail?: { url: string; width: number; height: number }
+    card?: { url: string; width: number; height: number }
+  }
+}
 
 // ── Full book record from Payload REST API ──────────────────────────────────
 export interface LibraryBook {
@@ -56,6 +64,7 @@ export interface LibraryBook {
   title: string
   authors: string | null
   isbn: string | null
+  coverImage: CoverImage | null
   category: BookCategory
   subcategory: string | null
   status: BookStatus
