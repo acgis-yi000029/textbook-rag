@@ -1,0 +1,231 @@
+"""MinerUReader — reads MinerU content_list.json into LlamaIndex Documents.
+
+Aligns with llama_index.core.readers.base.BaseReader interface.
+Each content item (text / table / image caption) becomes one Document
+with rich metadata (page, bbox, content_type, chapter).
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+import re
+from pathlib import Path
+from typing import Any, Iterable
+
+from llama_index.core.readers.base import BaseReader
+from llama_index.core.schema import Document
+
+logger = logging.getLogger(__name__)
+
+MAX_CHAPTERS_PER_BOOK = 80
+
+
+class MinerUReader(BaseReader):
+    """Read MinerU auto-parsed output for one book into LlamaIndex Documents.
+
+    Each item in content_list.json becomes a Document with metadata:
+        - book_id, category, content_type, page_idx
+        - bbox (normalised to PDF points)
+        - chapter_key, reading_order
+    """
+
+    def __init__(self, mineru_dir: Path | str) -> None:
+        self._mineru_dir = Path(mineru_dir)
+
+    def lazy_load_data(  # type: ignore[override]
+        self,
+        book_dir_name: str,
+        category: str = "textbook",
+        **kwargs: Any,
+    ) -> Iterable[Document]:
+        """Yield one Document per content item.
+
+        Args:
+            book_dir_name: Directory name of the book under mineru_dir/category/
+            category: textbook | ecdev | real_estate
+        """
+        auto_dir = (
+            self._mineru_dir / category / book_dir_name / book_dir_name / "auto"
+        )
+        content_list_path = auto_dir / f"{book_dir_name}_content_list.json"
+        middle_json_path = auto_dir / f"{book_dir_name}_middle.json"
+
+        if not content_list_path.exists():
+            logger.warning("content_list.json not found: %s", content_list_path)
+            return
+
+        with open(content_list_path, "r", encoding="utf-8") as f:
+            content_list: list[dict] = json.load(f)
+
+        page_sizes = self._load_page_sizes(middle_json_path)
+        chapters = self._extract_chapters(content_list)
+        chapter_ranges = self._build_chapter_ranges(content_list, chapters)
+
+        reading_order = 0
+        for item in content_list:
+            item_type = item.get("type", "")
+            if item_type == "discarded":
+                continue
+
+            text = self._extract_text(item, item_type)
+            if not text:
+                continue
+
+            page_idx = item.get("page_idx", 0)
+            bbox = self._normalise_bbox(
+                item.get("bbox", [0, 0, 0, 0]),
+                page_idx,
+                page_sizes,
+            )
+
+            chapter_key = self._assign_chapter(page_idx, chapter_ranges)
+
+            doc_id = f"{book_dir_name}_{reading_order:06d}"
+            yield Document(
+                doc_id=doc_id,
+                text=text,
+                metadata={
+                    "book_id": book_dir_name,
+                    "category": category,
+                    "content_type": item_type,
+                    "page_idx": page_idx,
+                    "bbox": bbox,
+                    "chapter_key": chapter_key,
+                    "reading_order": reading_order,
+                    "text_level": item.get("text_level"),
+                },
+                excluded_llm_metadata_keys=["bbox", "reading_order"],
+            )
+            reading_order += 1
+
+        logger.info(
+            "MinerUReader: loaded %d documents from %s", reading_order, book_dir_name
+        )
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _extract_text(item: dict, item_type: str) -> str:
+        """Extract text content from a MinerU content item."""
+        text = item.get("text", "").strip()
+        if not text and item_type == "table":
+            text = item.get("table_body", "")
+        if not text and item_type == "image":
+            captions = item.get("image_caption", [])
+            text = " ".join(captions) if captions else ""
+        return text.strip()
+
+    @staticmethod
+    def _load_page_sizes(path: Path) -> dict[int, tuple[float, float]]:
+        """Load page dimensions from middle.json."""
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except (json.JSONDecodeError, FileNotFoundError, OSError):
+            return {}
+
+        pages = data.get("pdf_info", data) if isinstance(data, dict) else data
+        if not isinstance(pages, list):
+            return {}
+
+        result: dict[int, tuple[float, float]] = {}
+        for page in pages:
+            idx = page.get("page_idx")
+            size = page.get("page_size")
+            if idx is not None and size and len(size) == 2:
+                result[idx] = (float(size[0]), float(size[1]))
+        return result
+
+    @staticmethod
+    def _normalise_bbox(
+        raw_bbox: list,
+        page_idx: int,
+        page_sizes: dict[int, tuple[float, float]],
+    ) -> list[float]:
+        """Convert normalised 1000x1000 canvas → PDF points."""
+        if len(raw_bbox) < 4:
+            return [0.0, 0.0, 0.0, 0.0]
+        pw, ph = page_sizes.get(page_idx, (0.0, 0.0))
+        if pw and ph:
+            return [
+                raw_bbox[0] / 1000 * pw,
+                raw_bbox[1] / 1000 * ph,
+                raw_bbox[2] / 1000 * pw,
+                raw_bbox[3] / 1000 * ph,
+            ]
+        return [float(v) for v in raw_bbox[:4]]
+
+    @staticmethod
+    def _extract_chapters(content_list: list[dict]) -> list[dict]:
+        """Extract chapter headings from content_list."""
+        chapters: list[dict] = []
+        seen: set[str] = set()
+
+        for item in content_list:
+            if item.get("type") != "text" or item.get("text_level") != 1:
+                continue
+            text = item.get("text", "").strip()
+            if not (3 <= len(text) <= 300):
+                continue
+
+            m = re.match(
+                r"(?:chapter\s+)?(\d+)[.:\s]+(.{3,120})", text, re.IGNORECASE
+            )
+            if m:
+                key = f"ch{m.group(1).zfill(2)}"
+                if key not in seen:
+                    seen.add(key)
+                    chapters.append({
+                        "chapter_key": key,
+                        "title": m.group(2).strip().rstrip(".,: "),
+                        "page_idx": item.get("page_idx", 0),
+                    })
+                continue
+
+            m = re.match(
+                r"appendix\s+([A-Z])[.:\s]*(.{3,120})", text, re.IGNORECASE
+            )
+            if m:
+                key = f"app{m.group(1)}"
+                if key not in seen:
+                    seen.add(key)
+                    chapters.append({
+                        "chapter_key": key,
+                        "title": m.group(2).strip().rstrip(".,: "),
+                        "page_idx": item.get("page_idx", 0),
+                    })
+
+        return chapters[:MAX_CHAPTERS_PER_BOOK]
+
+    @staticmethod
+    def _build_chapter_ranges(
+        content_list: list[dict],
+        chapters: list[dict],
+    ) -> list[tuple[str, int, int]]:
+        """Build (chapter_key, start_page, end_page) ranges."""
+        if not chapters:
+            return []
+
+        max_page = max((item.get("page_idx", 0) for item in content_list), default=0)
+        total_pages = max_page + 1
+
+        ranges = []
+        for i, ch in enumerate(chapters):
+            start = ch["page_idx"]
+            end = chapters[i + 1]["page_idx"] if i + 1 < len(chapters) else total_pages
+            ranges.append((ch["chapter_key"], start, end))
+        return ranges
+
+    @staticmethod
+    def _assign_chapter(
+        page_idx: int,
+        ranges: list[tuple[str, int, int]],
+    ) -> str | None:
+        """Assign a chapter key to a page index."""
+        for key, start, end in ranges:
+            if start <= page_idx < end:
+                return key
+        return None
