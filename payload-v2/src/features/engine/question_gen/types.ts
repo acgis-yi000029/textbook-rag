@@ -40,3 +40,5 @@ export interface QuestionsApiResponse {
   totalPages: number
   page: number
 }
+
+// NOTE: BookSummary moved to @/features/shared/books as BookBase

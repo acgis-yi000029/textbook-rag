@@ -1,10 +1,9 @@
 import { useEffect, useState, useMemo } from "react";
-import { Library, BookOpen, Building2, Home, Layers, LayoutGrid, List } from "lucide-react";
-import { fetchBooks } from "@/features/engine/query_engine";
+import { Library, BookOpen, Building2, Home, Layers } from "lucide-react";
+import { fetchIndexedBooks, useBookSidebar, type BookBase } from "@/features/shared/books";
 import { useAppDispatch, useAppState } from "@/features/shared/AppContext";
 import { cn } from "@/features/shared/utils";
-import { SidebarLayout, type SidebarItem, type ViewMode } from "@/features/shared/components/SidebarLayout";
-import type { BookSummary } from "@/features/engine/query_engine";
+import { SidebarLayout, type ViewMode } from "@/features/shared/components/SidebarLayout";
 
 /**
  * BookPicker — pre-session book selection with SidebarLayout
@@ -13,6 +12,12 @@ import type { BookSummary } from "@/features/engine/query_engine";
  * - Main area: Card view / List view toggle
  * - Footer: "Start Chat" CTA
  */
+
+const CATEGORY_ICONS: Record<string, React.ReactNode> = {
+  textbook:    <BookOpen  className={cn('h-4 w-4 shrink-0', 'text-blue-400')} />,
+  ecdev:       <Building2 className={cn('h-4 w-4 shrink-0', 'text-emerald-400')} />,
+  real_estate: <Home      className={cn('h-4 w-4 shrink-0', 'text-amber-400')} />,
+}
 
 const CATEGORY_CONFIG: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   textbook: { label: "Textbooks", icon: BookOpen, color: "text-blue-400" },
@@ -33,7 +38,7 @@ export default function BookPicker() {
       setLoadingBooks(false);
       return;
     }
-    fetchBooks()
+    fetchIndexedBooks()
       .then((b) => {
         dispatch({ type: "SET_BOOKS", books: b });
         setLoadingBooks(false);
@@ -55,67 +60,16 @@ export default function BookPicker() {
     dispatch({ type: "START_SESSION", bookIds: [...selected] });
   }
 
-  // ── Compute category → subcategory tree ────────────────────────────────────
-  const { categoryCounts, subcategoryMap } = useMemo(() => {
-    const counts: Record<string, number> = { all: books.length };
-    const subMap: Record<string, Set<string>> = {};
-
-    for (const b of books) {
-      const cat = b.category || "textbook";
-      counts[cat] = (counts[cat] || 0) + 1;
-      if (b.subcategory) {
-        const subKey = `${cat}::${b.subcategory}`;
-        counts[subKey] = (counts[subKey] || 0) + 1;
-        if (!subMap[cat]) subMap[cat] = new Set();
-        subMap[cat].add(b.subcategory);
-      }
-    }
-    return { categoryCounts: counts, subcategoryMap: subMap };
-  }, [books]);
+  // ── Book sidebar (via shared hook) ──────────────────────────────────────────
+  const { sidebarItems, filterBooks } = useBookSidebar(books, {
+    mode: 'by-category',
+    allLabel: 'All Books',
+    allIcon: <Layers className="h-4 w-4 shrink-0" />,
+    categoryIcons: CATEGORY_ICONS,
+  });
 
   // ── Filtered books ─────────────────────────────────────────────────────────
-  const displayBooks = useMemo(() => {
-    if (filter === "all") return books;
-    // Subcategory filter: "category::subcategory"
-    if (filter.includes("::")) {
-      const [cat, sub] = filter.split("::");
-      return books.filter((b) => (b.category || "textbook") === cat && b.subcategory === sub);
-    }
-    // Category filter
-    return books.filter((b) => (b.category || "textbook") === filter);
-  }, [books, filter]);
-
-  // ── Sidebar items: Category → Subcategory hierarchy ────────────────────────
-  const sidebarItems = useMemo<SidebarItem[]>(() => {
-    const items: SidebarItem[] = [
-      { key: "all", label: "All Books", count: categoryCounts.all || 0, icon: <Layers className="h-4 w-4 shrink-0" /> },
-    ];
-    for (const [catKey, cfg] of Object.entries(CATEGORY_CONFIG)) {
-      const count = categoryCounts[catKey] || 0;
-      if (count === 0) continue;
-      const Icon = cfg.icon;
-      items.push({
-        key: catKey,
-        label: cfg.label,
-        count,
-        icon: <Icon className={cn("h-4 w-4 shrink-0", cfg.color)} />,
-      });
-      // Subcategories under this category
-      const subs = subcategoryMap[catKey];
-      if (subs) {
-        for (const sub of [...subs].sort()) {
-          const subKey = `${catKey}::${sub}`;
-          items.push({
-            key: subKey,
-            label: sub,
-            count: categoryCounts[subKey] || 0,
-            indent: true,
-          });
-        }
-      }
-    }
-    return items;
-  }, [categoryCounts, subcategoryMap]);
+  const displayBooks = useMemo(() => filterBooks(filter), [filter, filterBooks]);
 
   const canStart = selected.size > 0;
 
@@ -203,7 +157,7 @@ function SelectAllButton({
   selected,
   onSelectChange,
 }: {
-  books: BookSummary[];
+  books: BookBase[];
   selected: Set<number>;
   onSelectChange: (s: Set<number>) => void;
 }) {
@@ -230,7 +184,7 @@ function BookCard({
   checked,
   onToggle,
 }: {
-  book: BookSummary;
+  book: BookBase;
   checked: boolean;
   onToggle: (id: number) => void;
 }) {
@@ -290,7 +244,7 @@ function BookTable({
   selected,
   onToggle,
 }: {
-  books: BookSummary[];
+  books: BookBase[];
   selected: Set<number>;
   onToggle: (id: number) => void;
 }) {

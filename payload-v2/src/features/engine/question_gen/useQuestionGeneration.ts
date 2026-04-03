@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import type { BookSummary } from '@/features/engine/query_engine/types'
+import type { BookBase } from '@/features/shared/books'
 import type { GeneratedQuestion } from './types'
 import { generateQuestions, saveQuestionToPayload } from './api'
 
@@ -25,7 +25,7 @@ export interface UseQuestionGenerationReturn {
 }
 
 export function useQuestionGeneration(
-  sessionBooks: BookSummary[],
+  sessionBooks: BookBase[],
   count = 3,
 ): UseQuestionGenerationReturn {
   const [questions, setQuestions] = useState<GeneratedQuestion[]>([])

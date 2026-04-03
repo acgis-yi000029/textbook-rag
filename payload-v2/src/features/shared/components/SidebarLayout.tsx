@@ -20,7 +20,7 @@
 'use client'
 
 import { useState, type ReactNode } from 'react'
-import { LayoutGrid, List, Loader2, AlertCircle, RefreshCw, Folder, FolderOpen } from 'lucide-react'
+import { LayoutGrid, List, Loader2, AlertCircle, RefreshCw, Folder, FolderOpen, ChevronRight } from 'lucide-react'
 import { cn } from '@/features/shared/utils'
 import ResizeHandle from '@/features/shared/ResizeHandle'
 
@@ -35,14 +35,18 @@ export interface SidebarItem {
   label: string
   /** 计数 / Count badge */
   count?: number
-  /** 缩进展示（子分类）/ Indent (sub-category) */
+  /** 缩进展示（子分类）/ Indent (sub-category) — alias for indentLevel=1 */
   indent?: boolean
+  /** 多级缩进 / Multi-level indent (0=root, 1=sub, 2=sub-sub) */
+  indentLevel?: number
   /** 高亮展示（如"新发现"）/ Highlight style */
   highlight?: boolean
   /** 自定义图标 / Custom icon (replaces folder icon) */
   icon?: ReactNode
   /** 分隔线显示在此项之前 / Show divider before this item */
   dividerBefore?: boolean
+  /** 可折叠（点击展开/收起子项）/ Collapsible group header */
+  collapsible?: boolean
 }
 
 export interface SidebarLayoutProps {
@@ -133,6 +137,9 @@ export function SidebarLayout({
   // ── Resizable sidebar width ──
   const [sbWidth, setSbWidth] = useState(sidebarWidthPx)
 
+  // ── Collapsible state (default: all collapsed) ──
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+
   // ── Full-page loading ──
   if (loading) {
     return (
@@ -181,24 +188,59 @@ export function SidebarLayout({
 
         {/* Sidebar items */}
         <nav className="flex-1 overflow-y-auto py-2 px-1.5">
-          {sidebarItems.map((item) => {
+          {sidebarItems.map((item, idx) => {
             const isActive = activeFilter === item.key
+
+            // Determine if this item is a child of a collapsed parent
+            const itemLevel = item.indentLevel ?? (item.indent ? 1 : 0)
+            if (itemLevel > 0) {
+              // Walk backward to find the nearest collapsible ancestor
+              let parentKey: string | null = null
+              for (let i = idx - 1; i >= 0; i--) {
+                const prev = sidebarItems[i]
+                const prevLevel = prev.indentLevel ?? (prev.indent ? 1 : 0)
+                if (prevLevel < itemLevel) {
+                  if (prev.collapsible) parentKey = prev.key
+                  break
+                }
+              }
+              if (parentKey && !expanded.has(parentKey)) return null
+            }
+
             return (
               <div key={item.key}>
                 {item.dividerBefore && (
                   <div className="my-2 mx-2 border-t border-border" />
                 )}
                 <button
-                  onClick={() => onFilterChange(item.key)}
+                  onClick={() => {
+                    if (item.collapsible) {
+                      setExpanded((prev) => {
+                        const next = new Set(prev)
+                        if (next.has(item.key)) next.delete(item.key)
+                        else next.add(item.key)
+                        return next
+                      })
+                    }
+                    onFilterChange(item.key)
+                  }}
                   className={cn(
                     'flex items-center gap-2 w-full rounded-md px-2.5 py-2 text-left transition-colors mb-0.5',
-                    item.indent && 'ml-3',
+                    item.indent && !item.indentLevel && 'pl-5',
+                    item.indentLevel === 1 && 'pl-5',
+                    item.indentLevel === 2 && 'pl-8',
                     isActive
                       ? 'bg-primary/10 text-primary font-medium'
                       : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
                     item.highlight && !isActive && 'text-amber-400',
                   )}
                 >
+                  {item.collapsible && (
+                    <ChevronRight className={cn(
+                      'h-3 w-3 shrink-0 transition-transform duration-200',
+                      expanded.has(item.key) && 'rotate-90',
+                    )} />
+                  )}
                   {item.icon ?? (
                     isActive
                       ? <FolderOpen className="h-4 w-4 shrink-0" />

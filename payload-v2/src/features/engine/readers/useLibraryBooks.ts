@@ -28,7 +28,6 @@ export function useLibraryBooks() {
       if (isFirstLoad.current) setLoading(true)
 
       const { books: data, total: t } = await fetchLibraryBooks({
-        category: category === 'all' ? undefined : category,
         search: search.trim() || undefined,
       })
 
@@ -41,7 +40,7 @@ export function useLibraryBooks() {
       setLoading(false)
       isFirstLoad.current = false
     }
-  }, [category, search])
+  }, [search])
 
   // Initial load & filter change
   useEffect(() => {

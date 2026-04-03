@@ -3,10 +3,10 @@
  * 底部输入栏 — 锁定书籍 bar + textarea + 发送按钮
  */
 import { useRef, useEffect, useCallback, type FormEvent, type KeyboardEvent } from "react";
-import type { BookSummary } from "@/features/shared/types";
+import type { BookBase } from "@/features/shared/books";
 
 interface Props {
-  sessionBooks: BookSummary[];
+  sessionBooks: BookBase[];
   input: string;
   loading: boolean;
   onInputChange: (value: string) => void;

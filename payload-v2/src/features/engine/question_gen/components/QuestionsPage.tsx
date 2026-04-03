@@ -1,32 +1,37 @@
+/**
+ * QuestionsPage — question bank management with sidebar filtering.
+ *
+ * Route: /engine/question_gen
+ */
+
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
-  MessageSquare, BookOpen, ThumbsUp, Sparkles, User,
-  RefreshCw, Layers, Trash2, Cpu,
+  MessageSquare, BookOpen, ThumbsUp,
+  RefreshCw, Layers, Trash2, Building2, Home,
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import { useI18n } from '@/features/shared/i18n/I18nProvider'
 import { cn } from '@/features/shared/utils'
-import { SidebarLayout, type SidebarItem, type ViewMode } from '@/features/shared/components/SidebarLayout'
+import { SidebarLayout, type ViewMode } from '@/features/shared/components/SidebarLayout'
+import { useBooks, useBookSidebar } from '@/features/shared/books'
 import type { Question } from '../types'
 import { fetchQuestions, likeQuestion, deleteQuestion, deleteAllQuestions } from '../api'
 
-/* ── Config ────────────────────────────────────────────────── */
-
-const SOURCE_CONFIG: Record<string, { label: string; color: string }> = {
-  ai:     { label: 'AI',     color: 'text-purple-400 bg-purple-500/10' },
-  manual: { label: 'Manual', color: 'text-blue-400 bg-blue-500/10' },
-}
-
-/* ── Component ─────────────────────────────────────────────── */
+// ============================================================
+// Component
+// ============================================================
 
 export default function QuestionsPage() {
   const { locale } = useI18n()
   const isZh = locale === 'zh'
 
+  // ==========================================================
+  // State
+  // ==========================================================
   const [questions, setQuestions] = useState<Question[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -36,7 +41,37 @@ export default function QuestionsPage() {
   const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set())
   const [clearingAll, setClearingAll] = useState(false)
 
-  /* ── Load ------------------------------------------------ */
+  // ==========================================================
+  // Hooks
+  // ==========================================================
+  const { books, loading: booksLoading } = useBooks({ status: 'indexed' })
+
+  const questionCountByBook = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const q of questions) {
+      const bid = q.bookId || ''
+      m.set(bid, (m.get(bid) || 0) + 1)
+    }
+    return m
+  }, [questions])
+
+  const { sidebarItems } = useBookSidebar(books, {
+    mode: 'by-book',
+    countMap: questionCountByBook,
+    isZh,
+    allLabel: isZh ? '全部问题' : 'All Questions',
+    allIcon: <Layers className="h-4 w-4 shrink-0" />,
+    bookIcon: <BookOpen className="h-4 w-4 shrink-0 text-amber-400" />,
+    categoryIcons: {
+      textbook:    <BookOpen  className={cn('h-4 w-4 shrink-0', 'text-blue-400')} />,
+      ecdev:       <Building2 className={cn('h-4 w-4 shrink-0', 'text-emerald-400')} />,
+      real_estate: <Home      className={cn('h-4 w-4 shrink-0', 'text-amber-400')} />,
+    },
+  })
+
+  // ==========================================================
+  // Data loading
+  // ==========================================================
   const load = useCallback(async () => {
     try {
       setLoading(true)
@@ -50,9 +85,14 @@ export default function QuestionsPage() {
     }
   }, [])
 
+  // ==========================================================
+  // Effects
+  // ==========================================================
   useEffect(() => { load() }, [load])
 
-  /* ── Handlers -------------------------------------------- */
+  // ==========================================================
+  // Handlers
+  // ==========================================================
   const handleLike = async (id: number) => {
     setLikingIds((prev) => new Set(prev).add(id))
     const q = questions.find((x) => x.id === id)
@@ -90,86 +130,38 @@ export default function QuestionsPage() {
     finally { setClearingAll(false) }
   }
 
-  /* ── Sidebar -------------------------------------------- */
-  const { sidebarItems } = useMemo(() => {
-    const c: Record<string, number> = { all: questions.length }
-    const modelSet = new Set<string>()
-    const bookMap = new Map<string, { title: string; count: number }>()
-
-    for (const q of questions) {
-      // 按来源 / By source
-      const src = q.source || 'ai'
-      c[`source::${src}`] = (c[`source::${src}`] || 0) + 1
-
-      // 按模型 / By model
-      if (q.model) {
-        const mk = `model::${q.model}`
-        c[mk] = (c[mk] || 0) + 1
-        modelSet.add(q.model)
-      }
-
-      // 按书籍 / By book
-      const bookKey = q.bookId || 'unknown'
-      const existing = bookMap.get(bookKey)
-      if (existing) {
-        existing.count++
-      } else {
-        bookMap.set(bookKey, { title: q.bookTitle || q.bookId || 'Unknown', count: 1 })
-      }
-    }
-
-    const items: SidebarItem[] = [
-      { key: 'all', label: isZh ? '全部问题' : 'All Questions', count: c.all || 0, icon: <Layers className="h-4 w-4 shrink-0" /> },
-      { key: 'source::ai', label: isZh ? 'AI 生成' : 'AI Generated', count: c['source::ai'] || 0, icon: <Sparkles className="h-4 w-4 shrink-0 text-purple-400" /> },
-    ]
-
-    // 🤖 模型作为 AI 生成的子分类 / Models nested under AI Generated
-    for (const model of [...modelSet].sort()) {
-      items.push({
-        key: `model::${model}`,
-        label: model,
-        count: c[`model::${model}`] || 0,
-        icon: <Cpu className="h-4 w-4 shrink-0 text-cyan-400" />,
-        indent: true,
-      })
-    }
-
-    // 用户提交 / User Submitted
-    items.push(
-      { key: 'source::manual', label: isZh ? '用户提交' : 'User Submitted', count: c['source::manual'] || 0, icon: <User className="h-4 w-4 shrink-0 text-blue-400" /> },
-    )
-
-    // 📚 按书籍 / By book (sorted by count desc)
-    for (const [bookId, { title, count }] of [...bookMap.entries()].sort((a, b) => b[1].count - a[1].count)) {
-      items.push({
-        key: `book::${bookId}`,
-        label: title,
-        count,
-        icon: <BookOpen className="h-4 w-4 shrink-0 text-amber-400" />,
-      })
-    }
-
-    return { sidebarItems: items }
-  }, [questions, isZh])
-
-  /* ── Filter --------------------------------------------- */
+  // ==========================================================
+  // Derived state
+  // ==========================================================
   const displayQuestions = useMemo(() => {
     if (filter === 'all') return questions
-    if (filter.startsWith('source::')) {
-      const src = filter.split('::')[1]
-      return questions.filter((q) => q.source === src)
-    }
-    if (filter.startsWith('model::')) {
-      const m = filter.split('::').slice(1).join('::')
-      return questions.filter((q) => q.model === m)
-    }
     if (filter.startsWith('book::')) {
-      const bookId = filter.split('::').slice(1).join('::')
+      const bookId = filter.slice(6)
       return questions.filter((q) => q.bookId === bookId)
     }
+    // Subcategory filter: "category::subcategory"
+    if (filter.includes('::')) {
+      const [cat, sub] = filter.split('::')
+      const subBookIds = new Set(
+        books.filter((b) => (b.category || 'textbook') === cat && b.subcategory === sub).map((b) => b.book_id)
+      )
+      return questions.filter((q) => subBookIds.has(q.bookId))
+    }
+    // Category-level filter: show all questions from books in this category
+    const catBookIds = new Set(
+      books.filter((b) => (b.category || 'textbook') === filter).map((b) => b.book_id)
+    )
+    if (catBookIds.size > 0) {
+      return questions.filter((q) => catBookIds.has(q.bookId))
+    }
     return questions
-  }, [questions, filter])
+  }, [questions, filter, books])
 
+  const selectedBookId = filter.startsWith('book::') ? filter.slice(6) : null
+
+  // ==========================================================
+  // Helpers
+  // ==========================================================
   const formatDate = (d: string) => {
     if (!d) return ''
     return new Date(d).toLocaleDateString(isZh ? 'zh-CN' : 'en-US', {
@@ -177,11 +169,18 @@ export default function QuestionsPage() {
     })
   }
 
-  /* ── Render --------------------------------------------- */
+  const SOURCE_CONFIG: Record<string, { label: string; color: string }> = {
+    ai:     { label: 'AI',     color: 'text-purple-400 bg-purple-500/10' },
+    manual: { label: 'Manual', color: 'text-blue-400 bg-blue-500/10' },
+  }
+
+  // ==========================================================
+  // Render
+  // ==========================================================
   return (
     <SidebarLayout
-      title={isZh ? '问题库' : 'Questions'}
-      icon={<MessageSquare className="h-4 w-4 text-primary" />}
+      title={isZh ? '书籍' : 'Books'}
+      icon={<BookOpen className="h-4 w-4 text-primary" />}
       sidebarItems={sidebarItems}
       activeFilter={filter}
       onFilterChange={setFilter}
@@ -190,7 +189,10 @@ export default function QuestionsPage() {
       onViewModeChange={setViewMode}
       sidebarFooter={
         <p className="text-[10px] text-muted-foreground">
-          {isZh ? `共 ${questions.length} 个问题` : `${questions.length} questions`}
+          {booksLoading
+            ? (isZh ? '正在加载书籍…' : 'Loading books…')
+            : (isZh ? `${books.length} 本书 · ${questions.length} 个问题` : `${books.length} books · ${questions.length} questions`)
+          }
         </p>
       }
       loading={loading}
@@ -220,22 +222,31 @@ export default function QuestionsPage() {
         </div>
       }
     >
-      {/* Empty state / 空状态 */}
+      {/* ── Empty state ─────────────────────────────────────── */}
       {!loading && displayQuestions.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20">
           <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mb-4">
-            <MessageSquare className="h-7 w-7 text-muted-foreground" />
+            {selectedBookId
+              ? <BookOpen className="h-7 w-7 text-muted-foreground" />
+              : <MessageSquare className="h-7 w-7 text-muted-foreground" />
+            }
           </div>
           <h3 className="text-sm font-semibold text-foreground mb-1">
-            {isZh ? '暂无问题' : 'No questions yet'}
+            {selectedBookId
+              ? (isZh ? '此书暂无问题' : 'No questions for this book')
+              : (isZh ? '暂无问题' : 'No questions yet')
+            }
           </h3>
           <p className="text-xs text-muted-foreground text-center max-w-xs">
-            {isZh ? '在 Chat 中生成学习问题后会自动保存到这里' : 'Questions generated in Chat will appear here'}
+            {selectedBookId
+              ? (isZh ? '该书籍目前没有生成任何问题' : 'No questions have been generated for this book yet')
+              : (isZh ? '从左侧选择一本书查看该书的问题' : 'Select a book from the sidebar to view its questions')
+            }
           </p>
         </div>
       )}
 
-      {/* Card view / 卡片视图 */}
+      {/* ── Card view ───────────────────────────────────────── */}
       {displayQuestions.length > 0 && viewMode === 'cards' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {displayQuestions.map((q) => (
@@ -263,14 +274,14 @@ export default function QuestionsPage() {
                 )}
               </div>
 
-              {/* Question text / 问题文本 */}
+              {/* Question text */}
               <div className="text-sm text-foreground leading-relaxed mb-2 line-clamp-3 [&_p]:m-0">
                 <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
                   {q.question}
                 </ReactMarkdown>
               </div>
 
-              {/* Scores / 自动评分 */}
+              {/* Scores */}
               {q.scoreOverall != null && (
                 <div className="flex items-center gap-3 mb-3 text-[10px] text-muted-foreground">
                   <span title={isZh ? '相关性' : 'Relevance'} className="flex items-center gap-0.5">
@@ -330,7 +341,7 @@ export default function QuestionsPage() {
                 </div>
               </div>
 
-              {/* Date / 日期 */}
+              {/* Date */}
               {q.createdAt && (
                 <p className="text-[9px] text-muted-foreground/60 mt-2">
                   {formatDate(q.createdAt)}
@@ -341,7 +352,7 @@ export default function QuestionsPage() {
         </div>
       )}
 
-      {/* Table view / 表格视图 */}
+      {/* ── Table view ──────────────────────────────────────── */}
       {displayQuestions.length > 0 && viewMode === 'table' && (
         <div className="rounded-lg border border-border overflow-hidden">
           {/* Header */}

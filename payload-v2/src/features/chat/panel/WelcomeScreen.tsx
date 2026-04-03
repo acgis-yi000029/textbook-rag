@@ -9,7 +9,7 @@
  *   4. 点击 → 自动触发 submitQuestion → 走正常 RAG 流程
  */
 import { useState, useEffect } from "react";
-import type { BookSummary } from "@/features/shared/types";
+import type { BookBase } from "@/features/shared/books";
 import {
   fetchHighQualityQuestions,
   QuestionCards,
@@ -19,7 +19,7 @@ import {
 import type { Question } from "@/features/engine/question_gen";
 
 interface Props {
-  sessionBooks: BookSummary[];
+  sessionBooks: BookBase[];
   loading: boolean;
   onSubmitQuestion: (question: string) => void;
   onRunDemo: () => void;

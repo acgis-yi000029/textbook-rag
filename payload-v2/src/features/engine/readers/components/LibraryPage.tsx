@@ -7,8 +7,6 @@ import {
   Search,
   RefreshCw,
   BookOpen,
-  ChevronRight,
-  Hash,
   Layers,
   ArrowUp,
   ArrowDown,
@@ -20,19 +18,20 @@ import {
   Home,
 } from 'lucide-react'
 import { useI18n } from '@/features/shared/i18n'
+import { useBookSidebar } from '@/features/shared/books'
 import { useLibraryBooks } from '../useLibraryBooks'
 import type { LibraryBook, BookCategory } from '../types'
 import BookCard from './BookCard'
 import { PipelineProgress } from './StatusBadge'
 import { cn } from '@/features/shared/utils'
-import { SidebarLayout, type SidebarItem, type ViewMode } from '@/features/shared/components/SidebarLayout'
+import { SidebarLayout, type ViewMode } from '@/features/shared/components/SidebarLayout'
 import { PipelineActions } from '@/features/engine/ingestion'
 
-// ── Category icon/color mapping (same as BookPicker) ─────────────────────────
-const CATEGORY_CONFIG: Record<string, { label: string; labelZh: string; icon: React.ElementType; color: string }> = {
-  textbook:    { label: 'Textbooks',      labelZh: '教材',     icon: BookOpen,  color: 'text-blue-400' },
-  ecdev:       { label: 'EC Development', labelZh: '经济发展', icon: Building2, color: 'text-emerald-400' },
-  real_estate: { label: 'Real Estate',    labelZh: '房地产',   icon: Home,      color: 'text-amber-400' },
+// ── Category icons (ReactNode, can't be in shared/books/types) ───────────────
+const CATEGORY_ICONS: Record<string, React.ReactNode> = {
+  textbook:    <BookOpen  className={cn('h-4 w-4 shrink-0', 'text-blue-400')} />,
+  ecdev:       <Building2 className={cn('h-4 w-4 shrink-0', 'text-emerald-400')} />,
+  real_estate: <Home      className={cn('h-4 w-4 shrink-0', 'text-amber-400')} />,
 }
 
 type SortField = 'title' | 'authors' | 'pages' | 'chunks' | 'status' | 'updatedAt'
@@ -94,8 +93,6 @@ export default function LibraryPage() {
     total,
     loading,
     error,
-    category,
-    setCategory,
     refresh,
   } = useLibraryBooks()
 
@@ -105,22 +102,8 @@ export default function LibraryPage() {
   const [localSearch, setLocalSearch] = useState('')
   const [selected, setSelected] = useState<Set<number>>(new Set())
 
-  // We extend the filter to support subcategory: "category::subcategory"
+  // Client-side filter key (category / subcategory / all)
   const [filter, setFilter] = useState<string>('all')
-
-  // When SidebarLayout filter changes, also update the useLibraryBooks category
-  const handleFilterChange = (key: string) => {
-    setFilter(key)
-    if (key === 'all') {
-      setCategory('all')
-    } else if (key.includes('::')) {
-      // Subcategory filter — set parent category in hook, client-side sub-filter
-      const cat = key.split('::')[0] as BookCategory
-      setCategory(cat)
-    } else {
-      setCategory(key as BookCategory | 'all')
-    }
-  }
 
   const toggleSelect = (book: LibraryBook) => {
     if (book.status !== 'indexed') return
@@ -144,53 +127,27 @@ export default function LibraryPage() {
     router.push('/chat')
   }
 
-  // ── Compute category → subcategory tree ────────────────────────────────────
-  const { categoryCounts, subcategoryMap } = useMemo(() => {
-    const counts: Record<string, number> = { all: books.length }
-    const subMap: Record<string, Set<string>> = {}
+  // ── Book sidebar (via shared hook) ──────────────────────────────────────────
+  const booksForSidebar = useMemo(() =>
+    books.map((b) => ({
+      id: b.id,
+      book_id: b.engineBookId,
+      title: b.title,
+      authors: b.authors ?? '',
+      category: b.category ?? 'textbook',
+      subcategory: b.subcategory ?? '',
+      chunk_count: b.chunkCount ?? 0,
+    })),
+    [books],
+  )
 
-    for (const b of books) {
-      const cat = b.category || 'textbook'
-      counts[cat] = (counts[cat] || 0) + 1
-      if (b.subcategory) {
-        const subKey = `${cat}::${b.subcategory}`
-        counts[subKey] = (counts[subKey] || 0) + 1
-        if (!subMap[cat]) subMap[cat] = new Set()
-        subMap[cat].add(b.subcategory)
-      }
-    }
-    return { categoryCounts: counts, subcategoryMap: subMap }
-  }, [books])
-
-  // ── Sidebar items (same hierarchy as BookPicker) ───────────────────────────
-  const sidebarItems = useMemo<SidebarItem[]>(() => {
-    const items: SidebarItem[] = [
-      { key: 'all', label: isZh ? '全部教材' : 'All Books', count: categoryCounts.all || 0, icon: <Layers className="h-4 w-4 shrink-0" /> },
-    ]
-    for (const [catKey, cfg] of Object.entries(CATEGORY_CONFIG)) {
-      const count = categoryCounts[catKey] || 0
-      if (count === 0) continue
-      const Icon = cfg.icon
-      items.push({
-        key: catKey,
-        label: isZh ? cfg.labelZh : cfg.label,
-        count,
-        icon: <Icon className={cn('h-4 w-4 shrink-0', cfg.color)} />,
-      })
-      const subs = subcategoryMap[catKey]
-      if (subs) {
-        for (const sub of [...subs].sort()) {
-          items.push({
-            key: `${catKey}::${sub}`,
-            label: sub,
-            count: categoryCounts[`${catKey}::${sub}`] || 0,
-            indent: true,
-          })
-        }
-      }
-    }
-    return items
-  }, [categoryCounts, subcategoryMap, isZh])
+  const { sidebarItems, filterBooks: _filterBooks } = useBookSidebar(booksForSidebar, {
+    mode: 'by-category',
+    isZh,
+    allLabel: isZh ? '全部教材' : 'All Books',
+    allIcon: <Layers className="h-4 w-4 shrink-0" />,
+    categoryIcons: CATEGORY_ICONS,
+  })
 
   // ── Filter + sort books ────────────────────────────────────────────────────
   const displayBooks = useMemo(() => {
@@ -228,7 +185,7 @@ export default function LibraryPage() {
       icon={<Library className="h-4 w-4 text-primary" />}
       sidebarItems={sidebarItems}
       activeFilter={filter}
-      onFilterChange={handleFilterChange}
+      onFilterChange={setFilter}
       showViewToggle
       viewMode={viewMode}
       onViewModeChange={setViewMode}

@@ -10,7 +10,7 @@ import { BookPicker } from '@/features/engine/readers'
 import ChatPanel from './panel/ChatPanel'
 import ResizeHandle from '@/features/shared/ResizeHandle'
 import { useChatHistoryContext } from './history/ChatHistoryContext'
-import { fetchBooks } from '@/features/engine/query_engine'
+import { fetchIndexedBooks } from '@/features/shared/books'
 
 const PdfViewer = dynamic(
   () => import('@/features/engine/retrievers/components/PdfViewer'),
@@ -33,7 +33,7 @@ function ChatPageInner() {
 
   useEffect(() => {
     if (books.length === 0) {
-      fetchBooks().then((b) => {
+      fetchIndexedBooks().then((b) => {
         dispatch({ type: "SET_BOOKS", books: b });
       }).catch(console.error);
     }

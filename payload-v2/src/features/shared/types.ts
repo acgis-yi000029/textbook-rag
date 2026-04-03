@@ -1,15 +1,10 @@
 /* ── API response types ── */
 
-export interface BookSummary {
-  id: number;
-  book_id: string;
-  title: string;
-  authors: string;
+import type { BookBase } from './books'
+
+export interface BookSummary extends BookBase {
   page_count: number;
   chapter_count: number;
-  chunk_count: number;
-  category: string;
-  subcategory: string;
 }
 
 export interface ChapterInfo {

@@ -6,12 +6,13 @@ import {
   type Dispatch,
   type ReactNode,
 } from "react";
-import type { BookSummary, SourceInfo } from "./types";
+import type { BookBase } from "./books";
+import type { SourceInfo } from "./types";
 
 /* ── State ── */
 
 export interface AppState {
-  books: BookSummary[];
+  books: BookBase[];
   currentBookId: number | null;
   /** Books locked for the current chat session (multi-select) */
   sessionBookIds: number[];
@@ -93,7 +94,7 @@ function persistState(state: AppState) {
 /* ── Actions ── */
 
 type Action =
-  | { type: "SET_BOOKS"; books: BookSummary[] }
+  | { type: "SET_BOOKS"; books: BookBase[] }
   | { type: "SET_BOOK"; bookId: number | null }
   | { type: "SET_PAGE"; page: number }
   | { type: "SELECT_SOURCE"; source: SourceInfo | null }

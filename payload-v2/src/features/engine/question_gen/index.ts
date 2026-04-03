@@ -6,10 +6,11 @@
  */
 
 // ── Data layer ──────────────────────────────────────────────────────────────
-export * from './types'
+export type { Question, GeneratedQuestion, QuestionsApiResponse } from './types'
 export * from './api'
 export { useQuestionGeneration } from './useQuestionGeneration'
 export type { UseQuestionGenerationReturn } from './useQuestionGeneration'
+// NOTE: useBooks moved to @/features/shared/books
 
 // ── UI components ───────────────────────────────────────────────────────────
 export { default as GenerationProgress } from './components/GenerationProgress'

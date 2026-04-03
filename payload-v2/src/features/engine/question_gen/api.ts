@@ -10,6 +10,8 @@ import type { Question, GeneratedQuestion, QuestionsApiResponse } from './types'
 
 const ENGINE = process.env.NEXT_PUBLIC_ENGINE_URL || 'http://localhost:8000'
 
+// NOTE: fetchIndexedBooks moved to @/features/shared/books
+
 // ── CRUD (Payload CMS REST API) ─────────────────────────────────────────────
 
 /** Fetch all questions from Payload CMS, sorted by likes desc */

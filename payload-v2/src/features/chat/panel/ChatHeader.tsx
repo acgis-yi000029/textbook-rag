@@ -2,11 +2,12 @@
  * panel/ChatHeader.tsx
  * 聊天面板顶栏 — 标题、模式切换、模型选择、新建对话
  */
-import type { ModelInfo, BookSummary } from "@/features/shared/types";
+import type { ModelInfo } from "@/features/shared/types";
+import type { BookBase } from "@/features/shared/books";
 import ModeToggle from "./ModeToggle";
 
 interface Props {
-  sessionBooks: BookSummary[];
+  sessionBooks: BookBase[];
   chatMode: "answer" | "trace";
   selectedModel: string;
   models: ModelInfo[];
