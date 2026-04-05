@@ -1,3 +1,10 @@
+/**
+ * BookCard — Single book card with cover, metadata, and pipeline progress.
+ *
+ * Displays cover image (or gradient placeholder), title, author,
+ * category badge, stats row, and PipelineProgress pills.
+ */
+
 'use client'
 
 import { BookOpen, User, Hash, Layers } from 'lucide-react'

@@ -76,6 +76,11 @@ export const Questions: CollectionConfig = {
       admin: { description: 'Book subcategory for filtering' },
     },
     {
+      name: 'sourcePage',
+      type: 'number',
+      admin: { description: 'Source page index (0-indexed) from ChromaDB chunk metadata' },
+    },
+    {
       name: 'model',
       type: 'text',
       admin: { description: 'LLM model used to generate (e.g. "gpt-4o-mini", "qwen3.5:4b")' },

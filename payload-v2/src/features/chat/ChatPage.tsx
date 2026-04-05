@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, Suspense } from 'react'
+import { useState, useEffect, useCallback, Suspense, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { AppProvider } from '@/features/shared/AppContext'
@@ -8,12 +8,13 @@ import { useAppState, useAppDispatch } from '@/features/shared/AppContext'
 import { useAuth } from '@/features/shared/AuthProvider'
 import { BookPicker } from '@/features/engine/readers'
 import ChatPanel from './panel/ChatPanel'
+import QuestionsSidebar from './panel/QuestionsSidebar'
 import ResizeHandle from '@/features/shared/ResizeHandle'
 import { useChatHistoryContext } from './history/ChatHistoryContext'
 import { fetchIndexedBooks } from '@/features/shared/books'
 
 const PdfViewer = dynamic(
-  () => import('@/features/engine/retrievers/components/PdfViewer'),
+  () => import('@/features/shared/pdf/PdfViewer'),
   { ssr: false, loading: () => <div className="flex h-full items-center justify-center text-muted-foreground text-sm">Loading PDF viewer…</div> }
 )
 
@@ -24,6 +25,9 @@ function ChatPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [leftWidth, setLeftWidth] = useState(800)
+  const [showQuestions, setShowQuestions] = useState(false)
+  /** Ref to ChatPanel's submitQuestion so the sidebar can call it directly */
+  const submitRef = useRef<((q: string) => void) | null>(null)
 
   const { getSession, activeSessionId, setActiveSessionId } = useChatHistoryContext()
 
@@ -111,8 +115,22 @@ function ChatPageInner() {
             <ChatPanel
               activeSessionId={activeSessionId}
               onSessionCreated={setActiveSessionId}
+              submitRef={submitRef}
+              showQuestions={showQuestions}
+              onToggleQuestions={() => setShowQuestions((v) => !v)}
             />
           </div>
+
+          {/* ── Questions Sidebar (right) ── */}
+          {showQuestions && (
+            <QuestionsSidebar
+              bookIds={sessionBooks.map((b) => b.book_id)}
+              onSelect={(q) => {
+                submitRef.current?.(q)
+              }}
+              onClose={() => setShowQuestions(false)}
+            />
+          )}
         </>
       )}
     </div>

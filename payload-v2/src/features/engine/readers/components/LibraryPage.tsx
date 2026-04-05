@@ -1,3 +1,10 @@
+/**
+ * LibraryPage — Book library grid/table with upload, edit, delete, and search.
+ *
+ * Main view for engine/readers. Composes BookCard, UploadZone,
+ * BookEditDialog, and PipelineActions.
+ */
+
 'use client'
 
 import { useState, useMemo } from 'react'
@@ -16,12 +23,18 @@ import {
   Square,
   Building2,
   Home,
+  Plus,
+  Trash2,
+  Pencil,
 } from 'lucide-react'
 import { useI18n } from '@/features/shared/i18n'
 import { useBookSidebar } from '@/features/shared/books'
 import { useLibraryBooks } from '../useLibraryBooks'
+import { deleteBook } from '../api'
 import type { LibraryBook, BookCategory } from '../types'
 import BookCard from './BookCard'
+import BookEditDialog from './BookEditDialog'
+import UploadZone from './UploadZone'
 import { PipelineProgress } from './StatusBadge'
 import { cn } from '@/features/shared/utils'
 import { SidebarLayout, type ViewMode } from '@/features/shared/components/SidebarLayout'
@@ -101,6 +114,9 @@ export default function LibraryPage() {
   const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [localSearch, setLocalSearch] = useState('')
   const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [showUpload, setShowUpload] = useState(false)
+  const [deleting, setDeleting] = useState<number | null>(null)
+  const [editingBookId, setEditingBookId] = useState<number | null>(null)
 
   // Client-side filter key (category / subcategory / all)
   const [filter, setFilter] = useState<string>('all')
@@ -200,6 +216,47 @@ export default function LibraryPage() {
       onRetry={refresh}
       toolbar={
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowUpload((v) => !v)}
+            className={cn(
+              'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors',
+              showUpload
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
+            )}
+            title={isZh ? '上传 PDF' : 'Upload PDF'}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            {isZh ? '上传' : 'Upload'}
+          </button>
+          {selected.size > 0 && (
+            <button
+              onClick={async () => {
+                const confirmed = window.confirm(
+                  isZh
+                    ? `确定删除 ${selected.size} 本书？此操作不可撤销。`
+                    : `Delete ${selected.size} book(s)? This cannot be undone.`,
+                )
+                if (!confirmed) return
+                setDeleting(selected.size)
+                try {
+                  await Promise.all([...selected].map((id) => deleteBook(id)))
+                  setSelected(new Set())
+                  refresh()
+                } catch {
+                  // Error handled by individual deleteBook calls
+                } finally {
+                  setDeleting(null)
+                }
+              }}
+              disabled={deleting !== null}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
+              title={isZh ? '删除选中' : 'Delete selected'}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              {isZh ? '删除' : 'Delete'}
+            </button>
+          )}
           <PipelineActions
             selectedBookIds={selected}
             onComplete={refresh}
@@ -241,6 +298,13 @@ export default function LibraryPage() {
         ) : undefined
       }
     >
+      {/* Upload zone (collapsible) */}
+      {showUpload && (
+        <div className="mb-4 animate-in slide-in-from-top-2 duration-200">
+          <UploadZone onUploadComplete={refresh} />
+        </div>
+      )}
+
       {/* Search bar */}
       <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -289,22 +353,42 @@ export default function LibraryPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
           {displayBooks.map((book) => (
             <div key={book.id} className="relative group/card">
-              <BookCard book={book} onSelect={toggleSelect} />
-              {book.status === 'indexed' && (
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); toggleSelect(book) }}
-                  className={cn(
-                    'absolute top-2 right-2 z-10 flex h-6 w-6 items-center justify-center rounded-md border-2 transition-all shadow-sm',
-                    selected.has(book.id)
-                      ? 'border-primary bg-primary text-primary-foreground'
-                      : 'border-muted-foreground/40 bg-card/80 text-transparent group-hover/card:text-muted-foreground'
+              {editingBookId === book.id ? (
+                <BookEditDialog
+                  book={book}
+                  onSave={() => { setEditingBookId(null); refresh() }}
+                  onCancel={() => setEditingBookId(null)}
+                />
+              ) : (
+                <>
+                  <BookCard book={book} onSelect={toggleSelect} />
+                  {/* Edit button */}
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setEditingBookId(book.id) }}
+                    className="absolute top-2 right-10 z-10 flex h-6 w-6 items-center justify-center rounded-md border-2 border-muted-foreground/40 bg-card/80 text-transparent group-hover/card:text-muted-foreground transition-all shadow-sm hover:border-primary hover:text-primary"
+                    title={isZh ? '编辑' : 'Edit'}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                  {/* Checkbox */}
+                  {book.status === 'indexed' && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); toggleSelect(book) }}
+                      className={cn(
+                        'absolute top-2 right-2 z-10 flex h-6 w-6 items-center justify-center rounded-md border-2 transition-all shadow-sm',
+                        selected.has(book.id)
+                          ? 'border-primary bg-primary text-primary-foreground'
+                          : 'border-muted-foreground/40 bg-card/80 text-transparent group-hover/card:text-muted-foreground'
+                      )}
+                    >
+                      {selected.has(book.id)
+                        ? <CheckSquare className="h-4 w-4" />
+                        : <Square className="h-4 w-4" />}
+                    </button>
                   )}
-                >
-                  {selected.has(book.id)
-                    ? <CheckSquare className="h-4 w-4" />
-                    : <Square className="h-4 w-4" />}
-                </button>
+                </>
               )}
             </div>
           ))}

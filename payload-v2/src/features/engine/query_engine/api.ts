@@ -93,14 +93,19 @@ function normaliseSource(s: any): SourceInfo {
       page_number: b.page_number ?? 1,
     }))
 
+  // Backend sends book_id as a string directory name (e.g. "appB");
+  // use it as book_id_string fallback since book_id_string isn't sent separately
+  const bookIdStr = s.book_id_string ?? (typeof s.book_id === 'string' ? s.book_id : '')
+
   return {
     source_id: s.chunk_id ?? String(s.page_number),
     book_id: s.book_id ?? 0,
-    book_id_string: s.book_id_string ?? '',
+    book_id_string: bookIdStr,
     citation_index: s.citation_index ?? undefined,
     book_title: s.book_title ?? '',
     chapter_title: s.chapter_title ?? null,
     page_number: s.page_number ?? 1,
+    full_content: s.full_content ?? undefined,
     snippet: s.text ?? s.snippet ?? '',
     bbox: s.bbox
       ? { x0: s.bbox.x0, y0: s.bbox.y0, x1: s.bbox.x1, y1: s.bbox.y1 }

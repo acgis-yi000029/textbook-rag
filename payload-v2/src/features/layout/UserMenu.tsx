@@ -53,7 +53,7 @@ export default function UserMenu() {
     } catch {
       // ignore
     }
-    window.location.href = '/login'
+    window.location.href = '/'
   }
 
   return (

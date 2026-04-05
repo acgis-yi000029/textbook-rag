@@ -51,16 +51,30 @@ _NUMBERED_RE = re.compile(
     r"^(?:Chapter\s+)?(\d{1,3}(?:\.\d{1,3})*)[.:\s]+\s*(.+)$", re.IGNORECASE
 )
 
+_APPENDIX_RE = re.compile(
+    r"^Appendix\s+([A-Z](?:\.\d+)?)[.:\s]*(.+)$", re.IGNORECASE
+)
+
 
 def _split_number_title(raw_title: str) -> tuple[str, str]:
     """Split a bookmark title into (number, title).
 
-    Returns ("", raw_title) when no leading number is found.
+    Handles patterns like:
+      "Chapter 3: Foo"  → ("3", "Foo")
+      "3.2 Foo"         → ("3.2", "Foo")
+      "Appendix A: Bar" → ("App.A", "Bar")
+      "Just a title"    → ("", "Just a title")
     """
-    m = _NUMBERED_RE.match(raw_title.strip())
+    text = raw_title.strip()
+    m = _NUMBERED_RE.match(text)
     if m:
-        return m.group(1), m.group(2).strip()
-    return "", raw_title.strip()
+        return m.group(1), m.group(2).strip().rstrip(".,: ")
+
+    m = _APPENDIX_RE.match(text)
+    if m:
+        return f"App.{m.group(1)}", m.group(2).strip().rstrip(".,: ")
+
+    return "", text
 
 
 def extract_toc_from_pdf(pdf_path: Path) -> list[dict]:
@@ -68,6 +82,9 @@ def extract_toc_from_pdf(pdf_path: Path) -> list[dict]:
 
     Returns a list of dicts with keys: level, number, title, pdf_page.
     ``pdf_page`` is 1-indexed (matching react-pdf's pageNumber prop).
+
+    Deduplication: when multiple bookmarks point to the same page,
+    only the first one is kept (one chapter per page).
     """
     doc = pymupdf.open(str(pdf_path))
     try:

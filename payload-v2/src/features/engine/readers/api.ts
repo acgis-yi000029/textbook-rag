@@ -60,6 +60,21 @@ export async function deleteBook(id: number): Promise<void> {
   if (!res.ok) throw new Error(`Failed to delete book: ${res.status}`)
 }
 
+// ── Update book metadata (title, authors, category, etc.) ───────────────────
+export async function updateBook(
+  id: number,
+  data: Partial<Pick<LibraryBook, 'title' | 'authors' | 'category' | 'subcategory'>>,
+): Promise<LibraryBook> {
+  const res = await fetch(`${PAYLOAD_BASE}/api/books/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error(`Failed to update book: ${res.status}`)
+  const body = await res.json()
+  return mapPayloadBook(body.doc ?? body)
+}
+
 // ── Internal: map cover image from Payload response ─────────────────────────
 function mapCoverImage(raw: any): CoverImage | null {
   if (!raw) return null

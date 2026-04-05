@@ -107,12 +107,16 @@ description: textbook-rag v3 开发工作流 — 基于 docs/ 四文档体系的
    - 禁止在组件中直接写 `useEffect + fetch`（inline fetching）
    - hook 返回 `{ data, loading, error, refetch }` 标准形状
 
-4. 从 `file-templates.md` 复制对应模板，替换占位符
+4. **先改注释，再改代码（禁止跳过）：**
+   - 新建文件：从 `file-templates.md` 复制模板，先填写文件头注释，再写实现
+   - 修改文件：先检查文件头注释是否符合 `file-templates.md`，不符合则先修正，再改代码
+   - 注释格式以 `file-templates.md` 为唯一标准
+
 5. 写实现代码
 6. 更新 barrel export + i18n + AppSidebar（如需）
 7. 更新 `module-roadmap.md` 中对应功能点的状态 (❌ → ✅)
 
-**日常改 bug / 改功能:** 直接改代码，跳过 1-4。约束检查仍适用。
+**日常改 bug / 改功能:** 直接改代码，跳过 1-3。注释规则（步骤 4）和约束检查仍适用。
 
 ### Phase 2 — 验证
 

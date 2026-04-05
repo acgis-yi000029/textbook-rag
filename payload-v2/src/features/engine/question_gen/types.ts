@@ -17,6 +17,7 @@ export interface Question {
   likes: number
   category: string | null
   subcategory: string | null
+  sourcePage: number | null
   model: string | null
   scoreRelevance: number | null
   scoreClarity: number | null
@@ -28,8 +29,12 @@ export interface Question {
 // ── Raw question from LLM generation (engine response shape) ────────────────
 export interface GeneratedQuestion {
   question: string
+  difficulty: string
+  type: string
+  source_chunk_id: string
   book_id: string
   book_title: string
+  source_page: number
   topic_hint: string
 }
 

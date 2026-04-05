@@ -79,6 +79,17 @@ export interface Messages {
   navRetrievers: string
   navQueryEngine: string
   navSeed: string
+
+  // ── Upload ──
+  uploadPdf: string
+  uploadDragDrop: string
+  uploadClickBrowse: string
+  uploadOr: string
+  uploadDropRelease: string
+  uploadProgress: string
+  uploadSuccess: string
+  uploadDismiss: string
+  deleteConfirm: string
 }
 
 const en: Messages = {
@@ -147,6 +158,16 @@ const en: Messages = {
   navRetrievers: 'Retrievers',
   navQueryEngine: 'Query Engine',
   navSeed: 'Seed Database',
+
+  uploadPdf: 'Upload PDF',
+  uploadDragDrop: 'Drag & drop a PDF here',
+  uploadClickBrowse: 'click to browse',
+  uploadOr: 'or',
+  uploadDropRelease: 'Drop file to upload',
+  uploadProgress: 'Uploading',
+  uploadSuccess: 'Upload complete! Processing...',
+  uploadDismiss: 'Dismiss',
+  deleteConfirm: 'Delete {count} book(s)? This cannot be undone.',
 }
 
 const zh: Messages = {
@@ -215,6 +236,16 @@ const zh: Messages = {
   navRetrievers: '检索器',
   navQueryEngine: '查询引擎',
   navSeed: '数据初始化',
+
+  uploadPdf: '上传 PDF',
+  uploadDragDrop: '拖放 PDF 文件到此处',
+  uploadClickBrowse: '点击选择文件',
+  uploadOr: '或',
+  uploadDropRelease: '释放文件以上传',
+  uploadProgress: '正在上传',
+  uploadSuccess: '上传成功！正在处理...',
+  uploadDismiss: '关闭',
+  deleteConfirm: '确定删除 {count} 本书？此操作不可撤销。',
 }
 
 export const messages: Record<Locale, Messages> = { en, zh }

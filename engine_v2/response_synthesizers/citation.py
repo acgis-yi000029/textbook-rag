@@ -1,22 +1,16 @@
-"""Citation-aware response synthesizer.
+"""citation — Citation-aware response synthesizer.
 
-Aligns with llama_index.core.response_synthesizers.
-Uses get_response_synthesizer() factory with a custom citation prompt
-that instructs the LLM to embed [N] markers for traceability.
+Responsibilities:
+    - Build a COMPACT synthesizer with citation-aware prompt templates
+    - Instruct LLM to organise answers by semantic paragraphs
+    - Each paragraph's citations are grouped at the end (not scattered inline)
 
-LlamaIndex synthesizer modes:
-    - COMPACT      → stuff as many chunks as fit, then refine
-    - TREE_SUMMARIZE → recursive merge-summarise
-    - REFINE       → iterate chunk-by-chunk
-    - SIMPLE_SUMMARIZE → one-shot with all chunks
-    - NO_TEXT      → return sources only
-
-For textbook RAG we use COMPACT (default) with citation instructions.
+Ref: llama_index — get_response_synthesizer, ResponseMode
 """
 
 from __future__ import annotations
 
-import logging
+from loguru import logger
 
 from llama_index.core.prompts import PromptTemplate
 from llama_index.core.response_synthesizers import (
@@ -25,23 +19,34 @@ from llama_index.core.response_synthesizers import (
     ResponseMode,
 )
 
-logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# Custom citation prompt
-# ---------------------------------------------------------------------------
+# ============================================================
+# Citation QA prompt — semantic-paragraph style
+# ============================================================
 CITATION_QA_TEMPLATE = PromptTemplate(
-    "You are a textbook assistant. Answer the question using ONLY the "
-    "provided sources. For every claim, add a citation marker [N] "
-    "referencing the source number.\n\n"
+    "You are a helpful study assistant for textbook content. "
+    "Based on the provided source materials, answer the following question.\n\n"
+    "## Output format rules\n"
+    "1. Organise your answer into **semantic paragraphs** — each paragraph "
+    "expresses one complete idea or point.\n"
+    "2. Each source is labeled 'Source N:'. When citing, place [N] at the **end** "
+    "of the paragraph BEFORE the final period (e.g. '...the result [1].'). "
+    "Use the integer Source label (e.g. [1] for Source 1, [2] for Source 2). "
+    "Do NOT use textbook section or chapter numbers as citations.\n"
+    "3. Separate paragraphs with a blank line (Markdown paragraph break).\n"
+    "4. If multiple sources support the same paragraph, list them together: "
+    "[1][3][5].\n"
+    "5. If the sources do not contain enough information, say so explicitly.\n\n"
     "Sources:\n"
     "-----\n"
     "{context_str}\n"
     "-----\n\n"
     "Question: {query_str}\n\n"
-    "Answer (with [N] citations):"
+    "Answer (semantic paragraphs, citations at paragraph end):"
 )
 
+# ============================================================
+# Citation refine prompt
+# ============================================================
 CITATION_REFINE_TEMPLATE = PromptTemplate(
     "You are refining an existing answer with additional context.\n"
     "Original question: {query_str}\n"
@@ -50,11 +55,15 @@ CITATION_REFINE_TEMPLATE = PromptTemplate(
     "-----\n"
     "{context_msg}\n"
     "-----\n\n"
-    "Refine the answer using the new sources. Keep and update [N] citation "
-    "markers. If the new context is not useful, return the original answer."
+    "Refine the answer using the new sources. Keep the semantic-paragraph "
+    "format: each paragraph expresses one idea, citations [N] grouped at "
+    "paragraph end. If the new context is not useful, return the original answer."
 )
 
 
+# ============================================================
+# Factory
+# ============================================================
 def get_citation_synthesizer(
     mode: ResponseMode = ResponseMode.COMPACT,
     streaming: bool = False,
@@ -62,7 +71,8 @@ def get_citation_synthesizer(
     """Build a citation-aware response synthesizer.
 
     Uses LlamaIndex's get_response_synthesizer() factory with custom
-    prompts that instruct the LLM to add [N] citation markers.
+    prompts that instruct the LLM to produce semantic-paragraph answers
+    with [N] citation markers grouped at paragraph end.
 
     Args:
         mode: LlamaIndex response mode (COMPACT, REFINE, TREE_SUMMARIZE, etc.)
@@ -78,5 +88,5 @@ def get_citation_synthesizer(
         refine_template=CITATION_REFINE_TEMPLATE,
     )
 
-    logger.info("CitationSynthesizer ready (mode=%s, streaming=%s)", mode, streaming)
+    logger.info("CitationSynthesizer ready (mode={}, streaming={})", mode, streaming)
     return synthesizer

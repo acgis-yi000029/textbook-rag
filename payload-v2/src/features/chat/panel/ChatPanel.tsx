@@ -9,7 +9,7 @@ import {
   useCallback,
   useEffect,
 } from "react";
-import { queryTextbookStream, fetchDemo } from "@/features/engine/query_engine";
+import { queryTextbookStream } from "@/features/engine/query_engine";
 import { fetchAvailableModels } from "@/features/engine/llms";
 import { useAppDispatch, useAppState } from "@/features/shared/AppContext";
 import { useAuth } from "@/features/shared/AuthProvider";
@@ -18,7 +18,7 @@ import type { ModelInfo } from "@/features/shared/types";
 import type { Message } from "../types";
 import { NEAR_BOTTOM_THRESHOLD } from "../types";
 import { useChatHistoryContext } from "../history/ChatHistoryContext";
-import { TracePanel, ThinkingProcessPanel } from "@/features/engine/evaluation";
+import { ThinkingProcessPanel } from "@/features/engine/evaluation";
 import { useSmoothText } from "@/features/shared/hooks/useSmoothText";
 
 import ChatHeader from "./ChatHeader";
@@ -30,9 +30,17 @@ import SourceCard from "./SourceCard";
 export default function ChatPanel({
   activeSessionId,
   onSessionCreated,
+  submitRef,
+  showQuestions,
+  onToggleQuestions,
 }: {
   activeSessionId: string | null;
   onSessionCreated: (id: string) => void;
+  /** Exposed so parent can trigger submitQuestion from sidebar */
+  submitRef?: React.MutableRefObject<((q: string) => void) | null>;
+  /** Questions sidebar state */
+  showQuestions?: boolean;
+  onToggleQuestions?: () => void;
 }) {
   const {
     currentBookId,
@@ -40,7 +48,6 @@ export default function ChatPanel({
     books,
     selectedModel,
     selectedProvider,
-    chatMode,
     sessionBookIds,
   } = useAppState();
   const dispatch = useAppDispatch();
@@ -203,12 +210,37 @@ export default function ChatPanel({
             }
           },
           onDone: (res) => {
+            // Enrich sources with book titles from the loaded books list
+            // (backend chunks don't store book_title in metadata)
+            const enrichedSources = res.sources.map((s) => {
+              if (s.book_title) return s;
+              const idStr = s.book_id_string || String(s.book_id);
+              // Try exact match on engineBookId (book_id)
+              let match = books.find((b) => b.book_id === idStr);
+              // Fallback: match by Payload numeric id
+              if (!match && typeof s.book_id === 'number') {
+                match = books.find((b) => b.id === s.book_id);
+              }
+              // Fallback: case-insensitive partial match
+              if (!match && idStr) {
+                const lower = idStr.toLowerCase();
+                match = books.find((b) =>
+                  b.book_id.toLowerCase() === lower ||
+                  b.title.toLowerCase().includes(lower),
+                );
+              }
+              if (!match) {
+                console.warn('[CitationEnrich] No book match for source:', { book_id: s.book_id, book_id_string: s.book_id_string, idStr, availableBookIds: books.map(b => b.book_id) });
+              }
+              return match ? { ...s, book_title: match.title } : s;
+            });
+
             setMessages((prev) => [
               ...prev,
               {
                 role: "assistant",
                 content: res.answer,
-                sources: res.sources,
+                sources: enrichedSources,
                 trace: res.trace,
               },
             ]);
@@ -225,7 +257,7 @@ export default function ChatPanel({
             if (sessionId) {
               chatHistory.appendMessages(sessionId, [
                 { role: "user", content: trimmed },
-                { role: "assistant", content: res.answer, sources: res.sources, trace: res.trace },
+                { role: "assistant", content: res.answer, sources: enrichedSources, trace: res.trace },
               ]);
             }
 
@@ -262,6 +294,12 @@ export default function ChatPanel({
     [sessionBookIds, selectedModel, selectedProvider, currentUser, books, chatHistory, onSessionCreated],
   );
 
+  /** Expose submitQuestion to parent (so QuestionsSidebar can call it) */
+  useEffect(() => {
+    if (submitRef) submitRef.current = (q: string) => void submitQuestion(q);
+    return () => { if (submitRef) submitRef.current = null; };
+  }, [submitRef, submitQuestion]);
+
   /** Go back to the book picker — ends the session */
   const resetConversation = useCallback(() => {
     setMessages([]);
@@ -275,32 +313,10 @@ export default function ChatPanel({
     dispatch({ type: "RESET_SESSION" });
   }, [dispatch]);
 
-  const runDemo = useCallback(async () => {
-    setError(null);
-    setLoading(true);
-    shouldStickToBottomRef.current = true;
-    setHasNewMessagesBelow(false);
-    try {
-      const res = await fetchDemo();
-      dispatch({ type: "SET_BOOK", bookId: 36 });
-      setMessages([
-        { role: "user", content: res.trace.question },
-        {
-          role: "assistant",
-          content: res.answer,
-          sources: res.sources,
-          trace: res.trace,
-        },
-      ]);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Demo failed");
-    } finally {
-      setLoading(false);
-    }
-  }, [dispatch]);
+
 
   const selectedSourceLabel = selectedSource
-    ? `${selectedSource.chapter_title ?? selectedSource.book_title} | p.${selectedSource.page_number}`
+    ? `p.${selectedSource.page_number}`
     : null;
 
   return (
@@ -308,14 +324,14 @@ export default function ChatPanel({
       {/* ── Header ── */}
       <ChatHeader
         sessionBooks={sessionBooks}
-        chatMode={chatMode}
         selectedModel={selectedModel}
         models={models}
         loading={loading}
         selectedSourceLabel={selectedSourceLabel}
-        onModeChange={(mode) => dispatch({ type: "SET_CHAT_MODE", mode })}
         onModelChange={(model, provider) => dispatch({ type: "SET_MODEL", model, provider })}
         onNewChat={resetConversation}
+        showQuestions={showQuestions}
+        onToggleQuestions={onToggleQuestions}
       />
 
       {/* ── Message thread ── */}
@@ -329,7 +345,6 @@ export default function ChatPanel({
             sessionBooks={sessionBooks}
             loading={loading}
             onSubmitQuestion={(q) => void submitQuestion(q)}
-            onRunDemo={() => void runDemo()}
           />
         ) : (
           <div className="mx-auto flex max-w-3xl flex-col gap-3">
@@ -341,35 +356,6 @@ export default function ChatPanel({
                   sources={message.sources}
                   onRetry={message.role === "user" && !loading ? (q) => void submitQuestion(q) : undefined}
                 />
-                {message.role === "assistant" && message.sources && message.sources.length > 0 && (() => {
-                  // Deduplicate sources by citation_index (keep first occurrence)
-                  const seen = new Set<number>();
-                  const uniqueSources = message.sources.filter((s) => {
-                    const ci = (s as any).citation_index as number | undefined;
-                    const key = ci ?? -1;
-                    if (key !== -1 && seen.has(key)) return false;
-                    if (key !== -1) seen.add(key);
-                    return true;
-                  });
-                  return (
-                    <div className="ml-11 mt-1 flex flex-wrap gap-2">
-                      {uniqueSources.map((s, i) => (
-                        <SourceCard
-                          key={`src-${index}-${(s as any).citation_index ?? i}`}
-                          source={s}
-                          index={i}
-                          isActive={selectedSource?.source_id === s.source_id}
-                        />
-                      ))}
-                    </div>
-                  );
-                })()}
-                {message.role === "assistant" && chatMode === "trace" && message.trace && (
-                  <TracePanel trace={message.trace} />
-                )}
-                {message.role === "assistant" && message.trace && (
-                  <ThinkingProcessPanel trace={message.trace} />
-                )}
               </div>
             ))}
 

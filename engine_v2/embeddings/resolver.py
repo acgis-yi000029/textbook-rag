@@ -1,29 +1,30 @@
-"""Embedding model resolver — select and configure embedding models.
+"""resolver — Select and configure embedding models.
 
-Aligns with llama_index.core.embeddings.BaseEmbedding.
-Ref: llama_index.core.embeddings — BaseEmbedding, resolve_embed_model()
+Responsibilities:
+    - Resolve embedding model instance by name or settings default
+    - Expose current embedding configuration for API introspection
 
-Supports:
-    - HuggingFace local models (default, always available)
-    - OpenAI embeddings (if API key configured)
-    - Azure OpenAI embeddings (if endpoint configured)
-
-Extracted from settings.py to give embeddings first-class module status.
+Ref: llama_index — BaseEmbedding, resolve_embed_model()
 """
 
 from __future__ import annotations
 
-import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+from loguru import logger
+
+if TYPE_CHECKING:
+    pass  # type-only imports
 
 from llama_index.core.embeddings import BaseEmbedding
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
 from engine_v2.settings import EMBEDDING_MODEL
 
-logger = logging.getLogger(__name__)
 
-
+# ============================================================
+# Resolver
+# ============================================================
 def resolve_embed_model(
     model_name: str | None = None,
 ) -> BaseEmbedding:
@@ -43,12 +44,15 @@ def resolve_embed_model(
         BaseEmbedding instance ready for use.
     """
     name = model_name or EMBEDDING_MODEL
-    logger.info("Resolving embedding model: %s", name)
+    logger.info("Resolving embedding model: {}", name)
 
     # Currently only HuggingFace local is supported
     return HuggingFaceEmbedding(model_name=name)
 
 
+# ============================================================
+# Info
+# ============================================================
 def get_embed_info() -> dict[str, Any]:
     """Return current embedding model configuration info.
 

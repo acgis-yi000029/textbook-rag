@@ -127,15 +127,12 @@ export function useBookSidebar(
 function buildByBook(books: BookBase[], opts: ByBookOptions): SidebarItem[] {
   const countMap = opts.countMap ?? new Map()
   const isZh = opts.isZh ?? false
-  const totalCount = opts.countMap
-    ? Array.from(countMap.values()).reduce((a, b) => a + b, 0)
-    : books.length
 
   const items: SidebarItem[] = [
     {
       key: 'all',
       label: opts.allLabel ?? 'All',
-      count: totalCount,
+      count: books.length,
       icon: opts.allIcon,
     },
   ]
@@ -158,13 +155,11 @@ function buildByBook(books: BookBase[], opts: ByBookOptions): SidebarItem[] {
     const allCatBooks = Object.values(catSubs).flat()
     if (allCatBooks.length === 0) continue
 
-    // Sum counts for this category
-    const catCount = allCatBooks.reduce((sum, b) => sum + (countMap.get(b.book_id) || 0), 0)
-
+    // Category shows book count (always visible)
     items.push({
       key: catKey,
       label: isZh ? cfg.labelZh : cfg.label,
-      count: catCount,
+      count: allCatBooks.length,
       icon: opts.categoryIcons?.[catKey],
       collapsible: true,
     })
@@ -180,22 +175,22 @@ function buildByBook(books: BookBase[], opts: ByBookOptions): SidebarItem[] {
       const subBooks = catSubs[subKey]
 
       if (subKey) {
-        // Add subcategory header
-        const subCount = subBooks.reduce((sum, b) => sum + (countMap.get(b.book_id) || 0), 0)
+        // Subcategory shows book count (always visible)
         items.push({
           key: `${catKey}::${subKey}`,
           label: subKey,
-          count: subCount,
+          count: subBooks.length,
           indentLevel: 1,
           collapsible: true,
         })
       }
 
-      // Sort books within group by count desc
+      // Sort books within group: books with questions first, then alphabetical
       const sorted = [...subBooks].sort((a, b) => {
         const ca = countMap.get(a.book_id) || 0
         const cb = countMap.get(b.book_id) || 0
-        return cb - ca
+        if (cb !== ca) return cb - ca
+        return a.title.localeCompare(b.title)
       })
 
       for (const book of sorted) {

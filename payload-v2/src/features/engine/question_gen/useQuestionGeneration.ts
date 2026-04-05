@@ -70,6 +70,11 @@ export function useQuestionGeneration(
             likes: 0,
             category: matchedBook?.category || 'textbook',
             subcategory: matchedBook?.subcategory || '',
+            sourcePage: (q as any).source_page ?? undefined,
+            scoreRelevance: (q as any).score_relevance || undefined,
+            scoreClarity: (q as any).score_clarity || undefined,
+            scoreDifficulty: (q as any).score_difficulty || undefined,
+            scoreOverall: (q as any).score_overall || undefined,
           }).catch(() => { /* silently fail */ })
         }
       })

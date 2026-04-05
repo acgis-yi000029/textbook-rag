@@ -72,10 +72,19 @@ def load_chunks_from_sqlite() -> list[dict]:
             c.content_type,
             c.primary_page_id,
             b.book_id,
-            COALESCE(p.page_number, 0) AS page_idx
+            COALESCE(p.page_number, 0) AS page_idx,
+            ch.chapter_key,
+            COALESCE(sl.x0, 0) AS bbox_x0,
+            COALESCE(sl.y0, 0) AS bbox_y0,
+            COALESCE(sl.x1, 0) AS bbox_x1,
+            COALESCE(sl.y1, 0) AS bbox_y1,
+            COALESCE(p.width, 0)  AS page_width,
+            COALESCE(p.height, 0) AS page_height
         FROM chunks c
         JOIN books b ON b.id = c.book_id
         LEFT JOIN pages p ON p.id = c.primary_page_id
+        LEFT JOIN chapters ch ON ch.id = c.chapter_id
+        LEFT JOIN source_locators sl ON sl.chunk_id = c.id
         WHERE c.text != ''
         ORDER BY c.id
         """
@@ -136,15 +145,24 @@ def build_chroma_gpu(
         )
 
         ids = [c["chroma_document_id"] or c["chunk_id"] for c in batch]
-        metadatas = [
-            {
+        metadatas = []
+        for c in batch:
+            meta = {
                 "book_id": c["book_id"],
                 "chunk_id": c["chunk_id"],
                 "page_idx": int(c["page_idx"]),
                 "content_type": c["content_type"],
+                "bbox_x0": float(c.get("bbox_x0", 0)),
+                "bbox_y0": float(c.get("bbox_y0", 0)),
+                "bbox_x1": float(c.get("bbox_x1", 0)),
+                "bbox_y1": float(c.get("bbox_y1", 0)),
+                "page_width": float(c.get("page_width", 0)),
+                "page_height": float(c.get("page_height", 0)),
             }
-            for c in batch
-        ]
+            # ChromaDB metadata values must not be None
+            if c.get("chapter_key"):
+                meta["chapter_key"] = c["chapter_key"]
+            metadatas.append(meta)
 
         collection.add(
             ids=ids,

@@ -8,7 +8,7 @@
 
 import type { Question, GeneratedQuestion, QuestionsApiResponse } from './types'
 
-const ENGINE = process.env.NEXT_PUBLIC_ENGINE_URL || 'http://localhost:8000'
+const ENGINE = process.env.NEXT_PUBLIC_ENGINE_URL || 'http://localhost:8001'
 
 // NOTE: fetchIndexedBooks moved to @/features/shared/books
 
@@ -31,11 +31,12 @@ export async function fetchHighQualityQuestions(
 ): Promise<Question[]> {
   if (bookIds.length === 0) return []
 
-  const whereParams = bookIds
-    .map((id, i) => `where[or][${i}][bookId][equals]=${encodeURIComponent(id)}`)
-    .join('&')
+  // Payload REST: must use where[and] to combine multiple conditions
+  const bookFilter = bookIds.length === 1
+    ? `where[and][0][bookId][equals]=${encodeURIComponent(bookIds[0])}`
+    : bookIds.map((id, i) => `where[and][0][or][${i}][bookId][equals]=${encodeURIComponent(id)}`).join('&')
   const scoreFilter = `where[and][1][scoreOverall][greater_than_equal]=${minScore}`
-  const url = `/api/questions?${whereParams}&${scoreFilter}&sort=-scoreOverall,-likes&limit=${limit}`
+  const url = `/api/questions?${bookFilter}&${scoreFilter}&sort=-scoreOverall,-likes&limit=${limit}`
 
   try {
     const res = await fetch(url)
@@ -80,17 +81,29 @@ export async function deleteAllQuestions(ids: number[]): Promise<void> {
 export async function generateQuestions(
   bookIds: string[],
   count = 6,
-  model?: string,
+  options?: {
+    model?: string
+    category?: string
+    pageStart?: number
+    pageEnd?: number
+  },
 ): Promise<GeneratedQuestion[]> {
   try {
     const body: Record<string, unknown> = { book_ids: bookIds, count }
-    if (model) body.model = model
+    if (options?.model) body.model = options.model
+    if (options?.category) body.category = options.category
+    if (options?.pageStart != null) body.page_start = options.pageStart
+    if (options?.pageEnd != null) body.page_end = options.pageEnd
     const res = await fetch(`${ENGINE}/engine/questions/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
-    if (!res.ok) return []
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '')
+      console.error('[generateQuestions] Failed:', res.status, errText, 'body sent:', JSON.stringify(body))
+      return []
+    }
     const data = await res.json()
     return data.questions ?? []
   } catch {
@@ -108,6 +121,11 @@ export async function saveQuestionToPayload(doc: {
   likes: number
   category?: string
   subcategory?: string
+  scoreRelevance?: number
+  scoreClarity?: number
+  scoreDifficulty?: number
+  scoreOverall?: number
+  sourcePage?: number
 }): Promise<void> {
   await fetch('/api/questions', {
     method: 'POST',
@@ -129,6 +147,7 @@ function mapDoc(d: Record<string, any>): Question {
     likes: d.likes ?? 0,
     category: d.category ?? null,
     subcategory: d.subcategory ?? null,
+    sourcePage: d.sourcePage ?? null,
     model: d.model ?? null,
     scoreRelevance: d.scoreRelevance ?? null,
     scoreClarity: d.scoreClarity ?? null,

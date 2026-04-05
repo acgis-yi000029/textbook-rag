@@ -1,26 +1,51 @@
-"""TextbookQueryEngine — orchestrates retriever + synthesizer.
+"""citation — Orchestrate retriever + synthesizer into a full query engine.
 
-Aligns with llama_index.core.query_engine.
-Composes:
-    - retrievers/hybrid.py       → QueryFusionRetriever
-    - response_synthesizers/     → CitationSynthesizer
-Into a RetrieverQueryEngine that handles the full query flow.
+Responsibilities:
+    - Build RetrieverQueryEngine from hybrid retriever + citation synthesizer
+    - Execute RAG queries and convert results to RAGResponse schema
+
+Ref: llama_index — RetrieverQueryEngine
 """
 
 from __future__ import annotations
 
-import logging
+from loguru import logger
+
+from llama_index.core.postprocessor.types import BaseNodePostprocessor
+from llama_index.core.schema import NodeWithScore, QueryBundle
 
 from llama_index.core.query_engine import RetrieverQueryEngine
 
 from engine_v2.response_synthesizers.citation import get_citation_synthesizer
 from engine_v2.retrievers.hybrid import get_hybrid_retriever
-from engine_v2.schema import RAGResponse
+from engine_v2.schema import RAGResponse, build_source
 from engine_v2.settings import TOP_K
 
-logger = logging.getLogger(__name__)
+
+# ============================================================
+# Node postprocessor — label each source with [Source N]
+# ============================================================
+class CitationLabelPostprocessor(BaseNodePostprocessor):
+    """Prepend 'Source N:' to each chunk's text before synthesis.
+
+    Mirrors LlamaIndex's CitationQueryEngine behavior so the LLM uses
+    integer [N] citation markers instead of inventing section numbers.
+    """
+
+    def _postprocess_nodes(
+        self,
+        nodes: list[NodeWithScore],
+        query_bundle: QueryBundle | None = None,
+    ) -> list[NodeWithScore]:
+        for i, nws in enumerate(nodes, start=1):
+            original = nws.node.get_content()
+            nws.node.set_content(f"Source {i}:\n{original}")
+        return nodes
 
 
+# ============================================================
+# Engine factory
+# ============================================================
 def get_query_engine(
     similarity_top_k: int = TOP_K,
     streaming: bool = False,
@@ -30,7 +55,8 @@ def get_query_engine(
     Architecture:
         RetrieverQueryEngine
         ├── retriever  → QueryFusionRetriever (BM25 + Vector → RRF)
-        └── synthesizer → CitationSynthesizer (COMPACT + citation prompts)
+        ├── synthesizer → CitationSynthesizer (COMPACT + citation prompts)
+        └── postprocessor → CitationLabelPostprocessor (Source N: labels)
 
     Args:
         similarity_top_k: Number of chunks to retrieve.
@@ -45,11 +71,18 @@ def get_query_engine(
     engine = RetrieverQueryEngine(
         retriever=retriever,
         response_synthesizer=synthesizer,
+        node_postprocessors=[CitationLabelPostprocessor()],
     )
 
-    logger.info("TextbookQueryEngine ready (top_k=%d, streaming=%s)",
+    logger.info("TextbookQueryEngine ready (top_k={}, streaming={})",
                 similarity_top_k, streaming)
     return engine
+
+
+# ============================================================
+# Query convenience wrapper
+# ============================================================
+# _build_source removed — use shared build_source() from engine_v2.schema
 
 
 def query(
@@ -74,32 +107,13 @@ def query(
     response = engine.query(question)
 
     # Map source nodes to our source format
-    sources = []
-    for i, node_with_score in enumerate(response.source_nodes, start=1):
-        node = node_with_score.node
-        meta = node.metadata
-        bbox = meta.get("bbox", [0, 0, 0, 0])
-        page_idx = meta.get("page_idx", 0)
-
-        sources.append({
-            "citation_index": i,
-            "chunk_id": node.id_,
-            "book_id": meta.get("book_id", ""),
-            "page_number": page_idx + 1,
-            "content_type": meta.get("content_type", "text"),
-            "chapter_key": meta.get("chapter_key"),
-            "category": meta.get("category", "textbook"),
-            "snippet": node.get_content()[:300],
-            "score": node_with_score.score,
-            "bbox": {
-                "x0": bbox[0], "y0": bbox[1],
-                "x1": bbox[2], "y1": bbox[3],
-                "page": page_idx,
-            } if bbox and any(v != 0 for v in bbox) else None,
-        })
+    sources = [
+        build_source(nws, i)
+        for i, nws in enumerate(response.source_nodes, start=1)
+    ]
 
     # Warnings
-    warnings = []
+    warnings: list[str] = []
     if not response.source_nodes:
         warnings.append("No chunks retrieved — answer is unsupported by any source.")
 

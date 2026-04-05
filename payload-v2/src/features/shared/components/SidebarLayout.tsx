@@ -37,7 +37,7 @@ export interface SidebarItem {
   count?: number
   /** 缩进展示（子分类）/ Indent (sub-category) — alias for indentLevel=1 */
   indent?: boolean
-  /** 多级缩进 / Multi-level indent (0=root, 1=sub, 2=sub-sub) */
+  /** 多级缩进 / Multi-level indent (0=root, 1=sub, 2=sub-sub, 3=deep) */
   indentLevel?: number
   /** 高亮展示（如"新发现"）/ Highlight style */
   highlight?: boolean
@@ -47,6 +47,10 @@ export interface SidebarItem {
   dividerBefore?: boolean
   /** 可折叠（点击展开/收起子项）/ Collapsible group header */
   collapsible?: boolean
+  /** Render as a checkbox item (for chapter multi-select). */
+  checkable?: boolean
+  /** Whether the checkbox is checked (only relevant when checkable=true). */
+  checked?: boolean
 }
 
 export interface SidebarLayoutProps {
@@ -225,13 +229,17 @@ export function SidebarLayout({
                     onFilterChange(item.key)
                   }}
                   className={cn(
-                    'flex items-center gap-2 w-full rounded-md px-2.5 py-2 text-left transition-colors mb-0.5',
+                    'flex items-center gap-2 w-full rounded-md px-2.5 text-left transition-colors mb-0.5',
+                    item.checkable ? 'py-1' : 'py-2',
                     item.indent && !item.indentLevel && 'pl-5',
                     item.indentLevel === 1 && 'pl-5',
                     item.indentLevel === 2 && 'pl-8',
-                    isActive
+                    item.indentLevel === 3 && 'pl-10',
+                    isActive && !item.checkable
                       ? 'bg-primary/10 text-primary font-medium'
-                      : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
+                      : item.checked
+                        ? 'text-primary'
+                        : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
                     item.highlight && !isActive && 'text-amber-400',
                   )}
                 >
@@ -241,13 +249,24 @@ export function SidebarLayout({
                       expanded.has(item.key) && 'rotate-90',
                     )} />
                   )}
-                  {item.icon ?? (
+                  {item.checkable ? (
+                    <div className={cn(
+                      'w-3 h-3 rounded border shrink-0 flex items-center justify-center transition-colors',
+                      item.checked ? 'border-primary bg-primary' : 'border-muted-foreground/40',
+                    )}>
+                      {item.checked && (
+                        <svg className="w-2 h-2 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={4}>
+                          <path d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                  ) : item.icon ?? (
                     isActive
                       ? <FolderOpen className="h-4 w-4 shrink-0" />
                       : <Folder className="h-4 w-4 shrink-0" />
                   )}
                   <span className="text-xs flex-1 truncate">{item.label}</span>
-                  {item.count !== undefined && (
+                  {item.count !== undefined && item.count > 0 && (
                     <span
                       className={cn(
                         'text-[10px] font-medium px-1.5 py-0.5 rounded-full',

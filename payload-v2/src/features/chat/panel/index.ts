@@ -1,6 +1,10 @@
 export { default as ChatHeader } from "./ChatHeader";
 export { default as ChatInput } from "./ChatInput";
 export { default as WelcomeScreen } from "./WelcomeScreen";
-export { default as ModeToggle } from "./ModeToggle";
 export { default as MessageBubble } from "./MessageBubble";
 export { default as SourceCard } from "./SourceCard";
+export { default as AnswerBlockRenderer } from "./AnswerBlockRenderer";
+export { default as CitationChip } from "./CitationChip";
+export { default as CitationPopover } from "./CitationPopover";
+export { parseAnswerBlocks } from "./answerBlocks";
+export type { AnswerBlock } from "./answerBlocks";

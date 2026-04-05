@@ -27,6 +27,8 @@ export interface SourceInfo {
   book_title: string
   chapter_title: string | null
   page_number: number
+  /** Complete chunk text (≤2000 chars) for hover preview */
+  full_content?: string
   snippet: string
   bbox: { x0: number; y0: number; x1: number; y1: number } | null
   bboxes?: BboxEntry[]

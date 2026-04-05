@@ -52,13 +52,34 @@ export default function SourceCard({ source, index, isActive }: Props) {
     enterTimer.current = setTimeout(() => {
       if (!chipRef.current) return;
       const r = chipRef.current.getBoundingClientRect();
-      const openUp = r.top > window.innerHeight / 2;
-      const left = Math.max(8, Math.min(r.left, window.innerWidth - 356));
-      setPos(
-        openUp
-          ? { bottom: window.innerHeight - r.top + 8, left }
-          : { top: r.bottom + 8, left },
-      );
+      const popW = 356;
+      const popH = 320;
+      const gap = 10;
+
+      const fitsRight = r.right + gap + popW < window.innerWidth - 8;
+      const fitsLeft = r.left - gap - popW > 8;
+
+      if (fitsRight) {
+        const top = Math.max(
+          8,
+          Math.min(r.top - 40, window.innerHeight - popH - 8),
+        );
+        setPos({ top, left: r.right + gap });
+      } else if (fitsLeft) {
+        const top = Math.max(
+          8,
+          Math.min(r.top - 40, window.innerHeight - popH - 8),
+        );
+        setPos({ top, left: r.left - gap - popW });
+      } else {
+        const openUp = r.top > window.innerHeight / 2;
+        const left = Math.max(8, Math.min(r.left, window.innerWidth - popW - 8));
+        setPos(
+          openUp
+            ? { bottom: window.innerHeight - r.top + gap, left }
+            : { top: r.bottom + gap, left },
+        );
+      }
       setShowPopover(true);
     }, 200);
   }, []);
@@ -182,7 +203,7 @@ export default function SourceCard({ source, index, isActive }: Props) {
             ? "border-blue-400/60 bg-blue-500/10 text-blue-500 shadow-sm shadow-blue-500/10"
             : "border-border bg-card/80 text-muted-foreground hover:border-blue-300/50 hover:bg-accent/50 hover:text-foreground"
         }`}
-        title={`${source.book_title} · p.${source.page_number} — click to view in PDF`}
+        aria-label={`${source.book_title} · p.${source.page_number} — click to view in PDF`}
       >
         <span
           className={`inline-flex h-[18px] w-[18px] items-center justify-center rounded-full text-[10px] font-bold leading-none ${

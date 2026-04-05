@@ -1,34 +1,43 @@
 /**
- * panel/ChatHeader.tsx
- * 聊天面板顶栏 — 标题、模式切换、模型选择、新建对话
+ * ChatHeader — Chat panel top bar with title, model selector, and questions toggle.
+ *
+ * Usage: <ChatHeader sessionBooks={books} selectedModel={model} ... />
  */
+
+import { Lightbulb } from "lucide-react";
 import type { ModelInfo } from "@/features/shared/types";
 import type { BookBase } from "@/features/shared/books";
-import ModeToggle from "./ModeToggle";
 
-interface Props {
+// ============================================================
+// Types
+// ============================================================
+interface ChatHeaderProps {
   sessionBooks: BookBase[];
-  chatMode: "answer" | "trace";
   selectedModel: string;
   models: ModelInfo[];
   loading: boolean;
   selectedSourceLabel: string | null;
-  onModeChange: (mode: "answer" | "trace") => void;
   onModelChange: (model: string, provider?: string) => void;
   onNewChat: () => void;
+  /** Questions sidebar toggle */
+  showQuestions?: boolean;
+  onToggleQuestions?: () => void;
 }
 
+// ============================================================
+// Component
+// ============================================================
 export default function ChatHeader({
   sessionBooks,
-  chatMode,
   selectedModel,
   models,
   loading,
   selectedSourceLabel,
-  onModeChange,
   onModelChange,
   onNewChat,
-}: Props) {
+  showQuestions,
+  onToggleQuestions,
+}: ChatHeaderProps) {
   return (
     <div className="shrink-0 border-b border-border bg-card px-4 py-2.5">
       <div className="flex items-center gap-3">
@@ -51,10 +60,6 @@ export default function ChatHeader({
 
         {/* Controls */}
         <div className="flex shrink-0 items-center gap-2">
-          <ModeToggle
-            mode={chatMode}
-            onChange={onModeChange}
-          />
           <select
             className="rounded-md border border-border bg-background px-2 py-1.5 text-[12px] font-medium text-foreground outline-none transition focus:border-primary"
             value={selectedModel}
@@ -78,18 +83,21 @@ export default function ChatHeader({
             )}
           </select>
 
-          {/* New Chat */}
-          <button
-            type="button"
-            onClick={onNewChat}
-            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 text-xs font-medium text-foreground transition hover:bg-accent"
-            title="Start a new session — choose different books"
-          >
-            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-            </svg>
-            New Chat
-          </button>
+          {/* Questions sidebar toggle — hidden when sidebar is open (it has its own close button) */}
+          {onToggleQuestions && !showQuestions && (
+            <button
+              type="button"
+              onClick={onToggleQuestions}
+              className={`flex items-center justify-center h-8 w-8 rounded-lg border transition-colors ${
+                showQuestions
+                  ? 'bg-primary/10 text-primary border-primary/30'
+                  : 'border-border text-muted-foreground hover:bg-accent'
+              }`}
+              title={showQuestions ? 'Hide questions' : 'Show suggested questions'}
+            >
+              <Lightbulb size={16} />
+            </button>
+          )}
         </div>
       </div>
 

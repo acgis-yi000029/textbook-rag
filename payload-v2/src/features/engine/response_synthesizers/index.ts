@@ -1,11 +1,14 @@
 /**
- * engine/response_synthesizers — Prompt and synthesis configuration
- * Aligned with: llama_index.response_synthesizers → engine-v2/response_synthesizers/
+ * response_synthesizers — barrel export.
  *
- * Manages prompt modes (system prompts) and query templates
- * via Payload CMS Prompts collection.
+ * This is the ONLY public API surface for this module.
  */
 
+// ============================================================
+// Exports
+// ============================================================
+export { default as PromptEditorPage } from './components/PromptEditorPage'
 export * from './types'
 export { usePromptModes } from './usePromptModes'
 export type { UsePromptModesReturn } from './usePromptModes'
+export { fetchPromptModes, fetchPromptMode, updatePromptMode } from './api'

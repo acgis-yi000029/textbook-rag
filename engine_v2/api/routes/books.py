@@ -198,10 +198,16 @@ async def get_pdf(book_id: str, variant: str = "origin"):
             404, f"PDF not found for book: {book_id} (variant={variant})"
         )
 
-    return FileResponse(
-        str(pdf_path),
+    from starlette.responses import Response as RawResponse
+
+    pdf_bytes = pdf_path.read_bytes()
+    return RawResponse(
+        content=pdf_bytes,
         media_type="application/pdf",
-        filename=f"{book_id}.pdf",
+        headers={
+            "Content-Disposition": f'inline; filename="{book_id}.pdf"',
+            "Cache-Control": "public, max-age=3600",
+        },
     )
 
 
@@ -249,3 +255,77 @@ async def get_cover(book_id: str):
         media_type="image/png",
         headers={"Cache-Control": "public, max-age=86400"},
     )
+
+
+@router.get("/books/{book_id}/chunks")
+async def get_chunks(book_id: str, toc_id: int | None = None, limit: int = 30):
+    """Get text content for a book chapter from MinerU content_list.json.
+
+    Uses the TOC entry's pdf_page to determine the page range for the chapter,
+    then extracts text content from content_list items within that range.
+
+    Args:
+        book_id: Book identifier.
+        toc_id: TOC entry ID (from GET /books/{id}/toc). If provided, filters
+                content to the page range of that chapter.
+        limit: Max number of content items to return.
+    """
+    content_list = _load_content_list(book_id)
+    if not content_list:
+        raise HTTPException(404, f"No content data found for book: {book_id}")
+
+    # If toc_id is specified, determine the content range
+    start_idx = 0
+    end_idx = len(content_list)
+
+    if toc_id is not None:
+        toc = _extract_toc(book_id, content_list)
+        # Find the TOC entry
+        entry = None
+        next_entry = None
+        for i, t in enumerate(toc):
+            if t["id"] == toc_id:
+                entry = t
+                for j in range(i + 1, len(toc)):
+                    if toc[j]["level"] <= t["level"]:
+                        next_entry = toc[j]
+                        break
+                break
+
+        if entry:
+            entry_page = entry["pdf_page"] - 1  # Convert to 0-indexed
+            # Find the content_list index where this chapter starts
+            # Match by page_idx >= entry_page
+            for ci, item in enumerate(content_list):
+                if item.get("page_idx", -1) >= entry_page:
+                    start_idx = ci
+                    break
+
+            if next_entry:
+                next_page = next_entry["pdf_page"] - 1
+                for ci, item in enumerate(content_list):
+                    if item.get("page_idx", -1) >= next_page:
+                        end_idx = ci
+                        break
+
+    # Extract content items from the determined range
+    chunks = []
+    for item in content_list[start_idx:end_idx]:
+        content_type = item.get("type", "text")
+        text = item.get("text", "").strip()
+        if not text or len(text) < 5:
+            continue
+
+        page_idx = item.get("page_idx", 0)
+        chunks.append({
+            "id": f"{book_id}_p{page_idx}_{len(chunks)}",
+            "text": text,
+            "page_idx": page_idx + 1,  # Return as 1-indexed for display
+            "content_type": content_type,
+        })
+
+        if len(chunks) >= limit:
+            break
+
+    return {"chunks": chunks, "count": len(chunks)}
+

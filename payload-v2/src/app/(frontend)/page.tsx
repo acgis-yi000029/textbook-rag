@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation'
+import HomePage from '@/features/home/HomePage'
 
 export default function Page() {
-  redirect('/readers')
+  return <HomePage />
 }
