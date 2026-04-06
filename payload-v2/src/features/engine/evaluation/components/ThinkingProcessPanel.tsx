@@ -1,15 +1,16 @@
 /**
- * evaluation/components/ThinkingProcessPanel.tsx
- * Visual thinking process flowchart — vertical layout, shows only active steps
+ * ThinkingProcessPanel — Visual thinking process flowchart.
  *
- * Aligned with: llama_index.evaluation → engine-v2/evaluation/
- * Migrated from: features/chat/trace/ThinkingProcessPanel.tsx
+ * Usage: <ThinkingProcessPanel trace={trace} />
  */
 import { useState } from "react";
 import type { QueryTrace, TraceChunkHit } from "@/features/shared/types";
 
-/* ── SVG Icons ── */
+// ============================================================
+// Icons
+// ============================================================
 
+/** Search / query analysis icon. */
 function IconQuery({ className = "h-4 w-4" }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
@@ -18,6 +19,7 @@ function IconQuery({ className = "h-4 w-4" }: { className?: string }) {
   );
 }
 
+/** Full-text search icon. */
 function IconFts({ className = "h-4 w-4" }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
@@ -26,6 +28,7 @@ function IconFts({ className = "h-4 w-4" }: { className?: string }) {
   );
 }
 
+/** Vector / embedding search icon. */
 function IconVector({ className = "h-4 w-4" }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
@@ -34,6 +37,7 @@ function IconVector({ className = "h-4 w-4" }: { className?: string }) {
   );
 }
 
+/** Table-of-contents heading icon. */
 function IconToc({ className = "h-4 w-4" }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
@@ -42,6 +46,7 @@ function IconToc({ className = "h-4 w-4" }: { className?: string }) {
   );
 }
 
+/** RRF fusion icon. */
 function IconFusion({ className = "h-4 w-4" }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
@@ -50,6 +55,7 @@ function IconFusion({ className = "h-4 w-4" }: { className?: string }) {
   );
 }
 
+/** LLM generation sparkle icon. */
 function IconLlm({ className = "h-4 w-4" }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
@@ -58,7 +64,11 @@ function IconLlm({ className = "h-4 w-4" }: { className?: string }) {
   );
 }
 
-/* ── Strategy metadata ── */
+// ============================================================
+// Constants
+// ============================================================
+
+/** Visual metadata for each retrieval strategy. */
 const STRATEGY_META: Record<
   string,
   {
@@ -92,7 +102,11 @@ const STRATEGY_META: Record<
   },
 };
 
-/* ── Vertical connector line ── */
+// ============================================================
+// Internal components
+// ============================================================
+
+/** Vertical arrow connector between flow nodes. */
 function VConnector() {
   return (
     <div className="flex justify-center py-0.5">
@@ -106,7 +120,7 @@ function VConnector() {
   );
 }
 
-/* ── Hit list for expanded detail ── */
+/** Expandable hit list for a flow node's expanded detail. */
 function HitList({ hits, maxShow = 3 }: { hits: TraceChunkHit[]; maxShow?: number }) {
   if (hits.length === 0) return <div className="text-muted-foreground italic text-xs">No hits</div>;
 
@@ -134,7 +148,7 @@ function HitList({ hits, maxShow = 3 }: { hits: TraceChunkHit[]; maxShow?: numbe
   );
 }
 
-/* ── Flow node (vertical) ── */
+/** Single flow node in the vertical pipeline chart. */
 function FlowNode({
   Icon,
   label,
@@ -167,18 +181,13 @@ function FlowNode({
       `}
     >
       <div className="flex items-center gap-3">
-        {/* Icon circle */}
         <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${colorClasses}`}>
           <Icon className="h-4 w-4" />
         </div>
-
-        {/* Label + stat */}
         <div className="min-w-0 flex-1">
           <div className="text-xs font-semibold text-foreground">{label}</div>
           <div className="text-[11px] text-muted-foreground truncate">{stat}</div>
         </div>
-
-        {/* Expand chevron */}
         {detail && (
           <svg
             className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-150 ${expanded ? "rotate-180" : ""}`}
@@ -188,8 +197,6 @@ function FlowNode({
           </svg>
         )}
       </div>
-
-      {/* Expanded detail */}
       {expanded && detail && (
         <div className="mt-2 border-t border-border pt-2">{detail}</div>
       )}
@@ -197,7 +204,11 @@ function FlowNode({
   );
 }
 
-/* ── Main component ── */
+// ============================================================
+// Component
+// ============================================================
+
+/** Collapsible vertical flowchart showing the RAG thinking process. */
 export default function ThinkingProcessPanel({ trace }: { trace: QueryTrace }) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -220,7 +231,8 @@ export default function ThinkingProcessPanel({ trace }: { trace: QueryTrace }) {
 
   return (
     <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-      {/* ── Summary bar ── */}
+
+      {/* Summary bar */}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
@@ -237,7 +249,6 @@ export default function ThinkingProcessPanel({ trace }: { trace: QueryTrace }) {
 
         <span>Thinking Process</span>
 
-        {/* Mini icon strip */}
         <div className="ml-auto flex items-center gap-1.5">
           {activeStrategies.map(({ key }) => {
             const meta = STRATEGY_META[key];
@@ -253,7 +264,7 @@ export default function ThinkingProcessPanel({ trace }: { trace: QueryTrace }) {
         </div>
       </button>
 
-      {/* ── Vertical flowchart ── */}
+      {/* Vertical flowchart */}
       {isOpen && (
         <div className="border-t border-border px-4 py-4">
           <div className="mx-auto max-w-md flex flex-col">

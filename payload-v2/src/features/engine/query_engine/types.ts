@@ -1,15 +1,17 @@
 /**
- * engine/query_engine/types.ts
- * Aligned with: llama_index.query_engine → engine-v2/query_engine/
- *               → collections/Queries
+ * query_engine types — Query requests, responses, and full trace data.
  *
- * Types for query requests, responses, and full trace data.
+ * Shared type definitions for the query_engine module.
  */
 
 import type { SourceInfo, RetrievalStats, RetrievalTrace } from '../retrievers/types'
 import type { GenerationTrace } from '../response_synthesizers/types'
 
-// ── Query filters ───────────────────────────────────────────────────────────
+// ============================================================
+// Domain types
+// ============================================================
+
+/** Optional filters to scope retrieval by book, chapter, or content type. */
 export interface QueryFilters {
   book_ids?: number[]
   book_id_strings?: string[]
@@ -17,7 +19,7 @@ export interface QueryFilters {
   content_types?: string[]
 }
 
-// ── Query request ───────────────────────────────────────────────────────────
+/** Client request payload for a query engine call. */
 export interface QueryRequest {
   question: string
   filters?: QueryFilters
@@ -26,7 +28,7 @@ export interface QueryRequest {
   provider?: string
 }
 
-// ── Full query trace (retrieval + generation) ───────────────────────────────
+/** Complete execution trace including retrieval and generation stages. */
 export interface QueryTrace {
   question: string
   top_k: number
@@ -36,7 +38,7 @@ export interface QueryTrace {
   generation: GenerationTrace
 }
 
-// ── Query response ──────────────────────────────────────────────────────────
+/** Response returned from a query engine call. */
 export interface QueryResponse {
   answer: string
   sources: SourceInfo[]
@@ -44,7 +46,7 @@ export interface QueryResponse {
   trace: QueryTrace
 }
 
-// ── Book summary (for query context) ────────────────────────────────────────
+/** Lightweight book metadata used in query context selection. */
 export interface BookSummary {
   id: number
   book_id: string
@@ -57,6 +59,7 @@ export interface BookSummary {
   subcategory: string
 }
 
+/** Single chapter within a book. */
 export interface ChapterInfo {
   id: number
   chapter_key: string
@@ -64,10 +67,16 @@ export interface ChapterInfo {
   start_page: number | null
 }
 
+/** Extended book info with chapter list. */
 export interface BookDetail extends BookSummary {
   chapters: ChapterInfo[]
 }
 
+// ============================================================
+// API types
+// ============================================================
+
+/** Table-of-contents entry from PDF structural extraction. */
 export interface TocEntry {
   id: number
   level: number

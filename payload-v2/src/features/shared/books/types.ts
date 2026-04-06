@@ -8,8 +8,19 @@
 // Category & status
 // ============================================================
 
-export type BookCategory = 'textbook' | 'ecdev' | 'real_estate'
+// Dynamic — LLM-suggested, user-editable. Common: 'textbook', 'ecdev', 'real_estate'
+export type BookCategory = string
 export type BookStatus = 'pending' | 'processing' | 'indexed' | 'error'
+export type PipelineStage = 'pending' | 'done' | 'error'
+
+/** Per-stage pipeline status for the 5-stage ingestion flow. */
+export interface PipelineInfo {
+  chunked: PipelineStage
+  toc: PipelineStage
+  bm25: PipelineStage
+  embeddings: PipelineStage
+  vector: PipelineStage
+}
 
 // ============================================================
 // Base book type (minimum common fields)
@@ -24,6 +35,12 @@ export interface BookBase {
   category: string
   subcategory: string
   chunk_count: number
+  status: BookStatus
+  pageCount: number
+  fileSize: number
+  createdAt: string
+  /** 5-stage pipeline status (only populated when pipeline group exists). */
+  pipeline?: PipelineInfo
 }
 
 // ============================================================
@@ -37,9 +54,23 @@ export interface CategoryConfig {
   color: string
 }
 
-/** Default category display config. */
+/** Well-known category display config. */
 export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
   textbook:    { label: 'Textbooks',      labelZh: '教材',     icon: 'BookOpen',  color: 'text-blue-400' },
   ecdev:       { label: 'EC Development', labelZh: '经济发展', icon: 'Building2', color: 'text-emerald-400' },
   real_estate: { label: 'Real Estate',    labelZh: '房地产',   icon: 'Home',      color: 'text-amber-400' },
+}
+
+/** Get category config, with fallback for LLM-suggested dynamic categories. */
+export function getCategoryConfig(category: string): CategoryConfig {
+  if (CATEGORY_CONFIGS[category]) return CATEGORY_CONFIGS[category]
+
+  // Auto-generate config for unknown categories
+  const label = category.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+  return {
+    label,
+    labelZh: label,
+    icon: 'FolderOpen',
+    color: 'text-violet-400',
+  }
 }

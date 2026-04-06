@@ -1,5 +1,20 @@
-import { useState, useCallback, useEffect } from "react";
+/**
+ * useChatHistory — Payload-only chat history hook.
+ *
+ * All sessions and messages are persisted to Payload CMS
+ * (ChatSessions + ChatMessages collections). No localStorage.
+ */
+
+import { useState, useCallback, useEffect, useRef } from "react";
 import type { SourceInfo, QueryTrace } from "@/features/shared/types";
+import {
+  fetchSessions as fetchServerSessions,
+  createServerSession,
+  deleteServerSession,
+  appendServerMessages,
+  fetchMessages as fetchServerMessages,
+  type PayloadChatSession,
+} from "./api";
 
 /* ── Types ── */
 
@@ -12,6 +27,8 @@ export interface HistoryMessage {
 
 export interface ChatSession {
   id: string;
+  /** Payload CMS document ID */
+  serverId: number;
   /** Title derived from the first user message */
   title: string;
   /** Book IDs locked to this session */
@@ -23,94 +40,122 @@ export interface ChatSession {
   updatedAt: number;
 }
 
-const STORAGE_KEY = "textbook-rag-chat-history";
 const MAX_SESSIONS = 50;
 
 /* ── Helpers ── */
-
-function loadSessions(): ChatSession[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as ChatSession[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveSessions(sessions: ChatSession[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
-  } catch {
-    /* quota exceeded */
-  }
-}
 
 function makeTitle(firstMessage: string): string {
   const trimmed = firstMessage.trim().replace(/\s+/g, " ");
   return trimmed.length > 60 ? trimmed.slice(0, 57) + "…" : trimmed;
 }
 
+/** Convert a Payload session doc to a local ChatSession shape. */
+function serverToLocal(
+  doc: PayloadChatSession,
+  messages: HistoryMessage[] = [],
+): ChatSession {
+  return {
+    id: String(doc.id),
+    serverId: doc.id,
+    title: doc.title,
+    sessionBookIds: doc.bookIds ?? [],
+    bookTitles: doc.bookTitles ?? [],
+    messages,
+    createdAt: new Date(doc.createdAt).getTime(),
+    updatedAt: new Date(doc.updatedAt).getTime(),
+  };
+}
+
 /* ── Hook ── */
 
-export function useChatHistory() {
+export function useChatHistory(userId?: number | null) {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
-  const [isMounted, setIsMounted] = useState(false);
+  const isLoggedIn = typeof userId === "number" && userId > 0;
+  const initialLoadDone = useRef(false);
 
-  /** Load sessions only on client to avoid hydration mismatch */
+  /** Load sessions from Payload on mount */
   useEffect(() => {
-    setSessions(loadSessions());
-    setIsMounted(true);
-  }, []);
+    if (!isLoggedIn || initialLoadDone.current) return;
+    initialLoadDone.current = true;
 
-  /** Persist whenever sessions change */
-  useEffect(() => {
-    if (isMounted) saveSessions(sessions);
-  }, [sessions, isMounted]);
+    fetchServerSessions(MAX_SESSIONS)
+      .then((serverDocs) => {
+        const loaded = serverDocs
+          .map((doc) => serverToLocal(doc))
+          .sort((a, b) => b.updatedAt - a.updatedAt)
+          .slice(0, MAX_SESSIONS);
+        setSessions(loaded);
+      })
+      .catch((err) => {
+        console.warn("[ChatHistory] Failed to fetch sessions:", err);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoggedIn]);
 
-  /** Create a brand-new session (called when first user message is sent) */
+  /**
+   * Create a new session. Returns the Payload session ID as a string.
+   * This is async because it waits for the Payload API to respond.
+   */
   const createSession = useCallback(
-    (opts: {
+    async (opts: {
       sessionBookIds: number[];
       bookTitles: string[];
       firstMessage: string;
-    }): string => {
-      const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const now = Date.now();
-      const session: ChatSession = {
-        id,
-        title: makeTitle(opts.firstMessage),
-        sessionBookIds: opts.sessionBookIds,
+    }): Promise<string> => {
+      if (!isLoggedIn || !userId) {
+        throw new Error("Cannot create session: user not logged in");
+      }
+
+      const title = makeTitle(opts.firstMessage);
+
+      const doc = await createServerSession({
+        userId,
+        title,
+        bookIds: opts.sessionBookIds,
         bookTitles: opts.bookTitles,
-        messages: [],
-        createdAt: now,
-        updatedAt: now,
-      };
+      });
+
+      const session = serverToLocal(doc);
+      session.sessionBookIds = opts.sessionBookIds;
+      session.bookTitles = opts.bookTitles;
+
       setSessions((prev) => [session, ...prev].slice(0, MAX_SESSIONS));
-      return id;
+
+      return session.id; // String(doc.id)
     },
-    [],
+    [isLoggedIn, userId],
   );
 
-  /** Append messages to an existing session */
+  /** Append messages to an existing session (local state + Payload). */
   const appendMessages = useCallback(
     (sessionId: string, newMessages: HistoryMessage[]) => {
+      // Update local state for immediate UI
       setSessions((prev) =>
-        prev.map((s) =>
-          s.id === sessionId
-            ? {
-                ...s,
-                messages: [...s.messages, ...newMessages],
-                updatedAt: Date.now(),
-              }
-            : s,
-        ),
+        prev.map((s) => {
+          if (s.id === sessionId) {
+            return {
+              ...s,
+              messages: [...s.messages, ...newMessages],
+              updatedAt: Date.now(),
+            };
+          }
+          return s;
+        }),
       );
+
+      // Persist to Payload (sessionId IS the Payload ID as string)
+      if (!isLoggedIn) return;
+      const numericId = Number(sessionId);
+      if (!numericId) return;
+
+      appendServerMessages(numericId, newMessages).catch((err) => {
+        console.warn("[ChatHistory] appendServerMessages failed:", err);
+      });
     },
-    [],
+    [isLoggedIn],
   );
 
-  /** Replace messages for a session (for optimistic updates) */
+  /** Replace messages for a session (for optimistic updates). */
   const replaceMessages = useCallback(
     (sessionId: string, messages: HistoryMessage[]) => {
       setSessions((prev) =>
@@ -124,20 +169,69 @@ export function useChatHistory() {
     [],
   );
 
-  /** Delete a session */
-  const deleteSession = useCallback((sessionId: string) => {
-    setSessions((prev) => prev.filter((s) => s.id !== sessionId));
-  }, []);
+  /** Delete a session. */
+  const deleteSession = useCallback(
+    (sessionId: string) => {
+      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
 
-  /** Clear all history */
+      if (!isLoggedIn) return;
+      const numericId = Number(sessionId);
+      if (!numericId) return;
+
+      deleteServerSession(numericId).catch((err) => {
+        console.warn("[ChatHistory] deleteServerSession failed:", err);
+      });
+    },
+    [isLoggedIn],
+  );
+
+  /** Clear all history (local state only — doesn't delete from Payload). */
   const clearHistory = useCallback(() => {
     setSessions([]);
   }, []);
 
-  /** Get one session by id */
+  /** Get one session by id. */
   const getSession = useCallback(
     (sessionId: string) => sessions.find((s) => s.id === sessionId) ?? null,
     [sessions],
+  );
+
+  /**
+   * Lazy-load messages for a session from Payload.
+   * If messages are already cached in state, returns immediately.
+   */
+  const loadSessionMessages = useCallback(
+    async (sessionId: string): Promise<HistoryMessage[]> => {
+      const session = sessions.find((s) => s.id === sessionId);
+      if (!session) return [];
+
+      // Already have messages cached
+      if (session.messages.length > 0) return session.messages;
+
+      // Load from Payload
+      if (!isLoggedIn) return [];
+      try {
+        const docs = await fetchServerMessages(session.serverId);
+        const msgs: HistoryMessage[] = docs.map((d) => ({
+          role: d.role,
+          content: d.content,
+          sources: d.sources ?? undefined,
+          trace: d.trace ?? undefined,
+        }));
+
+        // Cache in state
+        setSessions((prev) =>
+          prev.map((s) =>
+            s.id === sessionId ? { ...s, messages: msgs } : s,
+          ),
+        );
+
+        return msgs;
+      } catch {
+        return [];
+      }
+    },
+    [sessions, isLoggedIn],
   );
 
   return {
@@ -148,5 +242,6 @@ export function useChatHistory() {
     deleteSession,
     clearHistory,
     getSession,
+    loadSessionMessages,
   };
 }

@@ -8,8 +8,9 @@
 // ── Book overall status from Payload collection ─────────────────────────────
 export type BookStatus = 'pending' | 'processing' | 'indexed' | 'error'
 
-// ── Book category from Payload collection ───────────────────────────────────
-export type BookCategory = 'textbook' | 'ecdev' | 'real_estate'
+// ── Book category (dynamic — LLM-suggested, user-editable) ─────────────────
+// Common values: 'textbook', 'ecdev', 'real_estate', 'research_paper', etc.
+export type BookCategory = string
 
 // ── Pipeline stage status (per-stage) ───────────────────────────────────────
 export type StageStatus = 'pending' | 'done' | 'error'
@@ -81,13 +82,13 @@ export interface LibraryBook {
 
 // ── Category filter option (UI) ─────────────────────────────────────────────
 export interface CategoryOption {
-  value: BookCategory | 'all'
+  value: string
   label: string
   labelZh: string
 }
 
-export const CATEGORY_OPTIONS: CategoryOption[] = [
-  { value: 'all', label: 'All', labelZh: '全部' },
+/** Well-known categories (UI display). Dynamic categories added at runtime. */
+export const WELL_KNOWN_CATEGORIES: CategoryOption[] = [
   { value: 'textbook', label: 'Textbook', labelZh: '教材' },
   { value: 'ecdev', label: 'EC Dev', labelZh: '经济发展' },
   { value: 'real_estate', label: 'Real Estate', labelZh: '房地产' },

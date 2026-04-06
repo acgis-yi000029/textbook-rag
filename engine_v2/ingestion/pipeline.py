@@ -5,11 +5,12 @@ Fully LlamaIndex-native:
     - Uses Settings.embed_model for embeddings (not manual SentenceTransformer)
     - Uses IngestionPipeline.run() with vector_store sink
     - Payload CMS notification is the only project-specific part
+
+Ref: HF-06 — batch chunk push optimization + loguru migration
 """
 
 from __future__ import annotations
 
-import logging
 from pathlib import Path
 from typing import Any
 
@@ -18,6 +19,7 @@ from llama_index.core.ingestion import IngestionPipeline
 from llama_index.core.schema import BaseNode
 from llama_index.core.settings import Settings
 from llama_index.vector_stores.chroma import ChromaVectorStore
+from loguru import logger
 
 from engine_v2.ingestion.transformations import BBoxNormalizer
 from engine_v2.readers.mineru_reader import MinerUReader
@@ -25,11 +27,11 @@ from engine_v2.settings import (
     CHROMA_COLLECTION,
     CHROMA_PERSIST_DIR,
     MINERU_OUTPUT_DIR,
+    PAYLOAD_ADMIN_EMAIL,
+    PAYLOAD_ADMIN_PASSWORD,
     PAYLOAD_API_KEY,
     PAYLOAD_URL,
 )
-
-logger = logging.getLogger(__name__)
 
 
 def get_vector_store(
@@ -79,7 +81,7 @@ def ingest_book(
         raise FileNotFoundError(
             f"No content found for {book_dir_name} in {mineru_path}"
         )
-    logger.info("Read %d documents from %s", len(documents), book_dir_name)
+    logger.info("Read {} documents from {}", len(documents), book_dir_name)
     _notify(task_id, status="running", progress=20,
             log=f"Read {len(documents)} chunks")
 
@@ -93,7 +95,7 @@ def ingest_book(
         vector_store=vector_store,   # auto-upsert into ChromaDB
     )
     nodes = pipeline.run(documents=documents, show_progress=True)
-    logger.info("Ingested %d nodes into ChromaDB", len(nodes))
+    logger.info("Ingested {} nodes into ChromaDB", len(nodes))
     _notify(task_id, status="running", progress=70, log="Vectors built in ChromaDB")
 
     # Step 3: Push chunk metadata to Payload CMS
@@ -117,45 +119,120 @@ def ingest_book(
 # ---------------------------------------------------------------------------
 
 def _payload_headers() -> dict[str, str]:
+    """Get auth headers for Payload CMS REST API.
+
+    Strategy:
+        1. If PAYLOAD_API_KEY is set, use Bearer token directly.
+        2. Otherwise, login with PAYLOAD_ADMIN_EMAIL/PASSWORD to get JWT.
+        3. Cache the JWT token module-level for reuse.
+    """
+    global _cached_token
+
     headers = {"Content-Type": "application/json"}
+
+    # Option 1: API key (if configured)
     if PAYLOAD_API_KEY:
         headers["Authorization"] = f"Bearer {PAYLOAD_API_KEY}"
+        return headers
+
+    # Option 2: Login with email/password
+    if PAYLOAD_ADMIN_EMAIL and PAYLOAD_ADMIN_PASSWORD:
+        if not _cached_token:
+            _cached_token = _login_payload()
+        if _cached_token:
+            headers["Authorization"] = f"JWT {_cached_token}"
+
     return headers
 
 
-def _push_chunks_to_payload(nodes: list[BaseNode], book_id: int) -> None:
-    """Batch-create chunk records in Payload CMS."""
+# Module-level cache for Payload JWT token
+_cached_token: str | None = None
+
+
+def _login_payload() -> str | None:
+    """Login to Payload CMS and return JWT token."""
     import httpx
 
+    try:
+        resp = httpx.post(
+            f"{PAYLOAD_URL}/api/users/login",
+            json={
+                "email": PAYLOAD_ADMIN_EMAIL,
+                "password": PAYLOAD_ADMIN_PASSWORD,
+            },
+            timeout=10.0,
+        )
+        resp.raise_for_status()
+        token = resp.json().get("token")
+        if token:
+            logger.info("Logged into Payload CMS as {}", PAYLOAD_ADMIN_EMAIL)
+            return token
+        logger.warning("Payload login response missing token")
+    except Exception as e:
+        logger.error("Failed to login to Payload CMS: {}", e)
+    return None
+
+
+def _push_chunks_to_payload(nodes: list[BaseNode], book_id: int) -> None:
+    """Batch-create chunk records in Payload CMS.
+
+    Pushes chunks in batches of BATCH_SIZE to avoid
+    thousands of individual HTTP requests for large books.
+    """
+    import httpx
+
+    BATCH_SIZE = 50
     headers = _payload_headers()
-    for node in nodes:
-        bbox = node.metadata.get("bbox", [0, 0, 0, 0])
-        page_idx = node.metadata.get("page_idx", 0)
-        payload = {
-            "chunkId": node.id_,
-            "book": book_id,
-            "text": node.get_content(),
-            "contentType": node.metadata.get("content_type", "text"),
-            "readingOrder": node.metadata.get("reading_order", 0),
-            "pageNumber": page_idx,
-            "sourceLocators": [
-                {"x0": bbox[0], "y0": bbox[1], "x1": bbox[2], "y1": bbox[3],
-                 "page": page_idx}
-            ] if bbox and any(v != 0 for v in bbox) else [],
-            "vectorized": True,
-        }
-        try:
-            resp = httpx.post(
-                f"{PAYLOAD_URL}/api/chunks",
-                json=payload, headers=headers, timeout=30.0,
-            )
-            resp.raise_for_status()
-        except Exception as e:
-            logger.warning("Failed to push chunk %s: %s", node.id_, e)
+    total = len(nodes)
+    created = 0
+    errors = 0
+
+    for batch_start in range(0, total, BATCH_SIZE):
+        batch = nodes[batch_start:batch_start + BATCH_SIZE]
+        batch_num = batch_start // BATCH_SIZE + 1
+        total_batches = (total + BATCH_SIZE - 1) // BATCH_SIZE
+
+        for node in batch:
+            bbox = node.metadata.get("bbox", [0, 0, 0, 0])
+            page_idx = node.metadata.get("page_idx", 0)
+            payload = {
+                "chunkId": node.id_,
+                "book": book_id,
+                "text": node.get_content(),
+                "contentType": node.metadata.get("content_type", "text"),
+                "readingOrder": node.metadata.get("reading_order", 0),
+                "pageNumber": page_idx,
+                "sourceLocators": [
+                    {"x0": bbox[0], "y0": bbox[1], "x1": bbox[2], "y1": bbox[3],
+                     "page": page_idx}
+                ] if bbox and any(v != 0 for v in bbox) else [],
+                "vectorized": True,
+            }
+            try:
+                resp = httpx.post(
+                    f"{PAYLOAD_URL}/api/chunks",
+                    json=payload, headers=headers, timeout=30.0,
+                )
+                resp.raise_for_status()
+                created += 1
+            except Exception as e:
+                errors += 1
+                if errors <= 3:  # Only log first 3 errors
+                    logger.warning("Failed to push chunk {}: {}", node.id_, e)
+
+        logger.info(
+            "Pushed batch {}/{} ({} chunks, {} errors so far)",
+            batch_num, total_batches, len(batch), errors,
+        )
+
+    logger.info(
+        "Chunk push complete: {}/{} created, {} errors",
+        created, total, errors,
+    )
 
 
 def _update_book_status(book_id: int, chunk_count: int) -> None:
-    """Mark book as indexed in Payload CMS with 3-stage pipeline."""
+    """Mark book as indexed in Payload CMS with 5-stage pipeline."""
     import httpx
 
     try:
@@ -167,6 +244,8 @@ def _update_book_status(book_id: int, chunk_count: int) -> None:
                 "pipeline": {
                     "chunked": "done",
                     "toc": "done",
+                    "bm25": "done",
+                    "embeddings": "done",
                     "vector": "done",
                 },
             },
@@ -174,7 +253,7 @@ def _update_book_status(book_id: int, chunk_count: int) -> None:
             timeout=30.0,
         ).raise_for_status()
     except Exception as e:
-        logger.error("Failed to update book %d status: %s", book_id, e)
+        logger.error("Failed to update book {} status: {}", book_id, e)
 
 
 def _notify(
@@ -200,4 +279,4 @@ def _notify(
             json=body, headers=_payload_headers(), timeout=30.0,
         ).raise_for_status()
     except Exception as e:
-        logger.warning("Failed to notify task %d: %s", task_id, e)
+        logger.warning("Failed to notify task {}: {}", task_id, e)

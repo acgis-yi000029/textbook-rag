@@ -9,6 +9,7 @@
 
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import {
   Library,
   Search,
@@ -23,7 +24,7 @@ import {
   Square,
   Building2,
   Home,
-  Plus,
+  Download,
   Trash2,
   Pencil,
 } from 'lucide-react'
@@ -34,11 +35,9 @@ import { deleteBook } from '../api'
 import type { LibraryBook, BookCategory } from '../types'
 import BookCard from './BookCard'
 import BookEditDialog from './BookEditDialog'
-import UploadZone from './UploadZone'
 import { PipelineProgress } from './StatusBadge'
 import { cn } from '@/features/shared/utils'
 import { SidebarLayout, type ViewMode } from '@/features/shared/components/SidebarLayout'
-import { PipelineActions } from '@/features/engine/ingestion'
 
 // ── Category icons (ReactNode, can't be in shared/books/types) ───────────────
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
@@ -114,7 +113,6 @@ export default function LibraryPage() {
   const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [localSearch, setLocalSearch] = useState('')
   const [selected, setSelected] = useState<Set<number>>(new Set())
-  const [showUpload, setShowUpload] = useState(false)
   const [deleting, setDeleting] = useState<number | null>(null)
   const [editingBookId, setEditingBookId] = useState<number | null>(null)
 
@@ -129,6 +127,29 @@ export default function LibraryPage() {
       else next.add(book.id)
       return next
     })
+  }
+
+  const handleDeleteSingle = async (book: LibraryBook) => {
+    const confirmed = window.confirm(
+      isZh
+        ? `确定删除「${book.title}」？此操作不可撤销。`
+        : `Delete "${book.title}"? This cannot be undone.`,
+    )
+    if (!confirmed) return
+    setDeleting(book.id)
+    try {
+      await deleteBook(book.id)
+      setSelected((prev) => {
+        const next = new Set(prev)
+        next.delete(book.id)
+        return next
+      })
+      refresh()
+    } catch (err) {
+      console.error('Delete failed:', err)
+    } finally {
+      setDeleting(null)
+    }
   }
 
   const startNewChat = () => {
@@ -153,6 +174,10 @@ export default function LibraryPage() {
       category: b.category ?? 'textbook',
       subcategory: b.subcategory ?? '',
       chunk_count: b.chunkCount ?? 0,
+      status: b.status as 'pending' | 'processing' | 'indexed' | 'error',
+      pageCount: (b.metadata as any)?.pageCount ?? 0,
+      fileSize: (b.metadata as any)?.fileSize ?? 0,
+      createdAt: b.createdAt ?? '',
     })),
     [books],
   )
@@ -216,19 +241,14 @@ export default function LibraryPage() {
       onRetry={refresh}
       toolbar={
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowUpload((v) => !v)}
-            className={cn(
-              'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors',
-              showUpload
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
-            )}
-            title={isZh ? '上传 PDF' : 'Upload PDF'}
+          <Link
+            href="/engine/acquisition"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+            title={isZh ? '导入 PDF' : 'Import PDF'}
           >
-            <Plus className="h-3.5 w-3.5" />
-            {isZh ? '上传' : 'Upload'}
-          </button>
+            <Download className="h-3.5 w-3.5" />
+            {isZh ? '导入' : 'Import'}
+          </Link>
           {selected.size > 0 && (
             <button
               onClick={async () => {
@@ -257,10 +277,6 @@ export default function LibraryPage() {
               {isZh ? '删除' : 'Delete'}
             </button>
           )}
-          <PipelineActions
-            selectedBookIds={selected}
-            onComplete={refresh}
-          />
           <button
             onClick={refresh}
             className="p-1.5 rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
@@ -298,12 +314,6 @@ export default function LibraryPage() {
         ) : undefined
       }
     >
-      {/* Upload zone (collapsible) */}
-      {showUpload && (
-        <div className="mb-4 animate-in slide-in-from-top-2 duration-200">
-          <UploadZone onUploadComplete={refresh} />
-        </div>
-      )}
 
       {/* Search bar */}
       <div className="relative mb-4">
@@ -366,10 +376,20 @@ export default function LibraryPage() {
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); setEditingBookId(book.id) }}
-                    className="absolute top-2 right-10 z-10 flex h-6 w-6 items-center justify-center rounded-md border-2 border-muted-foreground/40 bg-card/80 text-transparent group-hover/card:text-muted-foreground transition-all shadow-sm hover:border-primary hover:text-primary"
+                    className="absolute top-2 right-[4.5rem] z-10 flex h-6 w-6 items-center justify-center rounded-md border-2 border-muted-foreground/40 bg-card/80 text-transparent group-hover/card:text-muted-foreground transition-all shadow-sm hover:border-primary hover:text-primary"
                     title={isZh ? '编辑' : 'Edit'}
                   >
                     <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                  {/* Delete button */}
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); handleDeleteSingle(book) }}
+                    disabled={deleting === book.id}
+                    className="absolute top-2 right-10 z-10 flex h-6 w-6 items-center justify-center rounded-md border-2 border-muted-foreground/40 bg-card/80 text-transparent group-hover/card:text-destructive/70 transition-all shadow-sm hover:border-destructive hover:text-destructive disabled:opacity-50"
+                    title={isZh ? '删除' : 'Delete'}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
                   </button>
                   {/* Checkbox */}
                   {book.status === 'indexed' && (
@@ -430,6 +450,10 @@ export default function LibraryPage() {
             {/* Pipeline column */}
             <span className="w-36 hidden xl:block text-center">
               Pipeline
+            </span>
+            {/* Actions column */}
+            <span className="w-16 shrink-0 text-center">
+              {isZh ? '操作' : 'Actions'}
             </span>
           </div>
 
@@ -496,6 +520,27 @@ export default function LibraryPage() {
               {/* Pipeline progress pills */}
               <div className="w-36 hidden xl:flex justify-center shrink-0">
                 <PipelineProgress pipeline={book.pipeline} />
+              </div>
+
+              {/* Actions */}
+              <div className="w-16 shrink-0 flex items-center justify-center gap-1">
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setEditingBookId(book.id) }}
+                  className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                  title={isZh ? '编辑' : 'Edit'}
+                >
+                  <Pencil className="h-3 w-3" />
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); handleDeleteSingle(book) }}
+                  disabled={deleting === book.id}
+                  className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
+                  title={isZh ? '删除' : 'Delete'}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
               </div>
             </button>
           )})}

@@ -46,16 +46,18 @@ AZURE_OAI_API_VERSION: str = os.getenv(
 # ============================================================
 # Payload CMS
 # ============================================================
-PAYLOAD_URL: str = os.getenv("PAYLOAD_URL", "http://localhost:3000")
+PAYLOAD_URL: str = os.getenv("PAYLOAD_URL", "http://localhost:3001")
 PAYLOAD_API_KEY: str = os.getenv("PAYLOAD_API_KEY", "")
+PAYLOAD_ADMIN_EMAIL: str = os.getenv("PAYLOAD_ADMIN_EMAIL", "")
+PAYLOAD_ADMIN_PASSWORD: str = os.getenv("PAYLOAD_ADMIN_PASSWORD", "")
 
 # ============================================================
 # Engine API
 # ============================================================
 ENGINE_HOST: str = os.getenv("ENGINE_HOST", "0.0.0.0")
-ENGINE_PORT: int = int(os.getenv("ENGINE_PORT", "8000"))
+ENGINE_PORT: int = int(os.getenv("ENGINE_PORT", "8001"))
 CORS_ORIGINS: list[str] = os.getenv(
-    "CORS_ORIGINS", "http://localhost:3000"
+    "CORS_ORIGINS", "http://localhost:3001"
 ).split(",")
 
 # ============================================================

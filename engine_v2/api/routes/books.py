@@ -157,12 +157,17 @@ def _discover_books() -> list[dict]:
 
             middle_json_path = auto_dir / f"{book_id}_middle.json"
 
+            # Get PDF file size if available
+            origin_pdf = _find_origin_pdf(book_id)
+            pdf_size = origin_pdf.stat().st_size if origin_pdf else 0
+
             books.append({
                 "book_id": book_id,
                 "title": _humanize_title(book_id),
                 "category": category,
                 "page_count": _count_pages(middle_json_path),
                 "chunk_count": _count_content_items(content_list_path),
+                "pdf_size_bytes": pdf_size,
             })
 
     return books
@@ -328,4 +333,70 @@ async def get_chunks(book_id: str, toc_id: int | None = None, limit: int = 30):
             break
 
     return {"chunks": chunks, "count": len(chunks)}
+
+
+@router.get("/books/{book_id}/parse-stats")
+async def get_parse_stats(book_id: str):
+    """Get MinerU parse statistics for a book.
+
+    Reads content_list.json and middle.json to return:
+      - totalItems / totalPages
+      - typeCounts (text, table, image, title breakdown)
+      - samples (first 20 content items for preview)
+
+    Ref: AQ-03 — Parse Preview Tab data source
+    """
+    auto_dir = _get_auto_dir(book_id)
+    if not auto_dir:
+        raise HTTPException(
+            404, f"No MinerU output found for book: {book_id}"
+        )
+
+    content_list_path = auto_dir / f"{book_id}_content_list.json"
+    middle_json_path = auto_dir / f"{book_id}_middle.json"
+
+    if not content_list_path.exists():
+        raise HTTPException(
+            404, f"No content_list.json found for book: {book_id}"
+        )
+
+    # Load content list
+    try:
+        with open(content_list_path, "r", encoding="utf-8") as f:
+            content_list = json.load(f)
+    except (json.JSONDecodeError, OSError) as exc:
+        raise HTTPException(500, f"Failed to read content_list.json: {exc}")
+
+    if not isinstance(content_list, list):
+        content_list = []
+
+    # Type distribution
+    type_counts: dict[str, int] = {}
+    for item in content_list:
+        ctype = item.get("type", "unknown")
+        type_counts[ctype] = type_counts.get(ctype, 0) + 1
+
+    # Content samples (first 20 non-empty items)
+    samples = []
+    for item in content_list:
+        text = item.get("text", "").strip()
+        if not text:
+            continue
+        samples.append({
+            "text": text[:300],
+            "pageIdx": item.get("page_idx", 0),
+            "contentType": item.get("type", "text"),
+            "bbox": item.get("bbox"),
+        })
+        if len(samples) >= 20:
+            break
+
+    return {
+        "bookId": book_id,
+        "bookTitle": _humanize_title(book_id),
+        "totalItems": len(content_list),
+        "totalPages": _count_pages(middle_json_path),
+        "typeCounts": type_counts,
+        "samples": samples,
+    }
 

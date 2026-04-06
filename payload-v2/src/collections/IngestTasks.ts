@@ -1,5 +1,6 @@
 import type { CollectionConfig } from 'payload'
 import { isAdmin } from '../access/isAdmin'
+import { isAdminOrApiKey } from '../access/isAdminOrApiKey'
 
 /**
  * IngestTasks — tracks ingestion pipeline progress.
@@ -15,7 +16,7 @@ export const IngestTasks: CollectionConfig = {
   access: {
     read: isAdmin,
     create: isAdmin,
-    update: isAdmin,
+    update: isAdminOrApiKey,
     delete: isAdmin,
   },
   fields: [
@@ -26,6 +27,11 @@ export const IngestTasks: CollectionConfig = {
       options: [
         { label: 'Ingest', value: 'ingest' },
         { label: 'Full', value: 'full' },
+        { label: 'Chunked', value: 'chunked' },
+        { label: 'TOC', value: 'toc' },
+        { label: 'BM25', value: 'bm25' },
+        { label: 'Embeddings', value: 'embeddings' },
+        { label: 'Vector', value: 'vector' },
       ],
     },
     {

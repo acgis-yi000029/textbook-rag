@@ -22,8 +22,8 @@
 // ── 1. Readers ──────────────────────────────────────────────────────────────
 export * from './readers'
 
-// ── 2. Ingestion ────────────────────────────────────────────────────────────
-export * from './ingestion'
+// ── 2. Ingestion (frontend deleted — functionality moved to acquisition) ──
+// Backend: engine_v2/ingestion/ still exists. Frontend UI: engine/acquisition/
 
 // ── 3. Retrievers ───────────────────────────────────────────────────────────
 export * from './retrievers'

@@ -1,13 +1,16 @@
 /**
- * evaluation/components/TracePanel.tsx
- * Full execution trace panel (FTS / Vector / TOC / Fused details)
+ * TracePanel — Full execution trace panel (FTS / Vector / TOC / Fused details).
  *
- * Aligned with: llama_index.evaluation → engine-v2/evaluation/
- * Migrated from: features/chat/trace/TracePanel.tsx
+ * Usage: <TracePanel trace={trace} />
  */
 import type { QueryTrace } from "@/features/shared/types";
 import { TraceStat, TracePromptBlock, TraceHitList } from "./TraceComponents";
 
+// ============================================================
+// Component
+// ============================================================
+
+/** Full execution trace panel showing FTS / Vector / TOC / Fused retrieval details. */
 export default function TracePanel({ trace }: { trace: QueryTrace }) {
   const ftsCount = trace.retrieval.fts_results.length;
   const vectorCount = trace.retrieval.vector_results.length;

@@ -15,7 +15,10 @@ import { Prompts } from './collections/Prompts'
 import { Queries } from './collections/Queries'
 import { Questions } from './collections/Questions'
 import { Evaluations } from './collections/Evaluations'
+import { ChatSessions } from './collections/ChatSessions'
+import { ChatMessages } from './collections/ChatMessages'
 import { Media } from './collections/Media'
+import { PdfUploads } from './collections/PdfUploads'
 import { seedEndpoint } from './collections/endpoints'
 
 const filename = fileURLToPath(import.meta.url)
@@ -31,6 +34,7 @@ export default buildConfig({
   collections: [
     Users,
     Media,
+    PdfUploads,
     Books,
     Chapters,
     Chunks,
@@ -40,6 +44,8 @@ export default buildConfig({
     Queries,
     Questions,
     Evaluations,
+    ChatSessions,
+    ChatMessages,
   ],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
@@ -54,7 +60,7 @@ export default buildConfig({
   sharp,
   upload: {
     limits: {
-      fileSize: 50_000_000, // 50 MB — for PDFs
+      fileSize: 200_000_000, // 200 MB — for large PDFs
     },
   },
   endpoints: [seedEndpoint],

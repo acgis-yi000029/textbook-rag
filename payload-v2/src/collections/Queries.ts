@@ -26,6 +26,11 @@ export const Queries: CollectionConfig = {
       relationTo: 'users',
     },
     {
+      name: 'sessionId',
+      type: 'text',
+      index: true,
+    },
+    {
       name: 'question',
       type: 'text',
       required: true,

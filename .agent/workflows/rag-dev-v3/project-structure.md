@@ -462,3 +462,21 @@ layout  → shared       ✅  允许
 layout  → providers    ✅  允许
 engine/<A> → engine/<B>  ❌  禁止 (子模块间不互相依赖)
 ```
+
+### 数据流方向 (不可违反)
+
+```
+Engine (Python)  →  处理数据 → 写入 Payload DB (via REST API)
+Payload CMS      →  存储数据 → 前端读取 (via /api/* REST)
+Frontend (React) →  只读 Payload /api/*，不直接调 Engine 读数据
+```
+
+| 场景 | ✅ 正确 | ❌ 禁止 |
+|------|---------|---------|
+| 前端读书籍列表 | `fetch('/api/books')` | `fetch(ENGINE_URL + '/engine/books')` |
+| 前端读 PDF 文件 | `fetch('/api/pdf-uploads')` | `fetch(ENGINE_URL + '/engine/books/X/pdf')` |
+| 前端读解析结果 | `fetch('/api/books/X?depth=1')` | `fetch(ENGINE_URL + '/engine/books/X/parse-stats')` |
+| 前端实时查询 | `fetch(ENGINE_URL + '/engine/query')` ← 例外 | — |
+
+> Engine 产生的数据必须先写回 Payload Collection，前端再从 Payload 读取。
+> 唯一例外：需要 LLM 实时推理的接口（query、classify 等）可直接调 Engine。

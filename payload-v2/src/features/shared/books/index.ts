@@ -7,8 +7,8 @@
 // ============================================================
 // Exports
 // ============================================================
-export type { BookBase, BookCategory, BookStatus, CategoryConfig } from './types'
-export { CATEGORY_CONFIGS } from './types'
+export type { BookBase, BookCategory, BookStatus, CategoryConfig, PipelineStage, PipelineInfo } from './types'
+export { CATEGORY_CONFIGS, getCategoryConfig } from './types'
 export { fetchBooks, fetchIndexedBooks } from './api'
 export type { FetchBooksOptions } from './api'
 export { useBooks } from './useBooks'

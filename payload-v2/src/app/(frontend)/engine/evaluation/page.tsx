@@ -1,15 +1,13 @@
+/**
+ * /engine/evaluation — Unified evaluation hub page.
+ *
+ * Thin shell: only imports and renders the feature page component.
+ */
+
 'use client'
 
-import ComingSoon from '@/features/shared/components/ComingSoon'
-import { LineChart } from 'lucide-react'
+import EvaluationPage from '@/features/engine/evaluation/components/EvaluationPage'
 
 export default function Page() {
-  return (
-    <ComingSoon
-      title="质量评估"
-      description="RAG 回答质量 6 维度评分"
-      icon={LineChart}
-      iconColor="text-emerald-400"
-    />
-  )
+  return <EvaluationPage />
 }

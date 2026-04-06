@@ -1,18 +1,24 @@
 /**
- * evaluation/components/TraceComponents.tsx
- * Reusable trace UI building blocks: TraceStat / TracePromptBlock / TraceHitList
+ * TraceComponents — Reusable trace UI building blocks.
  *
- * Aligned with: llama_index.evaluation → engine-v2/evaluation/
- * Migrated from: features/chat/trace/TraceComponents.tsx
+ * Usage: <TraceStat />, <TracePromptBlock />, <TraceHitList />
  */
 import type { TraceChunkHit } from "@/features/shared/types";
 
-/* ── helpers ── */
+// ============================================================
+// Helpers
+// ============================================================
+
+/** Format a score value for display (4 decimal places, or 'n/a'). */
 export function formatScore(score: number | null) {
   return score == null ? "n/a" : score.toFixed(4);
 }
 
-/* ── TraceStat ── */
+// ============================================================
+// Components
+// ============================================================
+
+/** Labelled stat card for trace metric display. */
 export function TraceStat({
   label,
   value,
@@ -38,7 +44,7 @@ export function TraceStat({
   );
 }
 
-/* ── TracePromptBlock ── */
+/** Collapsible prompt text block with character count. */
 export function TracePromptBlock({
   title,
   text,
@@ -66,7 +72,7 @@ export function TracePromptBlock({
   );
 }
 
-/* ── TraceHitList ── */
+/** Expandable list of retrieval chunk hits with scores. */
 export function TraceHitList({
   title,
   hits,

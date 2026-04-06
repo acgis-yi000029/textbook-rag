@@ -43,6 +43,20 @@ description: textbook-rag v3 开发工作流 — 基于 docs/ 四文档体系的
 - TypeScript: 语义 Tailwind token (`bg-card` 不是 `bg-gray-800`)
 - 文件头注释格式见 `file-templates.md` § 四
 
+### 数据流方向
+
+> **前端查数据一律走 Payload CMS，不直接调 Engine API 读数据。**
+
+```
+Engine (Python)  →  处理数据 → 写入 Payload DB (via REST API)
+Payload CMS      →  存储数据 → 前端读取 (via /api/* REST)
+Frontend (React) →  只读 Payload /api/*，不直接调 Engine
+```
+
+- 前端 `api.ts` 中的 fetch 目标必须是 `/api/\<collection\>`（Payload REST），不允许直接请求 `ENGINE_URL`
+- Engine 产生的数据（解析结果、向量状态等）必须先写回 Payload 的 Collection，前端再从 Collection 读
+- 唯一例外：Engine 的 `/engine/query` 等实时查询接口（需要 LLM 推理的），可以直接调用
+
 ### 代码溯源
 
 - **教科书**: `.agent/config/textbook-skill-mapping.yaml` → `data/mineru_output/` → 注释 `# Ref: Author, Book, ChN — concept`

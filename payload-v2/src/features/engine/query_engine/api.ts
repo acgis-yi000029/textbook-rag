@@ -1,8 +1,7 @@
 /**
- * engine/query_engine/api.ts
- * Aligned with: llama_index.query_engine → engine-v2/query_engine/
- *               → collections/Queries
+ * query_engine API — Query engine FastAPI wrappers.
  *
+ * All API calls for the query_engine module.
  * Wraps Engine FastAPI query endpoints (sync + streaming).
  */
 
@@ -17,6 +16,7 @@ import type {
 
 const ENGINE = process.env.NEXT_PUBLIC_ENGINE_URL || 'http://localhost:8000'
 
+/** Generic JSON fetch with error handling. */
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init)
   if (!res.ok) {
@@ -26,7 +26,9 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>
 }
 
-// ── Books (for query context) ───────────────────────────────────────────────
+// ============================================================
+// Books (for query context)
+// ============================================================
 
 export async function fetchBooks(): Promise<BookSummary[]> {
   const data = await request<{ docs: any[] }>('/api/books?limit=200&where[status][equals]=indexed')
@@ -59,16 +61,21 @@ export async function fetchBook(bookId: number): Promise<BookDetail> {
   }
 }
 
+/** Fetch TOC entries for a specific book from Engine. */
 export async function fetchToc(bookId: string): Promise<TocEntry[]> {
   return request<TocEntry[]>(`${ENGINE}/engine/books/${bookId}/toc`)
 }
 
+/** Build the PDF download URL for a book. */
 export function getPdfUrl(bookId: string, variant: 'origin' | 'layout' = 'origin'): string {
   return `${ENGINE}/engine/books/${bookId}/pdf?variant=${variant}`
 }
 
-// ── Query (sync) ────────────────────────────────────────────────────────────
+// ============================================================
+// Query (sync)
+// ============================================================
 
+/** Map raw trace hit payload to a normalised object. */
 function mapTraceHit(h: any) {
   return {
     rank: h.rank ?? 0,
@@ -80,6 +87,7 @@ function mapTraceHit(h: any) {
   }
 }
 
+/** Normalise a raw source object into a typed SourceInfo. */
 function normaliseSource(s: any): SourceInfo {
   const bboxes: BboxEntry[] = (s.bboxes ?? [])
     .filter((b: any) => b.x0 != null && b.y0 != null && b.x1 != null && b.y1 != null)
@@ -118,6 +126,7 @@ function normaliseSource(s: any): SourceInfo {
   }
 }
 
+/** Normalise raw trace payload into a structured QueryTrace. */
 function normaliseTrace(raw: any, req: QueryRequest, sources: any[]): any {
   const retr = raw?.retrieval ?? {}
   const perStrategy = retr.per_strategy ?? {}
@@ -187,7 +196,9 @@ export async function queryTextbook(req: QueryRequest): Promise<QueryResponse> {
   }
 }
 
-// ── Query (streaming SSE) ───────────────────────────────────────────────────
+// ============================================================
+// Query (streaming SSE)
+// ============================================================
 
 export async function queryTextbookStream(
   req: QueryRequest,
@@ -273,7 +284,9 @@ export async function queryTextbookStream(
   }
 }
 
-// ── Demo ────────────────────────────────────────────────────────────────────
+// ============================================================
+// Demo
+// ============================================================
 
 export async function fetchDemo(): Promise<QueryResponse> {
   return queryTextbook({ question: 'What is BM25?', top_k: 3 })

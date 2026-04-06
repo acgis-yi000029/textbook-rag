@@ -52,8 +52,32 @@ export async function fetchLibraryBook(id: number): Promise<LibraryBook> {
   return mapPayloadBook(data)
 }
 
-// ── Delete a book (admin only) ──────────────────────────────────────────────
+// ── Delete a book (Payload CMS + engine cleanup) ────────────────────────────
+const ENGINE_URL = process.env.NEXT_PUBLIC_ENGINE_URL || 'http://localhost:8001'
+
 export async function deleteBook(id: number): Promise<void> {
+  // Step 1: Fetch book to get engineBookId for engine cleanup
+  let engineBookId: string | null = null
+  try {
+    const book = await fetchLibraryBook(id)
+    engineBookId = book.engineBookId || null
+  } catch {
+    // If fetch fails, still proceed with Payload delete
+  }
+
+  // Step 2: Engine-side cleanup (ChromaDB vectors + MinerU output)
+  if (engineBookId) {
+    try {
+      await fetch(`${ENGINE_URL}/engine/books/${engineBookId}`, {
+        method: 'DELETE',
+      })
+    } catch {
+      // Best-effort — don't block CMS delete if engine is down
+      console.warn(`Engine cleanup failed for ${engineBookId}`)
+    }
+  }
+
+  // Step 3: Delete Payload CMS record
   const res = await fetch(`${PAYLOAD_BASE}/api/books/${id}`, {
     method: 'DELETE',
   })

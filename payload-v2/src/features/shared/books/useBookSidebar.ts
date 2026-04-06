@@ -15,7 +15,7 @@
 import { useMemo, type ReactNode } from 'react'
 import type { SidebarItem } from '@/features/shared/components/SidebarLayout'
 import type { BookBase } from './types'
-import { CATEGORY_CONFIGS } from './types'
+import { CATEGORY_CONFIGS, getCategoryConfig } from './types'
 
 // ============================================================
 // Types
@@ -148,7 +148,17 @@ function buildByBook(books: BookBase[], opts: ByBookOptions): SidebarItem[] {
   }
 
   // Build category → subcategory → book hierarchy
-  for (const [catKey, cfg] of Object.entries(CATEGORY_CONFIGS)) {
+  // Iterate over ALL categories found in data (not just CATEGORY_CONFIGS keys)
+  const catKeys = Object.keys(grouped).sort((a, b) => {
+    // Known categories first, then alphabetical
+    const aKnown = a in CATEGORY_CONFIGS ? 0 : 1
+    const bKnown = b in CATEGORY_CONFIGS ? 0 : 1
+    if (aKnown !== bKnown) return aKnown - bKnown
+    return a.localeCompare(b)
+  })
+
+  for (const catKey of catKeys) {
+    const cfg = getCategoryConfig(catKey)
     const catSubs = grouped[catKey]
     if (!catSubs) continue
 
@@ -235,7 +245,18 @@ function buildByCategory(books: BookBase[], opts: ByCategoryOptions): SidebarIte
     },
   ]
 
-  for (const [catKey, cfg] of Object.entries(CATEGORY_CONFIGS)) {
+  // Iterate over ALL categories found in data
+  const catKeys = Object.keys(counts)
+    .filter((k) => k !== 'all' && !k.includes('::'))
+    .sort((a, b) => {
+      const aKnown = a in CATEGORY_CONFIGS ? 0 : 1
+      const bKnown = b in CATEGORY_CONFIGS ? 0 : 1
+      if (aKnown !== bKnown) return aKnown - bKnown
+      return a.localeCompare(b)
+    })
+
+  for (const catKey of catKeys) {
+    const cfg = getCategoryConfig(catKey)
     const count = counts[catKey] || 0
     if (count === 0) continue
 

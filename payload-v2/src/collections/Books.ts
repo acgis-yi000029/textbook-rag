@@ -2,6 +2,7 @@ import type { CollectionConfig } from 'payload'
 import { afterChangeHook } from '../hooks/books/afterChange'
 import { isEditorOrAdmin } from '../access/isEditorOrAdmin'
 import { isAdmin } from '../access/isAdmin'
+import { isAdminOrApiKey } from '../access/isAdminOrApiKey'
 import { syncEngineEndpoint } from './endpoints'
 
 export const Books: CollectionConfig = {
@@ -15,7 +16,7 @@ export const Books: CollectionConfig = {
   access: {
     read: () => true,
     create: isEditorOrAdmin,
-    update: isEditorOrAdmin,
+    update: isAdminOrApiKey,
     delete: isAdmin,
   },
   // PDF upload is optional — books synced from engine don't have uploads
@@ -51,15 +52,19 @@ export const Books: CollectionConfig = {
       admin: { description: 'Book cover image (auto-generated or manually uploaded)' },
     },
     {
+      name: 'pdfMedia',
+      type: 'upload',
+      relationTo: 'pdf-uploads',
+      admin: { description: 'Uploaded PDF file for MinerU parsing → ingestion pipeline' },
+    },
+    {
       name: 'category',
-      type: 'select',
+      type: 'text',
       required: true,
       defaultValue: 'textbook',
-      options: [
-        { label: 'Textbook', value: 'textbook' },
-        { label: 'EC Dev', value: 'ecdev' },
-        { label: 'Real Estate', value: 'real_estate' },
-      ],
+      admin: {
+        description: 'Book category (auto-classified by LLM, user-editable). E.g. textbook, ecdev, real_estate, research_paper',
+      },
     },
     {
       name: 'subcategory',
@@ -83,15 +88,17 @@ export const Books: CollectionConfig = {
       type: 'number',
       admin: { readOnly: true },
     },
-    // ── Pipeline stage status (v2: 3 stages only) ──
-    // chunked: MinerUReader → Document[]
-    // toc:     TOC extraction from headings
-    // vector:  IngestionPipeline → ChromaDB (includes BM25 in-memory)
+    // ── Pipeline stage status (5 stages) ──
+    // chunked:    MinerUReader → Document[] (content_list.json parsing)
+    // toc:        TOC extraction from PDF bookmarks / headings
+    // bm25:       FTS5/BM25 full-text index building
+    // embeddings: HuggingFace/Azure embedding generation
+    // vector:     ChromaDB vector store ingestion
     {
       name: 'pipeline',
       type: 'group',
       admin: {
-        description: 'Processing pipeline stage status (chunked → toc → vector)',
+        description: 'Processing pipeline stage status (chunked → toc → bm25 → embeddings → vector)',
       },
       fields: [
         {
@@ -103,7 +110,7 @@ export const Books: CollectionConfig = {
             { label: 'Done', value: 'done' },
             { label: 'Error', value: 'error' },
           ],
-          admin: { readOnly: true, width: '33%' },
+          admin: { readOnly: true, width: '20%' },
         },
         {
           name: 'toc',
@@ -114,7 +121,29 @@ export const Books: CollectionConfig = {
             { label: 'Done', value: 'done' },
             { label: 'Error', value: 'error' },
           ],
-          admin: { readOnly: true, width: '33%' },
+          admin: { readOnly: true, width: '20%' },
+        },
+        {
+          name: 'bm25',
+          type: 'select',
+          defaultValue: 'pending',
+          options: [
+            { label: 'Pending', value: 'pending' },
+            { label: 'Done', value: 'done' },
+            { label: 'Error', value: 'error' },
+          ],
+          admin: { readOnly: true, width: '20%' },
+        },
+        {
+          name: 'embeddings',
+          type: 'select',
+          defaultValue: 'pending',
+          options: [
+            { label: 'Pending', value: 'pending' },
+            { label: 'Done', value: 'done' },
+            { label: 'Error', value: 'error' },
+          ],
+          admin: { readOnly: true, width: '20%' },
         },
         {
           name: 'vector',
@@ -125,7 +154,7 @@ export const Books: CollectionConfig = {
             { label: 'Done', value: 'done' },
             { label: 'Error', value: 'error' },
           ],
-          admin: { readOnly: true, width: '33%' },
+          admin: { readOnly: true, width: '20%' },
         },
       ],
     },

@@ -15,9 +15,9 @@ import {
   PanelLeft,
   MessageSquare,
   Trash2,
-  Zap,
   MessageSquareDot,
   Database,
+  Download,
 } from 'lucide-react'
 import { useState } from 'react'
 import { useI18n } from '@/features/shared/i18n'
@@ -80,16 +80,27 @@ export default function AppSidebar() {
   const isAdmin = true
   const groups = groupByDay(sessions)
 
-  const adminLinks = [
-    { titleKey: 'navAnalytics', icon: BarChart3, href: '/engine/analytics' },
+  // ── Admin nav: grouped by RAG pipeline data flow ──
+  // ① Data Pipeline: acquire → process → store
+  const dataPipelineLinks = [
+    { titleKey: 'navAcquisition', icon: Download, href: '/engine/acquisition' },
+    { titleKey: 'navReaders', icon: Library, href: '/readers' },
+    { titleKey: 'navSeed', icon: Database, href: '/seed' },
+  ] as const
+
+  // ② Query Pipeline: retrieve → generate → synthesize
+  const queryPipelineLinks = [
+    { titleKey: 'navRetrievers', icon: Database, href: '/engine/retrievers' },
     { titleKey: 'navLlms', icon: Brain, href: '/engine/llms' },
     { titleKey: 'navResponseSynthesizers', icon: FileText, href: '/engine/response_synthesizers' },
+    { titleKey: 'navQueryEngine', icon: MessageSquare, href: '/engine/query_engine' },
+  ] as const
+
+  // ③ Quality: evaluate → feedback → analytics
+  const qualityLinks = [
     { titleKey: 'navEvaluation', icon: LineChart, href: '/engine/evaluation' },
     { titleKey: 'navFeedback', icon: ThumbsUp, href: '/engine/feedback' },
-    { titleKey: 'navIngestion', icon: Zap, href: '/engine/ingestion' },
-    { titleKey: 'navRetrievers', icon: Database, href: '/engine/retrievers' },
-    { titleKey: 'navQueryEngine', icon: MessageSquare, href: '/engine/query_engine' },
-    { titleKey: 'navSeed', icon: Database, href: '/seed' },
+    { titleKey: 'navAnalytics', icon: BarChart3, href: '/engine/analytics' },
   ] as const
 
   /* ── Label: opacity+width transition, no DOM swap ── */
@@ -324,18 +335,36 @@ export default function AppSidebar() {
             {t.navGroupResources}
           </p>
           <nav className="flex flex-col gap-0.5">
-            {navLink('/readers', Library, String(t.navReaders))}
             {navLink('/engine/question_gen', MessageSquareDot, String(t.navQuestionGen))}
           </nav>
 
           {isAdmin && (
             <>
+              {/* ── ① Data Pipeline ── */}
               <p className={cn('px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground transition-all', DURATION, collapsed ? 'h-0 opacity-0 overflow-hidden py-0 pt-0 pb-0' : 'opacity-100')}>
-                {t.navGroupAdmin}
+                {t.navGroupDataPipeline}
               </p>
               {collapsed && <div className="mx-auto my-1 h-px w-8 bg-sidebar-border" />}
               <nav className="flex flex-col gap-0.5">
-                {adminLinks.map((item) => navLink(item.href, item.icon, String(t[item.titleKey])))}
+                {dataPipelineLinks.map((item) => navLink(item.href, item.icon, String(t[item.titleKey])))}
+              </nav>
+
+              {/* ── ② Query Pipeline ── */}
+              <p className={cn('px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground transition-all', DURATION, collapsed ? 'h-0 opacity-0 overflow-hidden py-0 pt-0 pb-0' : 'opacity-100')}>
+                {t.navGroupQueryPipeline}
+              </p>
+              {collapsed && <div className="mx-auto my-1 h-px w-8 bg-sidebar-border" />}
+              <nav className="flex flex-col gap-0.5">
+                {queryPipelineLinks.map((item) => navLink(item.href, item.icon, String(t[item.titleKey])))}
+              </nav>
+
+              {/* ── ③ Quality ── */}
+              <p className={cn('px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground transition-all', DURATION, collapsed ? 'h-0 opacity-0 overflow-hidden py-0 pt-0 pb-0' : 'opacity-100')}>
+                {t.navGroupQuality}
+              </p>
+              {collapsed && <div className="mx-auto my-1 h-px w-8 bg-sidebar-border" />}
+              <nav className="flex flex-col gap-0.5">
+                {qualityLinks.map((item) => navLink(item.href, item.icon, String(t[item.titleKey])))}
               </nav>
             </>
           )}

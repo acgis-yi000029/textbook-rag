@@ -182,7 +182,7 @@ export default function ChatPanel({
         const bookTitles = books
           .filter((b) => sessionBookIds.includes(b.id))
           .map((b) => b.title);
-        sessionId = chatHistory.createSession({ sessionBookIds, bookTitles, firstMessage: trimmed });
+        sessionId = await chatHistory.createSession({ sessionBookIds, bookTitles, firstMessage: trimmed });
         sessionIdRef.current = sessionId;
         onSessionCreated(sessionId);
       }
@@ -269,9 +269,10 @@ export default function ChatPanel({
               credentials: 'include',
               body: JSON.stringify({
                 user: currentUser?.id ?? null,
+                sessionId: sessionId ?? null,
                 question: trimmed,
                 answer: res.answer,
-                sources: res.sources,
+                sources: enrichedSources,
                 trace: res.trace,
                 model: selectedModel,
                 latencyMs,

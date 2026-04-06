@@ -5,7 +5,7 @@
  * Replaces: query_engine/api.ts::fetchBooks, question_gen/api.ts::fetchIndexedBooks
  */
 
-import type { BookBase, BookCategory, BookStatus } from './types'
+import type { BookBase, BookCategory, BookStatus, PipelineInfo } from './types'
 
 // ============================================================
 // Fetch options
@@ -54,6 +54,17 @@ export async function fetchIndexedBooks(): Promise<BookBase[]> {
 // Internal mapper
 // ============================================================
 
+function mapPipeline(p: Record<string, any> | undefined): PipelineInfo | undefined {
+  if (!p) return undefined
+  return {
+    chunked: p.chunked ?? 'pending',
+    toc: p.toc ?? 'pending',
+    bm25: p.bm25 ?? 'pending',
+    embeddings: p.embeddings ?? 'pending',
+    vector: p.vector ?? 'pending',
+  }
+}
+
 function mapPayloadBook(b: Record<string, any>): BookBase {
   return {
     id: b.id,
@@ -63,5 +74,10 @@ function mapPayloadBook(b: Record<string, any>): BookBase {
     chunk_count: b.chunkCount ?? 0,
     category: b.category ?? 'textbook',
     subcategory: b.subcategory ?? '',
+    status: b.status ?? 'pending',
+    pageCount: b.metadata?.pageCount ?? 0,
+    fileSize: b.metadata?.fileSize ?? 0,
+    createdAt: b.createdAt ?? '',
+    pipeline: mapPipeline(b.pipeline),
   }
 }

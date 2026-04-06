@@ -70,11 +70,15 @@ export interface Messages {
   navGroupChat: string
   navGroupResources: string
   navGroupAdmin: string
+  navGroupDataPipeline: string
+  navGroupQueryPipeline: string
+  navGroupQuality: string
   navAnalytics: string
   navEvaluation: string
   navFeedback: string
   navLlms: string
   navResponseSynthesizers: string
+  navAcquisition: string
   navIngestion: string
   navRetrievers: string
   navQueryEngine: string
@@ -149,11 +153,15 @@ const en: Messages = {
   navGroupChat: 'Chat',
   navGroupResources: 'Resources',
   navGroupAdmin: 'Admin',
+  navGroupDataPipeline: 'Data Pipeline',
+  navGroupQueryPipeline: 'Query Pipeline',
+  navGroupQuality: 'Quality',
   navAnalytics: 'Analytics',
   navEvaluation: 'Evaluation',
   navFeedback: 'Feedback',
   navLlms: 'LLMs',
   navResponseSynthesizers: 'Response Synthesizers',
+  navAcquisition: 'Import',
   navIngestion: 'Ingestion',
   navRetrievers: 'Retrievers',
   navQueryEngine: 'Query Engine',
@@ -227,12 +235,16 @@ const zh: Messages = {
   navGroupChat: '对话',
   navGroupResources: '资源',
   navGroupAdmin: '管理',
+  navGroupDataPipeline: '数据入库',
+  navGroupQueryPipeline: '查询生成',
+  navGroupQuality: '质量监控',
   navAnalytics: '使用统计',
   navEvaluation: '质量评估',
   navFeedback: '反馈管理',
   navLlms: 'LLMs',
   navResponseSynthesizers: 'Response Synthesizers',
-  navIngestion: '数据导入',
+  navAcquisition: '导入',
+  navIngestion: '数据摄取',
   navRetrievers: '检索器',
   navQueryEngine: '查询引擎',
   navSeed: '数据初始化',

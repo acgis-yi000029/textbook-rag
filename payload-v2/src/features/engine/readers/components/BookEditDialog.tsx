@@ -11,7 +11,7 @@ import { Save, X, Loader2 } from 'lucide-react'
 import { useI18n } from '@/features/shared/i18n'
 import { updateBook } from '../api'
 import type { LibraryBook, BookCategory } from '../types'
-import { CATEGORY_OPTIONS } from '../types'
+import { WELL_KNOWN_CATEGORIES } from '../types'
 import { cn } from '@/features/shared/utils'
 
 // ============================================================
@@ -109,17 +109,21 @@ export default function BookEditDialog({ book, onSave, onCancel }: BookEditDialo
         <label className="block text-[11px] font-medium text-muted-foreground mb-1">
           {isZh ? '分类' : 'Category'}
         </label>
-        <select
+        <input
+          type="text"
+          list="category-options"
           value={category}
-          onChange={(e) => setCategory(e.target.value as BookCategory)}
+          onChange={(e) => setCategory(e.target.value)}
           className={fieldClass}
-        >
-          {CATEGORY_OPTIONS.filter((o) => o.value !== 'all').map((opt) => (
+          placeholder={isZh ? '输入或选择分类' : 'Type or select category'}
+        />
+        <datalist id="category-options">
+          {WELL_KNOWN_CATEGORIES.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {isZh ? opt.labelZh : opt.label}
             </option>
           ))}
-        </select>
+        </datalist>
       </div>
 
       {/* Error */}
