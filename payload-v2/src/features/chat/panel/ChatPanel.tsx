@@ -13,6 +13,7 @@ import { queryTextbookStream } from "@/features/engine/query_engine";
 import { fetchAvailableModels } from "@/features/engine/llms";
 import { useAppDispatch, useAppState } from "@/features/shared/AppContext";
 import { useAuth } from "@/features/shared/AuthProvider";
+import { useI18n } from "@/features/shared/i18n";
 import type { ModelInfo, SourceInfo } from "@/features/shared/types";
 
 import type { Message } from "../types";
@@ -52,6 +53,7 @@ export default function ChatPanel({
   } = useAppState();
   const dispatch = useAppDispatch();
   const { user: currentUser } = useAuth();
+  const { t } = useI18n();
   const chatHistory = useChatHistoryContext();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -87,9 +89,11 @@ export default function ChatPanel({
     sessionIdRef.current = activeSessionId;
   }, [activeSessionId]);
 
-  /** When history panel selects an old session, restore its messages */
+  /** When history panel selects an old session (or page refreshes), restore its messages */
   useEffect(() => {
     if (!activeSessionId) return;
+    // Skip if we already have messages for this session
+    if (messages.length > 0) return;
     const session = chatHistory.getSession(activeSessionId);
     if (session && session.messages.length > 0) {
       setMessages(session.messages as Message[]);
@@ -101,8 +105,9 @@ export default function ChatPanel({
         setMessages(msgs as Message[]);
       }
     });
+    // Re-run when sessions list arrives (fixes race on page refresh)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSessionId]);
+  }, [activeSessionId, chatHistory.sessions]);
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
     const thread = threadRef.current;
@@ -203,12 +208,17 @@ export default function ChatPanel({
       // Create a new history session on the first message of a fresh conversation
       let sessionId = sessionIdRef.current;
       if (!sessionId) {
-        const bookTitles = books
-          .filter((b) => sessionBookIds.includes(b.id))
-          .map((b) => b.title);
-        sessionId = await chatHistory.createSession({ sessionBookIds, bookTitles, firstMessage: trimmed });
-        sessionIdRef.current = sessionId;
-        onSessionCreated(sessionId);
+        try {
+          const bookTitles = books
+            .filter((b) => sessionBookIds.includes(b.id))
+            .map((b) => b.title);
+          sessionId = await chatHistory.createSession({ sessionBookIds, bookTitles, firstMessage: trimmed });
+          sessionIdRef.current = sessionId;
+          onSessionCreated(sessionId);
+        } catch (err) {
+          // Session creation failed (e.g. expired auth) — proceed without history
+          console.warn('[ChatPanel] Failed to create session, continuing without history:', err);
+        }
       }
 
       const startTime = Date.now();
@@ -420,7 +430,7 @@ export default function ChatPanel({
                       <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground" />
                     </div>
                     <span className="text-sm text-muted-foreground">
-                      Searching the documents…
+                      {t.chatSearching}
                     </span>
                   </div>
                 </div>
@@ -443,7 +453,7 @@ export default function ChatPanel({
             onClick={() => scrollToBottom("smooth")}
             className="pointer-events-auto rounded-full border border-border bg-card px-4 py-1.5 text-xs font-medium text-foreground shadow-sm transition hover:bg-accent"
           >
-            ↓ Jump to latest
+            {t.chatJumpToLatest}
           </button>
         </div>
       )}

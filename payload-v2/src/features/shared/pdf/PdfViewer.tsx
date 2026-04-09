@@ -272,6 +272,8 @@ export default function PdfViewer() {
   const [renderWidth, setRenderWidth] = useState(0);
   const [zoomScale, setZoomScale] = useState(1);
   const [isViewerHovered, setIsViewerHovered] = useState(false);
+  const [isCompactToolbar, setIsCompactToolbar] = useState(false);
+  const toolbarRef = useRef<HTMLDivElement>(null);
   const [renderedPages, setRenderedPages] = useState<Set<number>>(new Set([1]));
   const [loadedPages, setLoadedPages] = useState<Set<number>>(new Set());
 
@@ -386,6 +388,17 @@ export default function PdfViewer() {
   useEffect(() => {
     currentPageRef.current = currentPage;
   }, [currentPage]);
+
+  // Detect narrow toolbar for responsive collapse
+  useEffect(() => {
+    const node = toolbarRef.current;
+    if (!node) return;
+    const ro = new ResizeObserver(([entry]) => {
+      setIsCompactToolbar(entry.contentRect.width < 380);
+    });
+    ro.observe(node);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     if (!currentBookId) {
@@ -783,88 +796,95 @@ export default function PdfViewer() {
   const estimatedPageHeight =
     pageDimsByPage[1] && stableRenderWidth
       ? Math.round(
-          (pageDimsByPage[1].height / pageDimsByPage[1].width) * stableRenderWidth,
-        )
+        (pageDimsByPage[1].height / pageDimsByPage[1].width) * stableRenderWidth,
+      )
       : Math.round(stableRenderWidth * 1.33);
   const scaledPageGap = Math.max(12, Math.round(PAGE_GAP * zoomScale));
 
   return (
     <div className="relative flex h-full flex-col bg-background">
-      <div className="flex items-center gap-2 border-b border-border bg-card px-3 py-2 text-sm text-card-foreground">
+      <div ref={toolbarRef} className="flex items-center gap-1.5 border-b border-border bg-card px-2 py-1.5 text-sm text-card-foreground">
+        {/* TOC toggle */}
         {hasToc && (
           <button
-            className="rounded px-2 py-1 hover:bg-accent hover:text-accent-foreground transition-colors"
+            className="rounded px-1.5 py-1 hover:bg-accent hover:text-accent-foreground transition-colors"
             onClick={() => dispatch({ type: "TOGGLE_TOC" })}
             title="Toggle table of contents"
           >
             ☰
           </button>
         )}
+
+        {/* Page navigation */}
         <button
-          className="rounded px-2 py-1 hover:bg-accent hover:text-accent-foreground transition-colors disabled:opacity-40"
+          className="rounded px-1.5 py-1 hover:bg-accent hover:text-accent-foreground transition-colors disabled:opacity-40"
           disabled={currentPage <= 1}
           onClick={() => goToPage(currentPage - 1)}
         >
           ◀
         </button>
-        <span>
-          Page{" "}
+        <span className="flex items-center gap-1 text-xs">
+          {!isCompactToolbar && <span>Page</span>}
           <input
             type="number"
-            className="w-14 rounded border border-input bg-background px-1 text-center text-foreground"
+            className={`rounded border border-input bg-background px-1 text-center text-foreground ${isCompactToolbar ? "w-10 text-xs" : "w-14"}`}
             min={1}
             max={numPages || undefined}
             value={currentPage}
             onChange={(event) => goToPage(Number(event.target.value))}
-          />{" "}
-          / {numPages || "…"}
+          />
+          <span className="text-muted-foreground">/ {numPages || "…"}</span>
         </span>
         <button
-          className="rounded px-2 py-1 hover:bg-accent hover:text-accent-foreground transition-colors disabled:opacity-40"
+          className="rounded px-1.5 py-1 hover:bg-accent hover:text-accent-foreground transition-colors disabled:opacity-40"
           disabled={numPages > 0 && currentPage >= numPages}
           onClick={() => goToPage(currentPage + 1)}
         >
           ▶
         </button>
-        <div className="ml-auto flex items-center gap-2">
+
+        {/* Right side: zoom + variant */}
+        <div className="ml-auto flex items-center gap-1">
           <button
-            className="rounded px-2 py-0.5 text-xs hover:bg-accent hover:text-accent-foreground transition-colors"
+            className="rounded px-1.5 py-0.5 text-xs hover:bg-accent hover:text-accent-foreground transition-colors"
             onClick={() => applyZoom(-ZOOM_STEP)}
             title="Zoom out"
           >
             −
           </button>
           <button
-            className="min-w-[3.5rem] rounded px-2 py-0.5 text-center text-xs hover:bg-accent hover:text-accent-foreground transition-colors"
+            className="min-w-[2.5rem] rounded px-1.5 py-0.5 text-center text-xs hover:bg-accent hover:text-accent-foreground transition-colors"
             onClick={resetZoom}
-            title="Reset zoom"
+            title={`Reset zoom (${Math.round(zoomScale * 100)}%)`}
           >
             {Math.round(zoomScale * 100)}%
           </button>
           <button
-            className="rounded px-2 py-0.5 text-xs hover:bg-accent hover:text-accent-foreground transition-colors"
+            className="rounded px-1.5 py-0.5 text-xs hover:bg-accent hover:text-accent-foreground transition-colors"
             onClick={() => applyZoom(ZOOM_STEP)}
             title="Zoom in"
           >
             +
           </button>
-          <span className="mx-1 text-border">|</span>
-          <span className="text-muted-foreground text-xs">PDF:</span>
+          <span className="mx-0.5 text-border">|</span>
+          {!isCompactToolbar && <span className="text-muted-foreground text-xs">PDF:</span>}
           <button
             className={`rounded px-2 py-0.5 text-xs transition-colors ${pdfVariant === "origin" ? "bg-primary text-primary-foreground" : "hover:bg-accent hover:text-accent-foreground"}`}
             onClick={() =>
               dispatch({ type: "SET_PDF_VARIANT", variant: "origin" })
             }
+            title="Original PDF"
           >
-            Original
+            {isCompactToolbar ? "Ori" : "Original"}
           </button>
           <button
             className={`rounded px-2 py-0.5 text-xs transition-colors ${pdfVariant === "layout" ? "bg-primary text-primary-foreground" : "hover:bg-accent hover:text-accent-foreground"}`}
             onClick={() =>
               dispatch({ type: "SET_PDF_VARIANT", variant: "layout" })
             }
+            title="Layout PDF"
           >
-            Layout
+            {isCompactToolbar ? "Lay" : "Layout"}
           </button>
         </div>
       </div>
@@ -888,11 +908,10 @@ export default function PdfViewer() {
                 return (
                   <button
                     key={entry.id}
-                    className={`block w-full truncate rounded py-0.5 pr-1 text-left hover:bg-accent hover:text-accent-foreground transition-colors ${
-                      isActive
+                    className={`block w-full truncate rounded py-0.5 pr-1 text-left hover:bg-accent hover:text-accent-foreground transition-colors ${isActive
                         ? "bg-accent/80 font-medium text-foreground"
                         : "text-muted-foreground"
-                    } ${isBold ? "font-semibold" : ""}`}
+                      } ${isBold ? "font-semibold" : ""}`}
                     style={{ paddingLeft: `${indent + 8}px` }}
                     title={label}
                     onClick={() => {
@@ -945,8 +964,8 @@ export default function PdfViewer() {
                   const isPageLoaded = loadedPages.has(pageNumber);
                   const renderedHeight = pageDims
                     ? Math.round(
-                        (pageDims.height / pageDims.width) * stableRenderWidth,
-                      )
+                      (pageDims.height / pageDims.width) * stableRenderWidth,
+                    )
                     : estimatedPageHeight;
                   const scaledWidth = Math.round(stableRenderWidth * zoomScale);
                   const scaledHeight = renderedHeight
@@ -958,9 +977,8 @@ export default function PdfViewer() {
                       key={pageNumber}
                       ref={(node) => setPageNode(pageNumber, node)}
                       data-page-number={pageNumber}
-                      className={`relative transition-shadow ${
-                        pageNumber === currentPage ? "z-10" : ""
-                      }`}
+                      className={`relative transition-shadow ${pageNumber === currentPage ? "z-10" : ""
+                        }`}
                       style={{
                         width: scaledWidth,
                         minHeight: scaledHeight,
@@ -974,72 +992,69 @@ export default function PdfViewer() {
                           transformOrigin: "top left",
                         }}
                       >
-                          <div
-                            className={`relative rounded bg-white shadow-sm ring-1 ring-border ${
-                              pageNumber === currentPage
-                                ? "shadow-md ring-primary/50 ring-2"
-                                : ""
+                        <div
+                          className={`relative rounded bg-white shadow-sm ring-1 ring-border ${pageNumber === currentPage
+                              ? "shadow-md ring-primary/50 ring-2"
+                              : ""
                             }`}
-                            style={{ width: stableRenderWidth }}
-                          >
-                            <div
-                              className={`absolute inset-0 rounded bg-gradient-to-br from-muted via-card to-muted transition-opacity duration-500 ${
-                                isPageLoaded ? "opacity-0" : "opacity-100"
+                          style={{ width: stableRenderWidth }}
+                        >
+                          <div
+                            className={`absolute inset-0 rounded bg-gradient-to-br from-muted via-card to-muted transition-opacity duration-500 ${isPageLoaded ? "opacity-0" : "opacity-100"
                               }`}
-                            />
-                            {shouldRenderPage ? (
-                              <div
-                                className={`relative transition-all duration-500 ${
-                                  isPageLoaded
-                                    ? "opacity-100 blur-0"
-                                    : "opacity-0 blur-[2px]"
+                          />
+                          {shouldRenderPage ? (
+                            <div
+                              className={`relative transition-all duration-500 ${isPageLoaded
+                                  ? "opacity-100 blur-0"
+                                  : "opacity-0 blur-[2px]"
                                 }`}
-                              >
-                                <PdfPageCanvas
-                                  pageNumber={pageNumber}
-                                  renderWidth={stableRenderWidth}
-                                  onPageLoadSuccess={onPageLoadSuccess}
-                                />
-                              </div>
-                            ) : (
-                              <div
-                                className="relative overflow-hidden rounded bg-gradient-to-br from-muted via-card to-muted"
-                                style={{ height: renderedHeight }}
-                              >
-                                <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.8s_infinite] bg-gradient-to-r from-transparent via-background/40 to-transparent" />
-                                <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-                                  Page {pageNumber}
-                                </div>
-                              </div>
-                            )}
-                            <div className="pointer-events-none absolute right-3 top-3 rounded bg-background/80 px-2 py-0.5 text-[11px] font-medium text-foreground shadow-sm backdrop-blur-[2px]">
-                              {pageNumber}
+                            >
+                              <PdfPageCanvas
+                                pageNumber={pageNumber}
+                                renderWidth={stableRenderWidth}
+                                onPageLoadSuccess={onPageLoadSuccess}
+                              />
                             </div>
-
-                            {/* MinerU bbox overlays for this page */}
-                            {bboxesByPage.get(pageNumber)?.map((b, bIdx) => {
-                              const rh = pageDims
-                                ? Math.round((pageDims.height / pageDims.width) * stableRenderWidth)
-                                : estimatedPageHeight;
-                              // Use PDF page dims as fallback when bbox doesn't carry its own
-                              const bpw = b.page_width || pageDims?.width || stableRenderWidth;
-                              const bph = b.page_height || pageDims?.height || rh;
-                              return (
-                                <BboxOverlay
-                                  key={`bbox-${pageNumber}-${bIdx}`}
-                                  bbox={b}
-                                  pageWidth={bpw}
-                                  pageHeight={bph}
-                                  renderedWidth={stableRenderWidth}
-                                  renderedHeight={rh}
-                                  coordWidth={bpw}
-                                  coordHeight={bph}
-                                  citationLabel={selectedSource?.citation_label}
-                                />
-                              );
-                            })}
-
+                          ) : (
+                            <div
+                              className="relative overflow-hidden rounded bg-gradient-to-br from-muted via-card to-muted"
+                              style={{ height: renderedHeight }}
+                            >
+                              <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.8s_infinite] bg-gradient-to-r from-transparent via-background/40 to-transparent" />
+                              <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+                                Page {pageNumber}
+                              </div>
+                            </div>
+                          )}
+                          <div className="pointer-events-none absolute right-3 top-3 rounded bg-background/80 px-2 py-0.5 text-[11px] font-medium text-foreground shadow-sm backdrop-blur-[2px]">
+                            {pageNumber}
                           </div>
+
+                          {/* MinerU bbox overlays for this page */}
+                          {bboxesByPage.get(pageNumber)?.map((b, bIdx) => {
+                            const rh = pageDims
+                              ? Math.round((pageDims.height / pageDims.width) * stableRenderWidth)
+                              : estimatedPageHeight;
+                            // Use PDF page dims as fallback when bbox doesn't carry its own
+                            const bpw = b.page_width || pageDims?.width || stableRenderWidth;
+                            const bph = b.page_height || pageDims?.height || rh;
+                            return (
+                              <BboxOverlay
+                                key={`bbox-${pageNumber}-${bIdx}`}
+                                bbox={b}
+                                pageWidth={bpw}
+                                pageHeight={bph}
+                                renderedWidth={stableRenderWidth}
+                                renderedHeight={rh}
+                                coordWidth={bpw}
+                                coordHeight={bph}
+                                citationLabel={selectedSource?.citation_label}
+                              />
+                            );
+                          })}
+
+                        </div>
                       </div>
                     </div>
                   );

@@ -4,6 +4,8 @@
  */
 import { useRef, useEffect, useCallback, type FormEvent, type KeyboardEvent } from "react";
 import type { BookBase } from "@/features/shared/books";
+import { useI18n } from "@/features/shared/i18n";
+import { tpl } from "@/features/shared/i18n";
 
 interface Props {
   sessionBooks: BookBase[];
@@ -20,6 +22,7 @@ export default function ChatInput({
   onInputChange,
   onSubmit,
 }: Props) {
+  const { t } = useI18n();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const resizeTextarea = useCallback(() => {
@@ -72,7 +75,7 @@ export default function ChatInput({
           ) : (
             /* All-books mode: clean single-line indicator */
             <span className="text-xs text-muted-foreground">
-              Searching all {sessionBooks.length} documents
+              {tpl(t.chatSearchAllDocs, { count: sessionBooks.length })}
             </span>
           )}
         </div>
@@ -85,8 +88,8 @@ export default function ChatInput({
             className="max-h-[200px] min-h-[28px] flex-1 resize-none border-0 bg-transparent py-0.5 text-sm text-foreground outline-none placeholder:text-muted-foreground"
             placeholder={
               sessionBooks.length === 1
-                ? `Ask about ${sessionBooks[0].title}...`
-                : "Ask about Ottawa economic data..."
+                ? tpl(t.chatPlaceholderSingle, { title: sessionBooks[0].title })
+                : t.chatPlaceholderMulti
             }
             value={input}
             onChange={(event) => onInputChange(event.target.value)}
@@ -97,7 +100,7 @@ export default function ChatInput({
             type="submit"
             disabled={loading || !input.trim()}
             className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
-            title="Send message (Enter)"
+            title={t.chatSendTitle}
           >
             {loading ? (
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/80 border-t-transparent" />
@@ -109,7 +112,7 @@ export default function ChatInput({
           </button>
         </div>
         <div className="px-4 pb-2 text-[11px] text-muted-foreground">
-          Enter to send · Shift+Enter for new line
+          {t.chatInputHint}
         </div>
       </div>
     </form>

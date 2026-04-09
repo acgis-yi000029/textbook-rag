@@ -1,9 +1,14 @@
 /**
  * CitationChip — Inline citation chip for AnswerBlock rendering.
  *
- * Displays [N] p.XX inline after each answer block.
+ * Displays [N] BookTitle p.XX + relevance score inline after each answer block.
  * Click toggles inline content panel (via onChipClick) AND
  * dispatches SELECT_SOURCE to jump PDF to that page.
+ *
+ * Score color rules (DM-T4-01):
+ *   ≥0.8 → green (high relevance)
+ *   ≥0.5 → amber (medium)
+ *   <0.5 → gray  (low)
  *
  * Usage: <CitationChip source={source} index={1} onChipClick={fn} />
  */
@@ -13,6 +18,17 @@
 import { useCallback } from "react";
 import { useAppDispatch } from "@/features/shared/AppContext";
 import type { SourceInfo } from "@/features/shared/types";
+
+// ============================================================
+// Helpers
+// ============================================================
+
+/** Color-coded CSS classes for relevance score badge */
+function scoreStyle(score: number): string {
+  if (score >= 0.8) return "bg-green-500/20 text-green-600";
+  if (score >= 0.5) return "bg-amber-500/20 text-amber-600";
+  return "bg-muted text-muted-foreground";
+}
 
 // ============================================================
 // Types
@@ -60,22 +76,24 @@ export default function CitationChip({
     });
   }, [dispatch, source, index, onChipClick]);
 
+  const score = source.score;
+
   return (
     <button
       type="button"
       onClick={handleClick}
       className={`citation-chip inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-all duration-150 ${
         isActive
-          ? "border-blue-400/60 bg-blue-500/10 text-blue-500 shadow-sm shadow-blue-500/10"
-          : "border-border/60 bg-card/60 text-muted-foreground hover:border-blue-300/50 hover:bg-accent/50 hover:text-foreground"
+          ? "border-primary/40 bg-primary/10 text-primary shadow-sm shadow-primary/10"
+          : "border-border/60 bg-card/60 text-muted-foreground hover:border-primary/30 hover:bg-accent/50 hover:text-foreground"
       }`}
-      aria-label={`${source.book_title || ''} p.${source.page_number} — click to view source`}
+      aria-label={`${source.book_title || ''} p.${source.page_number}${score != null ? ` — relevance ${(score * 100).toFixed(0)}%` : ''} — click to view source`}
     >
       {/* Citation number badge */}
       <span
         className={`inline-flex h-[20px] w-[20px] items-center justify-center rounded-full text-[10px] font-bold leading-none shrink-0 ${
           isActive
-            ? "bg-blue-500 text-white"
+            ? "bg-primary text-primary-foreground"
             : "bg-muted-foreground/15 text-muted-foreground"
         }`}
       >
@@ -93,6 +111,16 @@ export default function CitationChip({
       <span className="shrink-0 tabular-nums text-muted-foreground/70 text-[11px]">
         p.{source.page_number}
       </span>
+
+      {/* Relevance score badge */}
+      {score != null && (
+        <span
+          className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums ${scoreStyle(score)}`}
+          title={`Relevance Score: ${score.toFixed(2)}`}
+        >
+          {score.toFixed(2)}
+        </span>
+      )}
     </button>
   );
 }

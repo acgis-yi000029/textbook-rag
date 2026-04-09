@@ -181,7 +181,8 @@ function ChatPageInner() {
             <>
               <div className="h-full flex flex-col overflow-hidden" style={{ width: pdfWidth }}>
                 {/* Tab bar */}
-                <div className="shrink-0 flex items-center gap-0 border-b border-border bg-card overflow-x-auto">
+                <div className="shrink-0 flex items-center border-b border-border bg-card">
+                  <div className="flex-1 min-w-0 flex items-center overflow-x-auto">
                   {pdfTabs.map((tab) => {
                     const isActive = tab.bookId === activeTabBookId
                     return (
@@ -215,11 +216,12 @@ function ChatPageInner() {
                       </div>
                     )
                   })}
-                  {/* Close all button */}
+                  </div>
+                  {/* Close all — pinned right, never scrolls away */}
                   <button
                     type="button"
                     onClick={() => { setPdfTabs([]); setActiveTabBookId(null) }}
-                    className="ml-auto shrink-0 flex items-center justify-center h-7 w-7 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors mx-1"
+                    className="shrink-0 flex items-center justify-center h-7 w-7 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors mx-1 border-l border-border"
                     title="Close all PDFs"
                   >
                     <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">

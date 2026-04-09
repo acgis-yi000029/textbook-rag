@@ -5,6 +5,8 @@
  */
 
 import type { BookBase } from "@/features/shared/books";
+import { useI18n } from "@/features/shared/i18n";
+import { tpl } from "@/features/shared/i18n";
 
 interface Props {
   sessionBooks: BookBase[];
@@ -15,6 +17,7 @@ interface Props {
 export default function WelcomeScreen({
   sessionBooks,
 }: Props) {
+  const { t } = useI18n();
   const totalBooks = sessionBooks.length;
 
   return (
@@ -28,18 +31,17 @@ export default function WelcomeScreen({
         </div>
         <div>
           <h3 className="text-lg font-bold text-foreground">
-            Ottawa EcDev Research Assistant
+            {t.chatWelcomeTitle}
           </h3>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            Searching across {totalBooks > 0 ? `all ${totalBooks}` : "your"} documents.
-            Ask about employment, housing, inflation, or any economic indicator.
+            {tpl(t.chatWelcomeBody, { count: totalBooks > 0 ? totalBooks : 'your' })}
           </p>
         </div>
       </div>
 
       {/* Hint to use sidebar */}
       <p className="text-xs text-muted-foreground/60">
-        Browse suggested questions in the panel on the right →
+        {t.chatWelcomeHint}
       </p>
     </div>
   );

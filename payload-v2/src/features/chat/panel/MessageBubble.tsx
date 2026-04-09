@@ -51,13 +51,13 @@ export default function MessageBubble({ role, content, sources, onRetry, isStrea
       )}
 
       <div className={`max-w-[86%] ${isUser ? "order-first" : ""}`}>
-        <div className={`mb-1 text-[11px] font-medium uppercase tracking-[0.16em] ${isUser ? "text-right text-blue-500" : "text-muted-foreground"}`}>
+        <div className={`mb-1 text-[11px] font-medium uppercase tracking-[0.16em] ${isUser ? "text-right text-primary" : "text-muted-foreground"}`}>
           {isUser ? "You" : "Textbook RAG"}
         </div>
         <div
           className={`rounded-[22px] px-4 py-3 text-sm shadow-sm ${
             isUser
-              ? "rounded-tr-md bg-blue-600 text-white"
+              ? "rounded-tr-md border border-primary/20 bg-primary/10 text-foreground"
               : "rounded-tl-md border border-border bg-card/92 text-card-foreground"
           }`}
         >
@@ -72,7 +72,7 @@ export default function MessageBubble({ role, content, sources, onRetry, isStrea
             /* ── Streaming: plain text with typing cursor ── */
             <div className="whitespace-pre-wrap leading-7 text-foreground">
               {content}
-              <span className="ml-0.5 inline-block h-[1.1em] w-[2px] translate-y-[2px] animate-pulse bg-blue-500" />
+              <span className="ml-0.5 inline-block h-[1.1em] w-[2px] translate-y-[2px] animate-pulse bg-primary" />
             </div>
           ) : (
             /* ── Completed AI: semantic AnswerBlocks with citation chips ── */

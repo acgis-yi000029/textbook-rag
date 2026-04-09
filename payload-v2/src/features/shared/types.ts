@@ -52,6 +52,8 @@ export interface SourceInfo {
   page_dim: { width: number; height: number } | null;
   confidence: number;
   citation_label?: string;
+  /** Retrieval relevance score (0.0–1.0, higher = more relevant) */
+  score?: number;
 }
 
 export interface RetrievalStats {
