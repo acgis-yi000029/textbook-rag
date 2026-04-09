@@ -48,6 +48,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 }
 
 export const metadata: Metadata = {
-  title: 'Textbook RAG',
-  description: 'AI-powered textbook Q&A with deep source tracing',
+  title: 'EcDev Research',
+  description: 'AI-powered research assistant for City of Ottawa economic reports',
 }

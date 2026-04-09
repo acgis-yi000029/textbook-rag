@@ -231,10 +231,10 @@ export function SidebarLayout({
                   className={cn(
                     'flex items-center gap-2 w-full rounded-md px-2.5 text-left transition-colors mb-0.5',
                     item.checkable ? 'py-1' : 'py-2',
-                    item.indent && !item.indentLevel && 'pl-5',
-                    item.indentLevel === 1 && 'pl-5',
-                    item.indentLevel === 2 && 'pl-8',
-                    item.indentLevel === 3 && 'pl-10',
+                    item.indent && !item.indentLevel && 'pl-7',
+                    item.indentLevel === 1 && 'pl-7',
+                    item.indentLevel === 2 && 'pl-12',
+                    item.indentLevel === 3 && 'pl-16',
                     isActive && !item.checkable
                       ? 'bg-primary/10 text-primary font-medium'
                       : item.checked

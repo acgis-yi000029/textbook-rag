@@ -45,7 +45,6 @@ export default function ChatPanel({
 }) {
   const {
     currentBookId,
-    selectedSource,
     books,
     selectedModel,
     selectedProvider,
@@ -283,6 +282,7 @@ export default function ChatPanel({
                 content: res.answer,
                 sources: enrichedSources,
                 trace: res.trace,
+                model: selectedModel || res.trace?.generation?.model || undefined,
               },
             ]);
             setStreamingContent("");
@@ -359,10 +359,6 @@ export default function ChatPanel({
 
 
 
-  const selectedSourceLabel = selectedSource
-    ? `p.${selectedSource.page_number}`
-    : null;
-
   return (
     <div className="relative flex h-full min-h-0 flex-col overflow-hidden bg-background">
       {/* ── Header ── */}
@@ -371,7 +367,6 @@ export default function ChatPanel({
         selectedModel={selectedModel}
         models={models}
         loading={loading}
-        selectedSourceLabel={selectedSourceLabel}
         onModelChange={(model, provider) => dispatch({ type: "SET_MODEL", model, provider })}
         onNewChat={resetConversation}
         showQuestions={showQuestions}
@@ -398,6 +393,7 @@ export default function ChatPanel({
                   role={message.role}
                   content={message.content}
                   sources={message.sources}
+                  model={message.model}
                   onRetry={message.role === "user" && !loading ? (q) => void submitQuestion(q) : undefined}
                 />
               </div>
@@ -410,6 +406,7 @@ export default function ChatPanel({
                   role="assistant"
                   content={smoothedText}
                   sources={streamingSources}
+                  model={selectedModel || undefined}
                   isStreaming={isRevealing}
                 />
               </div>

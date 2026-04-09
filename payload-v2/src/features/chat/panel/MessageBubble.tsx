@@ -23,6 +23,8 @@ interface Props {
   role: "user" | "assistant";
   content: string;
   sources?: SourceInfo[];
+  /** LLM model name (assistant messages only). */
+  model?: string;
   onRetry?: (content: string) => void;
   isStreaming?: boolean;
 }
@@ -36,7 +38,7 @@ interface Props {
 // ============================================================
 // Component
 // ============================================================
-export default function MessageBubble({ role, content, sources, onRetry, isStreaming }: Props) {
+export default function MessageBubble({ role, content, sources, model, onRetry, isStreaming }: Props) {
   const isUser = role === "user";
 
   return (
@@ -51,8 +53,13 @@ export default function MessageBubble({ role, content, sources, onRetry, isStrea
       )}
 
       <div className={`max-w-[86%] ${isUser ? "order-first" : ""}`}>
-        <div className={`mb-1 text-[11px] font-medium uppercase tracking-[0.16em] ${isUser ? "text-right text-primary" : "text-muted-foreground"}`}>
-          {isUser ? "You" : "Textbook RAG"}
+        <div className={`mb-1 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] ${isUser ? "justify-end text-primary" : "text-muted-foreground"}`}>
+          {isUser ? "You" : "ECDEV RESEARCH"}
+          {!isUser && model && (
+            <span className="rounded-md bg-muted/60 px-1.5 py-0.5 text-[10px] font-normal normal-case tracking-normal text-muted-foreground/70">
+              {model}
+            </span>
+          )}
         </div>
         <div
           className={`rounded-[22px] px-4 py-3 text-sm shadow-sm ${

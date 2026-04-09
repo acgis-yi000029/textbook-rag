@@ -45,7 +45,7 @@ export default function LoginForm() {
   return (
     <div
       className="min-h-screen flex items-center justify-center p-5 relative overflow-hidden
-        bg-[linear-gradient(135deg,#004890_0%,#0066cc_50%,#004890_100%)]
+        bg-[linear-gradient(135deg,#1d4ed8_0%,#2563eb_50%,#3b82f6_100%)]
         dark:bg-[linear-gradient(135deg,#0a1628_0%,#0d2240_40%,#1a3a5c_70%,#0d2240_100%)]
         transition-colors duration-500"
     >
@@ -70,9 +70,7 @@ export default function LoginForm() {
       >
         {/* Logo */}
         <div className="flex justify-center mb-5">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-primary animate-pulse" style={{ animationDuration: '3s' }}>
-            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15z" /><path d="M8 7h8" /><path d="M8 11h6" />
-          </svg>
+          <img src="/ottawa-logo.jpg" alt="City of Ottawa" className="h-14 w-14 rounded-xl object-contain" />
         </div>
 
         {/* Header */}
@@ -111,7 +109,7 @@ export default function LoginForm() {
               placeholder={t.emailPlaceholder} disabled={isLoading} autoComplete="email" required
               className="px-4 py-3.5 border-2 border-input bg-background rounded-xl text-sm text-foreground
                 placeholder:text-muted-foreground outline-none transition-all duration-300
-                focus:border-primary focus:shadow-[0_0_0_4px_rgba(0,72,144,0.15)]
+                focus:border-primary focus:shadow-[0_0_0_4px_rgba(37,99,235,0.15)]
                 disabled:opacity-50 disabled:cursor-not-allowed"
             />
           </div>
@@ -132,7 +130,7 @@ export default function LoginForm() {
                 disabled={isLoading} autoComplete="current-password" required
                 className="w-full px-4 py-3.5 pr-12 border-2 border-input bg-background rounded-xl text-sm text-foreground
                   placeholder:text-muted-foreground outline-none transition-all duration-300
-                  focus:border-primary focus:shadow-[0_0_0_4px_rgba(0,72,144,0.15)]
+                  focus:border-primary focus:shadow-[0_0_0_4px_rgba(37,99,235,0.15)]
                   disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <button
@@ -153,8 +151,8 @@ export default function LoginForm() {
           <button
             type="submit" disabled={isLoading}
             className="mt-1 flex items-center justify-center gap-2.5 px-6 py-4 rounded-xl text-base font-semibold text-white
-              bg-[linear-gradient(135deg,#004890,#0066cc)] shadow-[0_8px_30px_rgba(0,72,144,0.3)]
-              hover:translate-y-[-2px] hover:shadow-[0_12px_40px_rgba(0,72,144,0.4)]
+              bg-[linear-gradient(135deg,#1d4ed8,#2563eb)] shadow-[0_8px_30px_rgba(37,99,235,0.3)]
+              hover:translate-y-[-2px] hover:shadow-[0_12px_40px_rgba(37,99,235,0.4)]
               active:translate-y-0 disabled:opacity-60 disabled:cursor-not-allowed disabled:translate-y-0
               transition-all duration-300 relative overflow-hidden"
           >

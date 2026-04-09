@@ -1,4 +1,4 @@
-/**
+﻿/**
  * EvaluationPage — Data-driven RAG evaluation hub.
  *
  * Route: /engine/evaluation
@@ -44,48 +44,48 @@ import AnswerBlockRenderer from '@/features/chat/panel/AnswerBlockRenderer'
 // ============================================================
 
 /** Depth label → display info. */
-const DEPTH_META: Record<string, { label: string; labelZh: string; color: string }> = {
-  surface: { label: 'Surface', labelZh: '浅层', color: 'text-amber-400' },
-  understanding: { label: 'Understanding', labelZh: '理解', color: 'text-blue-400' },
-  synthesis: { label: 'Synthesis', labelZh: '综合', color: 'text-emerald-400' },
+const DEPTH_META: Record<string, { label: string; labelFr: string; color: string }> = {
+  surface: { label: 'Surface', labelFr: '浅层', color: 'text-amber-400' },
+  understanding: { label: 'Understanding', labelFr: '理解', color: 'text-blue-400' },
+  synthesis: { label: 'Synthesis', labelFr: '综合', color: 'text-emerald-400' },
 }
 
 /** Group metadata for the 3 evaluation categories. */
 const EVAL_GROUPS = {
   question: {
     label: 'Question Quality',
-    labelZh: '问题质量',
+    labelFr: '问题质量',
     Icon: FileText,
     gradient: 'from-violet-500/20 to-purple-500/10',
     border: 'border-violet-500/30',
     accentText: 'text-violet-400',
     accentBg: 'bg-violet-500/10',
-    dimensions: [] as { key: string; label: string; labelZh: string; color: string }[],
+    dimensions: [] as { key: string; label: string; labelFr: string; color: string }[],
   },
   answer: {
     label: 'Answer Quality',
-    labelZh: '回答质量',
+    labelFr: '回答质量',
     Icon: Sparkles,
     gradient: 'from-blue-500/20 to-cyan-500/10',
     border: 'border-blue-500/30',
     accentText: 'text-blue-400',
     accentBg: 'bg-blue-500/10',
     dimensions: [
-      { key: 'faithfulness', label: 'Faithfulness', labelZh: '忠实度', color: 'bg-blue-500' },
-      { key: 'answer_relevancy', label: 'Answer Relevancy', labelZh: '答案相关性', color: 'bg-cyan-500' },
+      { key: 'faithfulness', label: 'Faithfulness', labelFr: '忠实度', color: 'bg-blue-500' },
+      { key: 'answer_relevancy', label: 'Answer Relevancy', labelFr: '答案相关性', color: 'bg-cyan-500' },
     ],
   },
   citation: {
     label: 'Citation Quality',
-    labelZh: '引用质量',
+    labelFr: '引用质量',
     Icon: BookOpen,
     gradient: 'from-amber-500/20 to-orange-500/10',
     border: 'border-amber-500/30',
     accentText: 'text-amber-400',
     accentBg: 'bg-amber-500/10',
     dimensions: [
-      { key: 'context_relevancy', label: 'Context Relevancy', labelZh: '上下文相关性', color: 'bg-amber-500' },
-      { key: 'relevancy', label: 'Source Relevancy', labelZh: '来源相关性', color: 'bg-orange-500' },
+      { key: 'context_relevancy', label: 'Context Relevancy', labelFr: '上下文相关性', color: 'bg-amber-500' },
+      { key: 'relevancy', label: 'Source Relevancy', labelFr: '来源相关性', color: 'bg-orange-500' },
     ],
   },
 } as const
@@ -100,12 +100,12 @@ function getGrade(score: number | null | undefined): Grade {
   return 'poor'
 }
 
-const GRADE_STYLES: Record<Grade, { label: string; labelZh: string; text: string; bg: string; border: string }> = {
-  excellent: { label: 'Excellent', labelZh: '优秀', text: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30' },
-  good: { label: 'Good', labelZh: '良好', text: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/30' },
-  fair: { label: 'Fair', labelZh: '一般', text: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30' },
-  poor: { label: 'Poor', labelZh: '较差', text: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/30' },
-  none: { label: '—', labelZh: '—', text: 'text-zinc-500', bg: 'bg-zinc-500/10', border: 'border-zinc-500/30' },
+const GRADE_STYLES: Record<Grade, { label: string; labelFr: string; text: string; bg: string; border: string }> = {
+  excellent: { label: 'Excellent', labelFr: '优秀', text: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30' },
+  good: { label: 'Good', labelFr: '良好', text: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/30' },
+  fair: { label: 'Fair', labelFr: '一般', text: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30' },
+  poor: { label: 'Poor', labelFr: '较差', text: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/30' },
+  none: { label: '—', labelFr: '—', text: 'text-zinc-500', bg: 'bg-zinc-500/10', border: 'border-zinc-500/30' },
 }
 
 /** Extract a short summary from verbose LLM evaluator feedback. */
@@ -148,7 +148,7 @@ interface QueryEvalState {
 // ============================================================
 export default function EvaluationPage() {
   const { locale } = useI18n()
-  const isZh = locale === 'zh'
+  const isFr = locale === 'fr'
   const { user } = useAuth()
 
   // — Sessions
@@ -469,7 +469,7 @@ export default function EvaluationPage() {
           <div className="flex items-center gap-1.5">
             <group.Icon className={cn('h-3.5 w-3.5', group.accentText)} />
             <span className="text-[10px] font-semibold text-foreground flex-1">
-              {isZh ? group.labelZh : group.label}
+              {isFr ? group.labelFr : group.label}
             </span>
             {normScore != null && (
               <span className={cn('text-sm font-bold tabular-nums', gradeStyle.text)}>
@@ -484,24 +484,24 @@ export default function EvaluationPage() {
                 depthMeta.color,
                 group.accentBg, group.border,
               )}>
-                {isZh ? depthMeta.labelZh : depthMeta.label}
+                {isFr ? depthMeta.labelFr : depthMeta.label}
               </span>
               {q.depth_score != null && (
                 <span className="text-[9px] text-muted-foreground">
-                  {isZh ? '原始分' : 'Raw'}: {q.depth_score.toFixed(1)}/5.0
+                  {isFr ? '原始分' : 'Raw'}: {q.depth_score.toFixed(1)}/5.0
                 </span>
               )}
             </div>
           ) : (
             <span className="text-[9px] text-muted-foreground italic">
-              {isZh ? '等待评估…' : 'Awaiting assessment…'}
+              {isFr ? '等待评估…' : 'Awaiting assessment…'}
             </span>
           )}
           {feedback?.question_depth && (
             <details className="rounded border border-border/30 bg-card/30">
               <summary className="cursor-pointer list-none px-2 py-1 text-[9px] text-muted-foreground flex items-center gap-1">
                 <ChevronRight className="h-2.5 w-2.5 transition-transform details-open:rotate-90" />
-                {isZh ? '评估理由' : 'Reasoning'}
+                {isFr ? '评估理由' : 'Reasoning'}
               </summary>
               <div className="border-t border-border/20 px-2 py-1.5">
                 <p className="text-[9px] text-muted-foreground leading-relaxed whitespace-pre-wrap">
@@ -528,7 +528,7 @@ export default function EvaluationPage() {
 
     // Collect feedback for this group's dimensions
     const groupFeedback = dims
-      .map(d => ({ label: isZh ? d.labelZh : d.label, text: feedback?.[d.key] }))
+      .map(d => ({ label: isFr ? d.labelFr : d.label, text: feedback?.[d.key] }))
       .filter(f => f.text)
 
     return (
@@ -536,7 +536,7 @@ export default function EvaluationPage() {
         <div className="flex items-center gap-1.5">
           <span className="text-sm">{group.icon}</span>
           <span className="text-[10px] font-semibold text-foreground flex-1">
-            {isZh ? group.labelZh : group.label}
+            {isFr ? group.labelFr : group.label}
           </span>
           {avg != null && (
             <div className="flex items-center gap-1">
@@ -547,7 +547,7 @@ export default function EvaluationPage() {
                 'inline-flex px-1 py-0.5 rounded text-[8px] font-semibold',
                 avgStyle.text, avgStyle.bg,
               )}>
-                {isZh ? avgStyle.labelZh : avgStyle.label}
+                {isFr ? avgStyle.labelFr : avgStyle.label}
               </span>
             </div>
           )}
@@ -556,7 +556,7 @@ export default function EvaluationPage() {
           {dims.map(d => (
             <div key={d.key}>
               {renderScoreBar(
-                isZh ? d.labelZh : d.label,
+                isFr ? d.labelFr : d.label,
                 groupScores?.[d.key] ?? null,
                 d.color,
               )}
@@ -567,7 +567,7 @@ export default function EvaluationPage() {
           <details className="rounded border border-border/30 bg-card/30">
             <summary className="cursor-pointer list-none px-2 py-1 text-[9px] text-muted-foreground flex items-center gap-1">
               <ChevronRight className="h-2.5 w-2.5 transition-transform details-open:rotate-90" />
-              {isZh ? '详情' : 'Details'}
+              {isFr ? '详情' : 'Details'}
             </summary>
             <div className="border-t border-border/20 px-2 py-1.5 space-y-1.5">
               {groupFeedback.map(f => {
@@ -583,7 +583,7 @@ export default function EvaluationPage() {
                     {isVerbose && (
                       <details className="mt-0.5">
                         <summary className="cursor-pointer text-[8px] text-primary/60 hover:text-primary">
-                          {isZh ? '查看完整反馈' : 'Show full feedback'}
+                          {isFr ? '查看完整反馈' : 'Show full feedback'}
                         </summary>
                         <p className="text-[8px] text-muted-foreground/70 leading-relaxed mt-0.5 whitespace-pre-wrap">
                           {cleanFeedbackText(fullText)}
@@ -610,7 +610,7 @@ export default function EvaluationPage() {
         <div className="flex items-center justify-center h-full min-h-[120px]">
           <div className="flex items-center gap-2 text-muted-foreground/40">
             <Clock className="h-4 w-4" />
-            <span className="text-xs">{isZh ? '等待评估…' : 'Pending…'}</span>
+            <span className="text-xs">{isFr ? '等待评估…' : 'Pending…'}</span>
           </div>
         </div>
       )
@@ -623,7 +623,7 @@ export default function EvaluationPage() {
           <div className="flex flex-col items-center gap-2">
             <Loader2 className="h-5 w-5 animate-spin text-primary" />
             <span className="text-[10px] text-muted-foreground animate-pulse">
-              {isZh ? '评估中…' : 'Evaluating…'}
+              {isFr ? '评估中…' : 'Evaluating…'}
             </span>
           </div>
         </div>
@@ -637,7 +637,7 @@ export default function EvaluationPage() {
           <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
             <AlertCircle className="h-3.5 w-3.5 text-destructive mt-0.5 shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-medium text-destructive">{isZh ? '评估失败' : 'Failed'}</p>
+              <p className="text-[10px] font-medium text-destructive">{isFr ? '评估失败' : 'Failed'}</p>
               <p className="text-[9px] text-destructive/60 mt-0.5 line-clamp-2">{state.error}</p>
             </div>
             <button
@@ -664,7 +664,7 @@ export default function EvaluationPage() {
             type="button"
             onClick={() => handleReEvaluate(queryId)}
             className="p-1 rounded hover:bg-secondary transition-colors"
-            title={isZh ? '重新评估' : 'Re-evaluate'}
+            title={isFr ? '重新评估' : 'Re-evaluate'}
           >
             <RotateCcw className="h-3 w-3 text-muted-foreground" />
           </button>
@@ -689,10 +689,10 @@ export default function EvaluationPage() {
         <LineChart className="h-5 w-5 text-emerald-400" />
         <div className="flex-1">
           <h1 className="text-lg font-bold text-foreground">
-            {isZh ? '统一评估中枢' : 'Evaluation Hub'}
+            {isFr ? '统一评估中枢' : 'Evaluation Hub'}
           </h1>
           <p className="text-xs text-muted-foreground">
-            {isZh
+            {isFr
               ? '选择对话 → 自动评估 → 结果与对话对齐展示'
               : 'Select a session → auto-evaluate → results aligned with conversation'}
           </p>
@@ -719,9 +719,9 @@ export default function EvaluationPage() {
             value={selectedModel ?? ''}
             onChange={e => setSelectedModel(e.target.value || undefined)}
             className="h-7 px-2 rounded-lg border border-border bg-background text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
-            title={isZh ? '选择评估模型' : 'Evaluation Model'}
+            title={isFr ? '选择评估模型' : 'Evaluation Model'}
           >
-            <option value="">{isZh ? '默认模型' : 'Default Model'}</option>
+            <option value="">{isFr ? '默认模型' : 'Default Model'}</option>
             {providers.filter(p => p.available).map(p => (
               <option key={p.name} value={p.model}>
                 {p.display_name} ({p.model})
@@ -738,7 +738,7 @@ export default function EvaluationPage() {
             'p-1.5 rounded-lg transition-colors',
             showMethodology ? 'bg-primary/10 text-primary' : 'hover:bg-secondary text-muted-foreground',
           )}
-          title={isZh ? '评估方法论' : 'Methodology'}
+          title={isFr ? '评估方法论' : 'Methodology'}
         >
           <Info className="h-4 w-4" />
         </button>
@@ -752,50 +752,50 @@ export default function EvaluationPage() {
             <div className="space-y-1.5">
               <div className="flex items-center gap-1.5 font-semibold text-foreground">
                 <FileText className="h-3.5 w-3.5 text-violet-400" />
-                <span>{isZh ? '问题质量' : 'Question Quality'}</span>
+                <span>{isFr ? '问题质量' : 'Question Quality'}</span>
               </div>
               <p className="text-muted-foreground">
-                {isZh
+                {isFr
                   ? '基于 Bloom 认知层次（1-5）评估问题深度。使用 LLM 结构化评审判断问题属于浅层回忆（1）、理解（2）、应用（3）、分析（4）还是综合评估（5）。分数归一化到 0-1。'
                   : 'Cognitive depth based on Bloom\'s taxonomy (1-5). LLM-structured review classifies questions as recall (1), comprehension (2), application (3), analysis (4), or synthesis (5). Score normalised to 0-1.'}
               </p>
               <p className="text-muted-foreground/70 text-[10px]">
-                {isZh ? '评估器：QuestionDepthEvaluator (CorrectnessEvaluator)' : 'Evaluator: QuestionDepthEvaluator (CorrectnessEvaluator)'}
+                {isFr ? '评估器：QuestionDepthEvaluator (CorrectnessEvaluator)' : 'Evaluator: QuestionDepthEvaluator (CorrectnessEvaluator)'}
               </p>
             </div>
             {/* Answer Quality */}
             <div className="space-y-1.5">
               <div className="flex items-center gap-1.5 font-semibold text-foreground">
                 <Sparkles className="h-3.5 w-3.5 text-blue-400" />
-                <span>{isZh ? '回答质量' : 'Answer Quality'}</span>
+                <span>{isFr ? '回答质量' : 'Answer Quality'}</span>
               </div>
               <p className="text-muted-foreground">
-                {isZh
+                {isFr
                   ? '忠实度：回答是否基于检索到的上下文（不编造）。答案相关性：回答是否切题回答了用户问题。两项均为 0-1 分，由 LLM 评审。'
                   : 'Faithfulness: Is the answer grounded in retrieved context (no hallucination)? Answer Relevancy: Does the answer address the user\'s question? Both 0-1 via LLM judge.'}
               </p>
               <p className="text-muted-foreground/70 text-[10px]">
-                {isZh ? '评估器：FaithfulnessEvaluator + AnswerRelevancyEvaluator' : 'Evaluators: FaithfulnessEvaluator + AnswerRelevancyEvaluator'}
+                {isFr ? '评估器：FaithfulnessEvaluator + AnswerRelevancyEvaluator' : 'Evaluators: FaithfulnessEvaluator + AnswerRelevancyEvaluator'}
               </p>
             </div>
             {/* Citation Quality */}
             <div className="space-y-1.5">
               <div className="flex items-center gap-1.5 font-semibold text-foreground">
                 <BookOpen className="h-3.5 w-3.5 text-amber-400" />
-                <span>{isZh ? '引用质量' : 'Citation Quality'}</span>
+                <span>{isFr ? '引用质量' : 'Citation Quality'}</span>
               </div>
               <p className="text-muted-foreground">
-                {isZh
+                {isFr
                   ? '上下文相关性：检索到的文档片段是否与问题相关。来源相关性：检索结果与最终回答的对齐程度。均为 0-1 分。'
                   : 'Context Relevancy: Are retrieved chunks relevant to the question? Source Relevancy: How well do sources align with the final answer? Both 0-1.'}
               </p>
               <p className="text-muted-foreground/70 text-[10px]">
-                {isZh ? '评估器：ContextRelevancyEvaluator + RelevancyEvaluator' : 'Evaluators: ContextRelevancyEvaluator + RelevancyEvaluator'}
+                {isFr ? '评估器：ContextRelevancyEvaluator + RelevancyEvaluator' : 'Evaluators: ContextRelevancyEvaluator + RelevancyEvaluator'}
               </p>
             </div>
           </div>
           <div className="mt-3 pt-2 border-t border-border/30 text-[10px] text-muted-foreground/60">
-            {isZh
+            {isFr
               ? '所有评估基于 LlamaIndex 评估框架，使用配置的 LLM（当前：Azure GPT-4o-mini）作为评审模型。评估不会重新运行 RAG 流水线，直接使用已有的 (问题, 回答, 来源) 数据。'
               : 'All evaluations powered by LlamaIndex evaluation framework using the configured LLM (currently: Azure GPT-4o-mini) as judge. Evaluations do NOT re-run the RAG pipeline — they use existing (question, answer, sources) data.'}
           </div>
@@ -810,7 +810,7 @@ export default function EvaluationPage() {
           <div className="px-3 py-3 border-b border-border flex items-center gap-2">
             <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
             <span className="text-[11px] font-medium text-foreground flex-1">
-              {isZh ? '对话记录' : 'Sessions'}
+              {isFr ? '对话记录' : 'Sessions'}
               {filteredSessions.length > 0 && (
                 <span className="ml-1 text-[9px] text-muted-foreground font-normal">({filteredSessions.length})</span>
               )}
@@ -819,7 +819,7 @@ export default function EvaluationPage() {
               type="button"
               onClick={loadSessions}
               className="p-1 rounded hover:bg-secondary transition-colors"
-              title={isZh ? '刷新' : 'Refresh'}
+              title={isFr ? '刷新' : 'Refresh'}
             >
               <RotateCcw className={cn('h-3 w-3 text-muted-foreground', sessionsLoading && 'animate-spin')} />
             </button>
@@ -840,7 +840,7 @@ export default function EvaluationPage() {
                   )}
                 >
                   <User className="h-3 w-3" />
-                  {isZh ? '我的' : 'Mine'}
+                  {isFr ? '我的' : 'Mine'}
                 </button>
                 <button
                   type="button"
@@ -853,7 +853,7 @@ export default function EvaluationPage() {
                   )}
                 >
                   <Users className="h-3 w-3" />
-                  {isZh ? '全部' : 'All'}
+                  {isFr ? '全部' : 'All'}
                 </button>
               </div>
             </div>
@@ -866,10 +866,10 @@ export default function EvaluationPage() {
               onChange={(e) => setTimeFilter(e.target.value as typeof timeFilter)}
               className="w-full text-[10px] bg-transparent text-muted-foreground border border-border/50 rounded px-1.5 py-1 focus:outline-none focus:border-primary/50"
             >
-              <option value="all">{isZh ? '全部时间' : 'All time'}</option>
-              <option value="today">{isZh ? '今天' : 'Today'}</option>
-              <option value="7d">{isZh ? '最近 7 天' : 'Last 7 days'}</option>
-              <option value="30d">{isZh ? '最近 30 天' : 'Last 30 days'}</option>
+              <option value="all">{isFr ? '全部时间' : 'All time'}</option>
+              <option value="today">{isFr ? '今天' : 'Today'}</option>
+              <option value="7d">{isFr ? '最近 7 天' : 'Last 7 days'}</option>
+              <option value="30d">{isFr ? '最近 30 天' : 'Last 30 days'}</option>
             </select>
           </div>
 
@@ -885,7 +885,7 @@ export default function EvaluationPage() {
               <div className="flex flex-col items-center justify-center h-32 text-center px-3">
                 <Search className="h-5 w-5 text-muted-foreground/30 mb-2" />
                 <p className="text-[10px] text-muted-foreground">
-                  {isZh ? '暂无对话记录' : 'No sessions found'}
+                  {isFr ? '暂无对话记录' : 'No sessions found'}
                 </p>
               </div>
             )}
@@ -912,7 +912,7 @@ export default function EvaluationPage() {
                       {s.createdAt ? new Date(s.createdAt).toLocaleDateString() : '—'}
                     </span>
                     <span className="text-[9px] text-muted-foreground/50">
-                      {s.queryCount} {isZh ? '轮' : 'turns'}
+                      {s.queryCount} {isFr ? '轮' : 'turns'}
                     </span>
                     {isSelected && autoEvalRunning && (
                       <Loader2 className="h-2.5 w-2.5 animate-spin text-primary ml-auto" />
@@ -939,10 +939,10 @@ export default function EvaluationPage() {
               <Zap className="h-8 w-8 text-muted-foreground/30" />
             </div>
             <h3 className="text-sm font-semibold text-foreground mb-1">
-              {isZh ? '选择对话开始评估' : 'Select a Session to Evaluate'}
+              {isFr ? '选择对话开始评估' : 'Select a Session to Evaluate'}
             </h3>
             <p className="text-xs text-muted-foreground max-w-sm">
-              {isZh
+              {isFr
                 ? '从左侧选择一个对话，系统将自动评估所有问答对的质量，结果与对话内容对齐展示'
                 : 'Select a session from the left. All Q&A pairs will be evaluated automatically with results shown alongside the conversation.'}
             </p>
@@ -951,14 +951,14 @@ export default function EvaluationPage() {
           <div className="flex-1 flex items-center justify-center">
             <div className="flex flex-col items-center gap-2">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">{isZh ? '加载对话…' : 'Loading…'}</span>
+              <span className="text-xs text-muted-foreground">{isFr ? '加载对话…' : 'Loading…'}</span>
             </div>
           </div>
         ) : sessionQueries.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center px-8">
             <Search className="h-6 w-6 text-muted-foreground/30 mb-2" />
             <p className="text-xs text-muted-foreground">
-              {isZh ? '此对话暂无查询记录' : 'No queries in this session'}
+              {isFr ? '此对话暂无查询记录' : 'No queries in this session'}
             </p>
           </div>
         ) : (
@@ -977,7 +977,7 @@ export default function EvaluationPage() {
                     {selectedSession.title}
                   </span>
                   <span>
-                    {sessionQueries.length} {isZh ? '轮对话' : 'turns'}
+                    {sessionQueries.length} {isFr ? '轮对话' : 'turns'}
                   </span>
                 </div>
 
@@ -1056,7 +1056,7 @@ export default function EvaluationPage() {
                 <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-1.5 mb-4 sticky top-0 z-10 backdrop-blur-sm">
                   <BarChart3 className="h-3.5 w-3.5 text-emerald-400" />
                   <span className="text-[11px] font-medium text-foreground flex-1">
-                    {isZh ? '评估结果' : 'Evaluation Results'}
+                    {isFr ? '评估结果' : 'Evaluation Results'}
                   </span>
                   {evalProgress.total > 0 && (
                     <span className="text-[9px] text-muted-foreground">

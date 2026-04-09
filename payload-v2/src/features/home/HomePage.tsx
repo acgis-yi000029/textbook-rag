@@ -31,7 +31,7 @@ export default function HomePage() {
       {/* ── Hero Section ── */}
       <section
         className="relative min-h-[85vh] flex items-center overflow-hidden
-          bg-[linear-gradient(135deg,#004890_0%,#0066cc_50%,#004890_100%)]
+          bg-[linear-gradient(135deg,#1d4ed8_0%,#2563eb_50%,#3b82f6_100%)]
           dark:bg-[linear-gradient(135deg,#0a1628_0%,#0d2240_40%,#1a3a5c_70%,#0d2240_100%)]
           transition-colors duration-500"
       >
@@ -116,7 +116,7 @@ export default function HomePage() {
                   hover:translate-y-[-6px] transition-all duration-300"
               >
                 <div className="absolute top-0 left-0 right-0 h-[4px] scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left bg-brand-500" />
-                <div className="w-[85px] h-[85px] rounded-2xl flex items-center justify-center mx-auto mb-6 text-white shadow-[0_8px_25px_rgba(0,72,144,0.3)] bg-[linear-gradient(135deg,#004890,#0066cc)]">
+                <div className="w-[85px] h-[85px] rounded-2xl flex items-center justify-center mx-auto mb-6 text-white shadow-[0_8px_25px_rgba(37,99,235,0.3)] bg-[linear-gradient(135deg,#1d4ed8,#2563eb)]">
                   {f.icon}
                 </div>
                 <h3 className="text-xl font-bold mb-3 text-card-foreground">{f.title}</h3>
@@ -150,7 +150,7 @@ export default function HomePage() {
                   dark:border dark:border-border
                   hover:translate-y-[-5px] transition-all duration-300"
               >
-                <div className="w-[70px] h-[70px] text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-6 shadow-[0_8px_25px_rgba(0,72,144,0.3)] bg-[linear-gradient(135deg,#004890,#0066cc)]">
+                <div className="w-[70px] h-[70px] text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-6 shadow-[0_8px_25px_rgba(37,99,235,0.3)] bg-[linear-gradient(135deg,#1d4ed8,#2563eb)]">
                   {step.n}
                 </div>
                 <h3 className="text-xl font-bold mb-3 text-card-foreground">{step.title}</h3>
@@ -164,7 +164,7 @@ export default function HomePage() {
       {/* ── CTA Section ── */}
       <section
         className="py-28 relative overflow-hidden text-white
-          bg-[linear-gradient(135deg,#004890_0%,#0066cc_50%,#004890_100%)]
+          bg-[linear-gradient(135deg,#1d4ed8_0%,#2563eb_50%,#3b82f6_100%)]
           dark:bg-[linear-gradient(135deg,#0a1628_0%,#0d2240_40%,#1a3a5c_70%,#0d2240_100%)]
           transition-colors duration-500"
       >

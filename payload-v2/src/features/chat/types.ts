@@ -5,6 +5,8 @@ export interface Message {
   content: string;
   sources?: SourceInfo[];
   trace?: QueryTrace;
+  /** LLM model name that generated this response (assistant messages only). */
+  model?: string;
 }
 
 export const NEAR_BOTTOM_THRESHOLD = 160;

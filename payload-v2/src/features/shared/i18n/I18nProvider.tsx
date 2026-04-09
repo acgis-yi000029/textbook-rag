@@ -17,7 +17,7 @@ const I18nContext = createContext<I18nContextValue | null>(null)
 const STORAGE_KEY = 'textbook-rag-locale'
 
 /**
- * I18nProvider — 语言上下文
+ * I18nProvider — Language context (English / French)
  *
  * SSR-safe: always starts with 'en' to match server render,
  * then hydrates from localStorage/browser language in useEffect.
@@ -29,10 +29,10 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   // Hydrate from localStorage / browser language after mount
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY) as Locale | null
-    if (saved === 'en' || saved === 'zh') {
+    if (saved === 'en' || saved === 'fr') {
       setLocaleState(saved)
-    } else if (navigator.language.startsWith('zh')) {
-      setLocaleState('zh')
+    } else if (navigator.language.startsWith('fr')) {
+      setLocaleState('fr')
     }
   }, [])
 
@@ -43,7 +43,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
 
   const toggleLocale = useCallback(() => {
     setLocaleState((prev) => {
-      const next = prev === 'en' ? 'zh' : 'en'
+      const next = prev === 'en' ? 'fr' : 'en'
       localStorage.setItem(STORAGE_KEY, next)
       return next
     })
@@ -69,7 +69,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * useI18n — 获取当前语言和翻译文案
+ * useI18n — Get current locale and translated messages
  */
 export function useI18n() {
   const ctx = useContext(I18nContext)

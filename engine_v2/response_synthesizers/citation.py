@@ -19,6 +19,8 @@ from llama_index.core.response_synthesizers import (
     ResponseMode,
 )
 
+from engine_v2.llms.resolver import resolve_llm
+
 # ============================================================
 # Citation QA prompt — semantic-paragraph style
 # ============================================================
@@ -90,6 +92,7 @@ CITATION_REFINE_TEMPLATE = PromptTemplate(
 def get_citation_synthesizer(
     mode: ResponseMode = ResponseMode.COMPACT,
     streaming: bool = False,
+    model: str | None = None,
 ) -> BaseSynthesizer:
     """Build a citation-aware response synthesizer.
 
@@ -100,16 +103,21 @@ def get_citation_synthesizer(
     Args:
         mode: LlamaIndex response mode (COMPACT, REFINE, TREE_SUMMARIZE, etc.)
         streaming: Whether to enable streaming generation.
+        model: Optional model name override for LLM selection.
 
     Returns:
         BaseSynthesizer configured for citation-aware generation.
     """
+    llm = resolve_llm(model=model, streaming=streaming)
+
     synthesizer = get_response_synthesizer(
         response_mode=mode,
         streaming=streaming,
+        llm=llm,
         text_qa_template=CITATION_QA_TEMPLATE,
         refine_template=CITATION_REFINE_TEMPLATE,
     )
 
-    logger.info("CitationSynthesizer ready (mode={}, streaming={})", mode, streaming)
+    logger.info("CitationSynthesizer ready (mode={}, streaming={}, model={})",
+                mode, streaming, model or 'default')
     return synthesizer

@@ -34,7 +34,7 @@ export default function FileUploadCard({
   onUploadComplete,
 }: FileUploadCardProps) {
   const { locale } = useI18n()
-  const isZh = locale === 'zh'
+  const isFr = locale === 'fr'
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // ==========================================================
@@ -212,17 +212,17 @@ export default function FileUploadCard({
               <div className="text-center">
                 <p className="text-sm font-medium text-foreground">
                   {isActive
-                    ? (isZh ? '释放文件以上传' : 'Drop file to upload')
-                    : (isZh ? '拖放 PDF 文件到此处' : 'Drag & drop a PDF here')}
+                    ? (isFr ? '释放文件以上传' : 'Drop file to upload')
+                    : (isFr ? '拖放 PDF 文件到此处' : 'Drag & drop a PDF here')}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {isZh ? '或' : 'or'}{' '}
+                  {isFr ? '或' : 'or'}{' '}
                   <button
                     type="button"
                     onClick={openFilePicker}
                     className="text-primary hover:underline font-medium"
                   >
-                    {isZh ? '点击选择文件' : 'click to browse'}
+                    {isFr ? '点击选择文件' : 'click to browse'}
                   </button>
                   <span className="ml-1.5 text-muted-foreground/60">
                     (PDF, max 200 MB)
@@ -237,7 +237,7 @@ export default function FileUploadCard({
             <>
               <Loader2 className="h-6 w-6 text-primary animate-spin" />
               <p className="text-sm font-medium text-foreground">
-                {isZh ? '正在分析文件...' : 'Analyzing file...'}
+                {isFr ? '正在分析文件...' : 'Analyzing file...'}
               </p>
             </>
           )}
@@ -248,7 +248,7 @@ export default function FileUploadCard({
               <Loader2 className="h-6 w-6 text-primary animate-spin" />
               <div className="text-center w-full max-w-xs">
                 <p className="text-sm font-medium text-foreground truncate">
-                  {isZh ? '正在上传' : 'Uploading'}: {fileName}
+                  {isFr ? '正在上传' : 'Uploading'}: {fileName}
                 </p>
                 {stage && (
                   <p className="text-xs text-muted-foreground mt-0.5">{stage}</p>
@@ -269,7 +269,7 @@ export default function FileUploadCard({
             <>
               <CheckCircle className="h-6 w-6 text-emerald-500" />
               <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
-                {isZh ? '上传成功！正在处理...' : 'Upload complete! Processing...'}
+                {isFr ? '上传成功！正在处理...' : 'Upload complete! Processing...'}
               </p>
             </>
           )}
@@ -285,7 +285,7 @@ export default function FileUploadCard({
                 className="mt-1 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
                 <X className="h-3 w-3" />
-                {isZh ? '关闭' : 'Dismiss'}
+                {isFr ? '关闭' : 'Dismiss'}
               </button>
             </>
           )}

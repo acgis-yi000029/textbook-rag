@@ -1,4 +1,4 @@
-/**
+﻿/**
  * MediaTab — Browse PDF files with card/table dual-view.
  *
  * Data source: Payload CMS books (pre-filtered by ImportPage via sidebar).
@@ -87,11 +87,11 @@ function formatFileSize(bytes: number): string {
 }
 
 /** Status config — using "Ready" instead of "Indexed" for the Files context. */
-const STATUS_CONFIG: Record<BookStatus, { icon: React.ElementType; color: string; label: string; labelZh: string }> = {
-  indexed:    { icon: CheckCircle2, color: 'text-emerald-400', label: 'Ready',      labelZh: '已就绪' },
-  processing: { icon: Loader2,     color: 'text-amber-400',   label: 'Processing', labelZh: '处理中' },
-  pending:    { icon: Clock,       color: 'text-muted-foreground', label: 'Pending', labelZh: '待处理' },
-  error:      { icon: AlertTriangle, color: 'text-red-400',   label: 'Error',      labelZh: '错误' },
+const STATUS_CONFIG: Record<BookStatus, { icon: React.ElementType; color: string; label: string; labelFr: string }> = {
+  indexed:    { icon: CheckCircle2, color: 'text-emerald-400', label: 'Ready',      labelFr: '已就绪' },
+  processing: { icon: Loader2,     color: 'text-amber-400',   label: 'Processing', labelFr: '处理中' },
+  pending:    { icon: Clock,       color: 'text-muted-foreground', label: 'Pending', labelFr: '待处理' },
+  error:      { icon: AlertTriangle, color: 'text-red-400',   label: 'Error',      labelFr: '错误' },
 }
 
 function compareBooks(a: BookBase, b: BookBase, field: SortField, dir: SortDir): number {
@@ -163,7 +163,7 @@ function useColumnResize(initial: Record<string, number>) {
 // ============================================================
 export default function MediaTab({ books, filter }: MediaTabProps) {
   const { locale } = useI18n()
-  const isZh = locale === 'zh'
+  const isFr = locale === 'fr'
 
   const [viewMode, setViewMode] = useState<ViewMode>('table')
   const [localSearch, setLocalSearch] = useState('')
@@ -216,10 +216,10 @@ export default function MediaTab({ books, filter }: MediaTabProps) {
           <HardDrive className="h-7 w-7 text-muted-foreground" />
         </div>
         <h3 className="text-sm font-semibold text-foreground mb-1">
-          {isZh ? '暂无书籍' : 'No books'}
+          {isFr ? '暂无书籍' : 'No books'}
         </h3>
         <p className="text-xs text-muted-foreground text-center max-w-xs">
-          {isZh
+          {isFr
             ? '在「导入」标签页上传 PDF 即可开始。'
             : 'Upload PDFs via the Import tab to get started.'}
         </p>
@@ -240,7 +240,7 @@ export default function MediaTab({ books, filter }: MediaTabProps) {
             type="text"
             value={localSearch}
             onChange={(e) => setLocalSearch(e.target.value)}
-            placeholder={isZh ? '搜索书名、作者...' : 'Search title, author...'}
+            placeholder={isFr ? '搜索书名、作者...' : 'Search title, author...'}
             className="w-full h-8 pl-9 pr-3 rounded-md border border-input bg-background text-xs text-foreground
                        placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring/30 transition-colors"
           />
@@ -286,10 +286,10 @@ export default function MediaTab({ books, filter }: MediaTabProps) {
       {displayBooks.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16">
           <h3 className="text-sm font-semibold text-foreground mb-1">
-            {isZh ? '未找到匹配结果' : 'No matches found'}
+            {isFr ? '未找到匹配结果' : 'No matches found'}
           </h3>
           <p className="text-xs text-muted-foreground">
-            {isZh ? '尝试不同的关键词' : 'Try different keywords'}
+            {isFr ? '尝试不同的关键词' : 'Try different keywords'}
           </p>
         </div>
       )}
@@ -298,7 +298,7 @@ export default function MediaTab({ books, filter }: MediaTabProps) {
       {displayBooks.length > 0 && viewMode === 'cards' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
           {displayBooks.map((book) => (
-            <PdfBookCard key={book.id} book={book} isZh={isZh} />
+            <PdfBookCard key={book.id} book={book} isFr={isFr} />
           ))}
         </div>
       )}
@@ -316,25 +316,25 @@ export default function MediaTab({ books, filter }: MediaTabProps) {
               onClick={() => toggleSort('title')}
               className="flex items-center gap-1 flex-1 min-w-[100px] px-2 py-2 group/th hover:text-foreground transition-colors"
             >
-              {isZh ? '书名' : 'Title'}
+              {isFr ? '书名' : 'Title'}
               <SortIcon field="title" />
             </button>
 
             {/* Author */}
             <span className="relative px-2 py-2 hidden sm:block" style={{ width: widths.author }}>
-              {isZh ? '作者' : 'Author'}
+              {isFr ? '作者' : 'Author'}
               <ResizeGrip col="author" />
             </span>
 
             {/* Category */}
             <span className="relative px-2 py-2 hidden lg:block" style={{ width: widths.category }}>
-              {isZh ? '分类' : 'Category'}
+              {isFr ? '分类' : 'Category'}
               <ResizeGrip col="category" />
             </span>
 
             {/* Subcategory */}
             <span className="relative px-2 py-2 hidden lg:block" style={{ width: widths.subcategory }}>
-              {isZh ? '子分类' : 'Subcategory'}
+              {isFr ? '子分类' : 'Subcategory'}
               <ResizeGrip col="subcategory" />
             </span>
 
@@ -344,7 +344,7 @@ export default function MediaTab({ books, filter }: MediaTabProps) {
               className="relative px-2 py-2 hidden sm:flex items-center gap-1 group/th hover:text-foreground transition-colors"
               style={{ width: widths.status }}
             >
-              {isZh ? '状态' : 'Status'}
+              {isFr ? '状态' : 'Status'}
               <SortIcon field="status" />
               <ResizeGrip col="status" />
             </button>
@@ -355,7 +355,7 @@ export default function MediaTab({ books, filter }: MediaTabProps) {
               className="relative px-2 py-2 hidden md:flex items-center gap-1 justify-end group/th hover:text-foreground transition-colors"
               style={{ width: widths.pages }}
             >
-              {isZh ? '页数' : 'Pages'}
+              {isFr ? '页数' : 'Pages'}
               <SortIcon field="pages" />
               <ResizeGrip col="pages" />
             </button>
@@ -366,7 +366,7 @@ export default function MediaTab({ books, filter }: MediaTabProps) {
               className="relative px-2 py-2 hidden md:flex items-center gap-1 justify-end group/th hover:text-foreground transition-colors"
               style={{ width: widths.size }}
             >
-              {isZh ? '大小' : 'Size'}
+              {isFr ? '大小' : 'Size'}
               <SortIcon field="size" />
               <ResizeGrip col="size" />
             </button>
@@ -435,7 +435,7 @@ export default function MediaTab({ books, filter }: MediaTabProps) {
                 >
                   <StatusIcon className={cn('h-3.5 w-3.5', st.color, book.status === 'processing' && 'animate-spin')} />
                   <span className={cn('text-[11px]', st.color)}>
-                    {isZh ? st.labelZh : st.label}
+                    {isFr ? st.labelFr : st.label}
                   </span>
                 </div>
 
@@ -465,10 +465,10 @@ export default function MediaTab({ books, filter }: MediaTabProps) {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-0.5 text-[11px] font-medium text-primary hover:underline"
-                    title={isZh ? '原始 PDF' : 'Original PDF'}
+                    title={isFr ? '原始 PDF' : 'Original PDF'}
                   >
                     <Eye className="h-3 w-3" />
-                    {isZh ? '原始' : 'Origin'}
+                    {isFr ? '原始' : 'Origin'}
                   </a>
                   {book.status === 'indexed' && (
                     <a
@@ -476,7 +476,7 @@ export default function MediaTab({ books, filter }: MediaTabProps) {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-0.5 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:underline"
-                      title={isZh ? 'MinerU 排版' : 'MinerU Layout'}
+                      title={isFr ? 'MinerU 排版' : 'MinerU Layout'}
                     >
                       <Layers className="h-3 w-3" />
                       Layout
@@ -539,7 +539,7 @@ function CoverImage({
 // ============================================================
 // PdfBookCard — card view item
 // ============================================================
-function PdfBookCard({ book, isZh }: { book: BookBase; isZh: boolean }) {
+function PdfBookCard({ book, isFr }: { book: BookBase; isFr: boolean }) {
   const pdfUrl = `${ENGINE_URL}/engine/books/${book.book_id}/pdf`
   const layoutUrl = `${pdfUrl}?variant=layout`
   const st = STATUS_CONFIG[book.status]
@@ -558,7 +558,7 @@ function PdfBookCard({ book, isZh }: { book: BookBase; isZh: boolean }) {
         <div className="absolute top-2 right-2 flex items-center gap-1 rounded-md bg-card/60 backdrop-blur-sm px-1.5 py-0.5">
           <StatusIcon className={cn('h-3 w-3', st.color, book.status === 'processing' && 'animate-spin')} />
           <span className={cn('text-[10px] font-medium', st.color)}>
-            {isZh ? st.labelZh : st.label}
+            {isFr ? st.labelFr : st.label}
           </span>
         </div>
       </div>
@@ -577,7 +577,7 @@ function PdfBookCard({ book, isZh }: { book: BookBase; isZh: boolean }) {
           {book.pageCount > 0 && (
             <span className="flex items-center gap-1">
               <Hash className="h-3 w-3" />
-              {book.pageCount} {isZh ? '页' : 'pages'}
+              {book.pageCount} {isFr ? '页' : 'pages'}
             </span>
           )}
           {book.fileSize > 0 && (
@@ -597,7 +597,7 @@ function PdfBookCard({ book, isZh }: { book: BookBase; isZh: boolean }) {
             className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
           >
             <Eye className="h-3.5 w-3.5" />
-            {isZh ? '原始' : 'Origin'}
+            {isFr ? '原始' : 'Origin'}
           </a>
           {book.status === 'indexed' && (
             <a

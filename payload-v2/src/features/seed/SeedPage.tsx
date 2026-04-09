@@ -57,87 +57,87 @@ type SeedCategory = 'all' | 'preset' | 'sync'
 interface SeedModuleMeta {
   id: string
   label: string
-  labelZh: string
+  labelFr: string
   icon: React.ElementType
   category: SeedCategory
   targetCollection: string
   targetCollectionLabel: string
   description: string
-  descriptionZh: string
+  descriptionFr: string
   recordCount?: number
   dataSummary: string
-  dataSummaryZh: string
+  dataSummaryFr: string
 }
 
 const SEED_MODULES: SeedModuleMeta[] = [
   {
     id: 'users',
     label: 'Admin Users',
-    labelZh: '管理员账户',
+    labelFr: 'Comptes administrateurs',
     icon: UserCog,
     category: 'preset',
     targetCollection: 'users',
     targetCollectionLabel: 'Users',
     description: 'Default admin account (reads SEED_ADMIN_EMAIL/PASSWORD from .env)',
-    descriptionZh: '默认管理员账户（从 .env 读取 SEED_ADMIN_EMAIL/PASSWORD）',
+    descriptionFr: 'Compte administrateur par défaut (lit SEED_ADMIN_EMAIL/PASSWORD du .env)',
     recordCount: 1,
     dataSummary: '1 admin user with configurable credentials',
-    dataSummaryZh: '1 个管理员，凭证通过环境变量配置',
+    dataSummaryFr: '1 administrateur avec identifiants configurables',
   },
   {
     id: 'llms',
     label: 'LLM Models',
-    labelZh: 'LLM 模型',
+    labelFr: 'Modèles LLM',
     icon: Brain,
     category: 'preset',
     targetCollection: 'llms',
     targetCollectionLabel: 'Llms',
     description: '5 preset model configs: Qwen, Llama, DeepSeek, GPT-4o Mini, GPT-4o',
-    descriptionZh: '预置 5 个模型：Qwen、Llama、DeepSeek、GPT-4o Mini、GPT-4o',
+    descriptionFr: '5 configurations prédéfinies : Qwen, Llama, DeepSeek, GPT-4o Mini, GPT-4o',
     recordCount: 5,
     dataSummary: '3 Ollama local + 2 Azure OpenAI cloud',
-    dataSummaryZh: '3 个 Ollama 本地 + 2 个 Azure OpenAI 云',
+    dataSummaryFr: '3 Ollama local + 2 Azure OpenAI cloud',
   },
   {
     id: 'prompts',
     label: 'Prompt Modes',
-    labelZh: '回答模式',
+    labelFr: 'Modes de réponse',
     icon: FileText,
     category: 'preset',
     targetCollection: 'prompts',
     targetCollectionLabel: 'Prompts (type=mode)',
     description: '7 answer modes: Default, Learning, Analysis, Concise, Detailed, Academic, QGen',
-    descriptionZh: '7 种模式：默认、学习、分析、简洁、详细、学术、问题生成',
+    descriptionFr: '7 modes de réponse : Défaut, Apprentissage, Analyse, Concis, Détaillé, Académique, QGen',
     recordCount: 7,
     dataSummary: 'System prompts controlling LLM answer style',
-    dataSummaryZh: '控制 LLM 回答风格的系统提示词',
+    dataSummaryFr: 'Invites système contrôlant le style de réponse du LLM',
   },
   {
     id: 'prompts',
     label: 'Query Templates',
-    labelZh: '查询模板',
+    labelFr: 'Modèles de requête',
     icon: FileText,
     category: 'preset',
     targetCollection: 'prompts',
     targetCollectionLabel: 'Prompts (type=template)',
     description: '4 templates: Disambiguation, Scope, Format, Follow-up',
-    descriptionZh: '4 个模板：歧义消解、范围缩窄、格式引导、深入理解',
+    descriptionFr: '4 modèles : Désambiguïsation, Portée, Format, Suivi',
     recordCount: 4,
     dataSummary: 'Trigger patterns + suggested follow-up questions',
-    dataSummaryZh: '触发模式 + 建议后续问题',
+    dataSummaryFr: 'Modèles de déclenchement + questions de suivi suggérées',
   },
   {
     id: 'books',
     label: 'Books (Engine)',
-    labelZh: '书籍 (Engine)',
+    labelFr: 'Livres (Engine)',
     icon: BookOpen,
     category: 'sync',
     targetCollection: 'books',
     targetCollectionLabel: 'Books',
     description: 'Scan Engine v2 filesystem and sync book metadata to Payload',
-    descriptionZh: '扫描 Engine v2 文件系统，同步书籍元数据到 Payload',
+    descriptionFr: 'Scanner le système de fichiers Engine v2 et synchroniser les métadonnées',
     dataSummary: 'Title, author, PDF path, chapters from mineru_output/',
-    dataSummaryZh: '书名、作者、PDF 路径、章节数，来自 mineru_output/',
+    dataSummaryFr: 'Titre, auteur, chemin PDF, chapitres depuis mineru_output/',
   },
 ]
 
@@ -153,7 +153,7 @@ export default function SeedPage() {
 
 function SeedPageInner() {
   const { locale } = useI18n()
-  const isZh = locale === 'zh'
+  const isFr = locale === 'fr'
 
   // UI state
   const [filter, setFilter] = useQueryState('filter', 'all')
@@ -177,13 +177,13 @@ function SeedPageInner() {
   const sidebarItems = useMemo<SidebarItem[]>(() => [
     {
       key: 'all',
-      label: isZh ? '全部模块' : 'All Modules',
+      label: isFr ? 'Tous les modules' : 'All Modules',
       count: SEED_MODULES.length,
       icon: <Layers className="h-4 w-4 shrink-0" />,
     },
     {
       key: 'preset',
-      label: isZh ? '预置数据' : 'Preset Data',
+      label: isFr ? 'Données prédéfinies' : 'Preset Data',
       count: presetCount,
       icon: <Sparkles className="h-4 w-4 shrink-0 text-amber-400" />,
       dividerBefore: true,
@@ -192,7 +192,7 @@ function SeedPageInner() {
       const Icon = m.icon
       return {
         key: `preset::${m.id}::${m.label}`,
-        label: isZh ? m.labelZh : m.label,
+        label: isFr ? m.labelFr : m.label,
         count: m.recordCount,
         indent: true,
         icon: <Icon className="h-4 w-4 shrink-0" />,
@@ -200,7 +200,7 @@ function SeedPageInner() {
     }),
     {
       key: 'sync',
-      label: isZh ? 'Engine 同步' : 'Engine Sync',
+      label: isFr ? 'Synchronisation Engine' : 'Engine Sync',
       count: syncModules.length,
       icon: <RefreshCw className="h-4 w-4 shrink-0 text-emerald-400" />,
       dividerBefore: true,
@@ -209,12 +209,12 @@ function SeedPageInner() {
       const Icon = m.icon
       return {
         key: `sync::${m.id}`,
-        label: isZh ? m.labelZh : m.label,
+        label: isFr ? m.labelFr : m.label,
         indent: true,
         icon: <Icon className="h-4 w-4 shrink-0" />,
       }
     }),
-  ], [isZh, presetCount])
+  ], [isFr, presetCount])
 
   // ── Filter logic ──────────────────────────────────────────────────────────
 
@@ -331,19 +331,19 @@ function SeedPageInner() {
 
   return (
     <SidebarLayout
-      title={isZh ? '数据管理' : 'Data Management'}
+      title={isFr ? 'Gestion des données' : 'Data Management'}
       icon={<Database className="h-4 w-4 text-primary" />}
       sidebarItems={sidebarItems}
       activeFilter={filter}
       onFilterChange={setFilter}
-      subtitle={isZh ? '数据初始化 · Engine 同步' : 'Seed preset data · Sync from Engine'}
+      subtitle={isFr ? 'Données prédéfinies · Synchronisation Engine' : 'Seed preset data · Sync from Engine'}
       sidebarFooter={
         <div className="space-y-1">
           <p className="text-[10px] text-muted-foreground">
-            {isZh ? `${presetModules.length} 个预置模块` : `${presetModules.length} preset modules`}
+            {isFr ? `${presetModules.length} modules prédéfinis` : `${presetModules.length} preset modules`}
           </p>
           <p className="text-[10px] text-muted-foreground">
-            {isZh ? `${syncModules.length} 个同步模块` : `${syncModules.length} sync modules`}
+            {isFr ? `${syncModules.length} module(s) de synchronisation` : `${syncModules.length} sync modules`}
           </p>
         </div>
       }
@@ -362,7 +362,7 @@ function SeedPageInner() {
             ) : (
               <Database className="h-3 w-3" />
             )}
-            {isZh ? '全部初始化' : 'Seed All'}
+            {isFr ? 'Tout initialiser' : 'Seed All'}
           </button>
         </div>
       }
@@ -377,11 +377,11 @@ function SeedPageInner() {
       {results.length > 0 && !error && (
         <div className="mb-4 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm">
           <CheckCircle2 className="h-4 w-4 inline mr-2" />
-          {isZh ? '完成！' : 'Done!'}{' '}
-          {isZh ? '创建' : 'Created'} {results.reduce((s, r) => s + r.created, 0)},{' '}
-          {isZh ? '更新' : 'Updated'} {results.reduce((s, r) => s + r.updated, 0)}
+          {isFr ? 'Terminé !' : 'Done!'}{' '}
+          {isFr ? 'Créé' : 'Created'} {results.reduce((s, r) => s + r.created, 0)},{' '}
+          {isFr ? 'Mis à jour' : 'Updated'} {results.reduce((s, r) => s + r.updated, 0)}
           {results.reduce((s, r) => s + (r.skipped || 0), 0) > 0 &&
-            `${isZh ? '，跳过' : ', Skipped'} ${results.reduce((s, r) => s + (r.skipped || 0), 0)}`
+            `${isFr ? ', Ignoré' : ', Skipped'} ${results.reduce((s, r) => s + (r.skipped || 0), 0)}`
           }
         </div>
       )}
@@ -392,11 +392,11 @@ function SeedPageInner() {
           <div className="flex items-center gap-2 mb-3">
             <Sparkles className="h-4 w-4 text-amber-400" />
             <h2 className="text-sm font-semibold text-foreground">
-              {isZh ? '预置数据 (Seed)' : 'Preset Data (Seed)'}
+              {isFr ? 'Données prédéfinies (Seed)' : 'Preset Data (Seed)'}
             </h2>
             <span className="text-[10px] text-muted-foreground">
-              {isZh
-                ? '一键写入预置数据，已存在记录自动更新'
+              {isFr
+                ? 'Initialiser les données prédéfinies, les enregistrements existants sont mis à jour'
                 : 'Initialize preset data, existing records auto-update'}
             </span>
           </div>
@@ -420,10 +420,10 @@ function SeedPageInner() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <h3 className="text-sm font-medium text-foreground">
-                          {isZh ? mod.labelZh : mod.label}
+                          {isFr ? mod.labelFr : mod.label}
                         </h3>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          {isZh ? mod.descriptionZh : mod.description}
+                          {isFr ? mod.descriptionFr : mod.description}
                         </p>
                         {/* Data mapping info */}
                         <div className="flex items-center gap-3 mt-2 text-[11px]">
@@ -433,12 +433,12 @@ function SeedPageInner() {
                           </span>
                           {mod.recordCount !== undefined && (
                             <span className="text-muted-foreground">
-                              {mod.recordCount} {isZh ? '条记录' : 'records'}
+                              {mod.recordCount} {isFr ? 'enregistrements' : 'records'}
                             </span>
                           )}
                         </div>
                         <p className="text-[11px] text-muted-foreground/70 mt-1">
-                          {isZh ? mod.dataSummaryZh : mod.dataSummary}
+                          {isFr ? mod.dataSummaryFr : mod.dataSummary}
                         </p>
                       </div>
                     </div>
@@ -476,11 +476,11 @@ function SeedPageInner() {
             <div className="flex items-center gap-2">
               <RefreshCw className="h-4 w-4 text-emerald-400" />
               <h2 className="text-sm font-semibold text-foreground">
-                {isZh ? 'Engine 数据同步' : 'Engine Data Sync'}
+                {isFr ? 'Synchronisation des données Engine' : 'Engine Data Sync'}
               </h2>
               <span className="text-[10px] text-muted-foreground">
-                {isZh
-                  ? '扫描 Engine v2 已解析的数据，同步到前端数据库'
+                {isFr
+                  ? 'Scanner les données analysées Engine v2, synchroniser avec la base Payload'
                   : 'Scan Engine v2 parsed data, sync to Payload DB'}
               </span>
             </div>
@@ -498,8 +498,8 @@ function SeedPageInner() {
                 <RefreshCw className="h-3 w-3" />
               )}
               {syncing
-                ? (isZh ? '同步中...' : 'Syncing...')
-                : (isZh ? '同步 Engine 数据' : 'Sync Engine Data')}
+                ? (isFr ? 'Synchronisation...' : 'Syncing...')
+                : (isFr ? 'Synchroniser les données' : 'Sync Engine Data')}
             </button>
           </div>
 
@@ -517,10 +517,10 @@ function SeedPageInner() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <h3 className="text-sm font-medium text-foreground">
-                        {isZh ? mod.labelZh : mod.label}
+                        {isFr ? mod.labelFr : mod.label}
                       </h3>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {isZh ? mod.descriptionZh : mod.description}
+                        {isFr ? mod.descriptionFr : mod.description}
                       </p>
                       <div className="flex items-center gap-3 mt-2 text-[11px]">
                         <span className="flex items-center gap-1 text-muted-foreground">
@@ -529,7 +529,7 @@ function SeedPageInner() {
                         </span>
                       </div>
                       <p className="text-[11px] text-muted-foreground/70 mt-1">
-                        {isZh ? mod.dataSummaryZh : mod.dataSummary}
+                        {isFr ? mod.dataSummaryFr : mod.dataSummary}
                       </p>
                     </div>
 
@@ -542,7 +542,7 @@ function SeedPageInner() {
                           {syncResult.created! > 0 && syncResult.updated! > 0 && ' / '}
                           {syncResult.updated! > 0 && <span className="text-blue-500">↻{syncResult.updated}</span>}
                           <span className="ml-1">
-                            {isZh ? `共 ${syncResult.total} 本` : `${syncResult.total} total`}
+                            {isFr ? `${syncResult.total} au total` : `${syncResult.total} total`}
                           </span>
                         </span>
                       </div>
@@ -562,12 +562,12 @@ function SeedPageInner() {
           {syncResult && !syncError && (
             <div className="mt-3 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm">
               <CheckCircle2 className="h-4 w-4 inline mr-2" />
-              {isZh
-                ? `同步完成！创建 ${syncResult.created} 本，更新 ${syncResult.updated} 本。`
+              {isFr
+                ? `Synchronisation terminée ! Créé ${syncResult.created}, mis à jour ${syncResult.updated}.`
                 : `Sync complete! Created ${syncResult.created}, updated ${syncResult.updated}.`}
               {syncResult.errors && syncResult.errors.length > 0 && (
                 <span className="text-amber-400 ml-2">
-                  ({syncResult.errors.length} {isZh ? '个错误' : 'errors'})
+                  ({syncResult.errors.length} {isFr ? 'erreur(s)' : 'errors'})
                 </span>
               )}
             </div>

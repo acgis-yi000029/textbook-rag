@@ -1,4 +1,4 @@
-/**
+﻿/**
  * features/models/types.ts
  * LLM 模型类型定义
  * 
@@ -117,7 +117,7 @@ export interface ModelDiscoveryResult {
 
 export interface ProviderConfig {
   label: string
-  labelZh: string
+  labelFr: string
   color: string
   bg: string
   emoji: string
@@ -126,28 +126,28 @@ export interface ProviderConfig {
 export const PROVIDER_CONFIGS: Record<ModelProvider, ProviderConfig> = {
   ollama: {
     label: 'Ollama',
-    labelZh: 'Ollama (本地)',
+    labelFr: 'Ollama (local)',
     color: 'text-emerald-400',
     bg: 'bg-emerald-500/10',
     emoji: '🦙',
   },
   azure_openai: {
     label: 'Azure OpenAI',
-    labelZh: 'Azure OpenAI',
+    labelFr: 'Azure OpenAI',
     color: 'text-blue-400',
     bg: 'bg-blue-500/10',
     emoji: '☁️',
   },
   openai: {
     label: 'OpenAI',
-    labelZh: 'OpenAI',
+    labelFr: 'OpenAI',
     color: 'text-purple-400',
     bg: 'bg-purple-500/10',
     emoji: '🤖',
   },
   other: {
     label: 'Other',
-    labelZh: '其他',
+    labelFr: 'Autre',
     color: 'text-gray-400',
     bg: 'bg-gray-500/10',
     emoji: '⚙️',

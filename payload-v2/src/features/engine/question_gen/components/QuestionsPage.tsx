@@ -57,10 +57,10 @@ const TYPE_CONFIG: Record<string, { icon: typeof Zap; gradient: string; text: st
 // ============================================================
 
 /** Depth label → display info. */
-const DEPTH_META: Record<string, { label: string; labelZh: string; color: string }> = {
-  surface: { label: 'Surface', labelZh: '浅层', color: 'text-amber-400' },
-  understanding: { label: 'Understanding', labelZh: '理解', color: 'text-blue-400' },
-  synthesis: { label: 'Synthesis', labelZh: '综合', color: 'text-emerald-400' },
+const DEPTH_META: Record<string, { label: string; labelFr: string; color: string }> = {
+  surface: { label: 'Surface', labelFr: 'Superficiel', color: 'text-amber-400' },
+  understanding: { label: 'Understanding', labelFr: 'Compréhension', color: 'text-blue-400' },
+  synthesis: { label: 'Synthesis', labelFr: 'Synthèse', color: 'text-emerald-400' },
 }
 
 type Grade = 'excellent' | 'good' | 'fair' | 'poor' | 'none'
@@ -73,12 +73,12 @@ function getGrade(score: number | null | undefined): Grade {
   return 'poor'
 }
 
-const GRADE_STYLES: Record<Grade, { label: string; labelZh: string; text: string; bg: string; border: string }> = {
-  excellent: { label: 'Excellent', labelZh: '优秀', text: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30' },
-  good: { label: 'Good', labelZh: '良好', text: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/30' },
-  fair: { label: 'Fair', labelZh: '一般', text: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30' },
-  poor: { label: 'Poor', labelZh: '较差', text: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/30' },
-  none: { label: '—', labelZh: '—', text: 'text-zinc-500', bg: 'bg-zinc-500/10', border: 'border-zinc-500/30' },
+const GRADE_STYLES: Record<Grade, { label: string; labelFr: string; text: string; bg: string; border: string }> = {
+  excellent: { label: 'Excellent', labelFr: 'Excellent', text: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30' },
+  good: { label: 'Good', labelFr: 'Bon', text: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/30' },
+  fair: { label: 'Fair', labelFr: 'Moyen', text: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30' },
+  poor: { label: 'Poor', labelFr: 'Faible', text: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/30' },
+  none: { label: '—', labelFr: '—', text: 'text-zinc-500', bg: 'bg-zinc-500/10', border: 'border-zinc-500/30' },
 }
 
 /** Per-question evaluation state. */
@@ -105,7 +105,7 @@ export default function QuestionsPage() {
 
 function QuestionsPageInner() {
   const { locale } = useI18n()
-  const isZh = locale === 'zh'
+  const isFr = locale === 'fr'
 
   // ==========================================================
   // State
@@ -170,8 +170,8 @@ function QuestionsPageInner() {
   const { sidebarItems: baseSidebarItems } = useBookSidebar(books, {
     mode: 'by-book',
     countMap,
-    isZh,
-    allLabel: isZh ? '全部问题' : 'All Questions',
+    isFr,
+    allLabel: isFr ? 'Toutes les questions' : 'All Questions',
     allIcon: <Layers className="h-4 w-4 text-cyan-400" />,
     bookIcon: <BookOpen className="h-3.5 w-3.5" />,
     categoryIcons,
@@ -289,11 +289,11 @@ function QuestionsPageInner() {
         setEvalStates(prev => ({ ...prev, ...hydrated }))
       }
     } catch {
-      setError(isZh ? '加载问题失败' : 'Failed to load questions')
+      setError(isFr ? 'Échec du chargement des questions' : 'Failed to load questions')
     } finally {
       setLoading(false)
     }
-  }, [isZh])
+  }, [isFr])
 
   useEffect(() => { load() }, [load])
 
@@ -547,7 +547,7 @@ function QuestionsPageInner() {
       })
 
       if (qs.length === 0) {
-        setGenError(isZh ? '未生成问题，请检查索引' : 'No questions generated')
+        setGenError(isFr ? 'Aucune question générée, vérifiez l\'index' : 'No questions generated')
       } else {
         await Promise.all(
           qs.map((q: Record<string, any>) =>
@@ -569,18 +569,18 @@ function QuestionsPageInner() {
       }
       load()
     } catch {
-      setGenError(isZh ? '生成失败' : 'Generation failed')
+      setGenError(isFr ? 'Échec de la génération' : 'Generation failed')
     } finally {
       setGenerating(false)
     }
-  }, [targetBookIds, selectedChapterKeys, chapters, filter, genCount, isZh, load])
+  }, [targetBookIds, selectedChapterKeys, chapters, filter, genCount, isFr, load])
 
   // ==========================================================
   // Helpers
   // ==========================================================
   const formatDate = (d: string) => {
     if (!d) return ''
-    return new Date(d).toLocaleDateString(isZh ? 'zh-CN' : 'en-US', {
+    return new Date(d).toLocaleDateString(isFr ? 'fr-CA' : 'en-US', {
       month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
     })
   }
@@ -601,13 +601,13 @@ function QuestionsPageInner() {
   // ==========================================================
   const chapterHint = useMemo(() => {
     if (!isSingleBook) return null
-    if (selectedChapterKeys.size === 0) return isZh ? '全书' : 'Whole book'
+    if (selectedChapterKeys.size === 0) return isFr ? 'Livre entier' : 'Whole book'
     if (selectedChapterKeys.size === 1) {
       const ch = chapters.find((c) => String(c.id) === Array.from(selectedChapterKeys)[0])
       return ch ? (ch.number ? `Ch ${ch.number}` : ch.title.slice(0, 20)) : null
     }
-    return isZh ? `${selectedChapterKeys.size} 章` : `${selectedChapterKeys.size} chapters`
-  }, [isSingleBook, selectedChapterKeys, chapters, isZh])
+    return isFr ? `${selectedChapterKeys.size} chapitres` : `${selectedChapterKeys.size} chapters`
+  }, [isSingleBook, selectedChapterKeys, chapters, isFr])
 
   // ==========================================================
   // Resizable eval panel drag handler
@@ -652,7 +652,7 @@ function QuestionsPageInner() {
         <div className="flex items-center justify-center h-full min-h-[80px]">
           <div className="flex items-center gap-2 text-muted-foreground/40">
             <Clock className="h-4 w-4" />
-            <span className="text-xs">{isZh ? '等待评估…' : 'Pending…'}</span>
+            <span className="text-xs">{isFr ? 'En attente…' : 'Pending…'}</span>
           </div>
         </div>
       )
@@ -665,7 +665,7 @@ function QuestionsPageInner() {
           <div className="flex flex-col items-center gap-2">
             <Loader2 className="h-5 w-5 animate-spin text-primary" />
             <span className="text-[10px] text-muted-foreground animate-pulse">
-              {isZh ? '评估中…' : 'Evaluating…'}
+              {isFr ? 'Évaluation en cours…' : 'Evaluating…'}
             </span>
           </div>
         </div>
@@ -679,7 +679,7 @@ function QuestionsPageInner() {
           <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
             <AlertCircle className="h-3.5 w-3.5 text-destructive mt-0.5 shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-medium text-destructive">{isZh ? '评估失败' : 'Failed'}</p>
+              <p className="text-[10px] font-medium text-destructive">{isFr ? 'Échec' : 'Failed'}</p>
               <p className="text-[9px] text-destructive/60 mt-0.5 line-clamp-2">{state.error}</p>
             </div>
             <button
@@ -712,7 +712,7 @@ function QuestionsPageInner() {
             type="button"
             onClick={() => evaluateQuestion(q.id, q.question)}
             className="p-1 rounded hover:bg-secondary transition-colors"
-            title={isZh ? '重新评估' : 'Re-evaluate'}
+            title={isFr ? 'Ré-évaluer' : 'Re-evaluate'}
           >
             <RotateCcw className="h-3 w-3 text-muted-foreground" />
           </button>
@@ -726,7 +726,7 @@ function QuestionsPageInner() {
           <div className="flex items-center gap-1.5">
             <FileText className="h-3.5 w-3.5 text-violet-400" />
             <span className="text-[10px] font-semibold text-foreground flex-1">
-              {isZh ? '问题深度' : 'Question Depth'}
+              {isFr ? 'Profondeur de la question' : 'Question Depth'}
             </span>
             {normScore != null && (
               <div className="flex items-center gap-1">
@@ -737,7 +737,7 @@ function QuestionsPageInner() {
                   'inline-flex px-1 py-0.5 rounded text-[8px] font-semibold',
                   gradeStyle.text, gradeStyle.bg,
                 )}>
-                  {isZh ? gradeStyle.labelZh : gradeStyle.label}
+                  {isFr ? gradeStyle.labelFr : gradeStyle.label}
                 </span>
               </div>
             )}
@@ -749,17 +749,17 @@ function QuestionsPageInner() {
                 depthMeta.color,
                 'bg-violet-500/10 border-violet-500/30',
               )}>
-                {isZh ? depthMeta.labelZh : depthMeta.label}
+                {isFr ? depthMeta.labelFr : depthMeta.label}
               </span>
               {state.depthScore != null && (
                 <span className="text-[9px] text-muted-foreground">
-                  {isZh ? '原始分' : 'Raw'}: {state.depthScore.toFixed(1)}/5.0
+                  {isFr ? 'Brut' : 'Raw'}: {state.depthScore.toFixed(1)}/5.0
                 </span>
               )}
             </div>
           ) : (
             <span className="text-[9px] text-muted-foreground italic">
-              {isZh ? '等待评估…' : 'Awaiting assessment…'}
+              {isFr ? 'En attente d\'évaluation…' : 'Awaiting assessment…'}
             </span>
           )}
         </div>
@@ -773,7 +773,7 @@ function QuestionsPageInner() {
             <summary className="cursor-pointer list-none px-2.5 py-2 flex items-center gap-1.5">
               <ChevronRight className="h-3 w-3 text-muted-foreground transition-transform group-open/details:rotate-90" />
               <span className="text-[10px] font-semibold text-foreground">
-                {isZh ? '评估理由' : 'Reasoning'}
+                {isFr ? 'Raisonnement' : 'Reasoning'}
               </span>
             </summary>
             <div className="px-2.5 pb-2.5 pt-0">
@@ -793,7 +793,7 @@ function QuestionsPageInner() {
             <div className="flex items-center gap-1.5">
               <Sparkles className="h-3.5 w-3.5 text-blue-400" />
               <span className="text-[10px] font-semibold text-foreground flex-1">
-                {isZh ? '生成评分' : 'Generation Scores'}
+                {isFr ? 'Scores de génération' : 'Generation Scores'}
               </span>
               {q.scoreOverall != null && (
                 <span className="text-sm font-bold tabular-nums text-amber-400">
@@ -803,17 +803,17 @@ function QuestionsPageInner() {
             </div>
             <div className="space-y-1.5">
               {q.scoreRelevance != null && renderScoreBar(
-                isZh ? '相关性' : 'Relevance',
+                isFr ? '相关性' : 'Relevance',
                 q.scoreRelevance / 5,
                 'bg-blue-500',
               )}
               {q.scoreClarity != null && renderScoreBar(
-                isZh ? '清晰度' : 'Clarity',
+                isFr ? '清晰度' : 'Clarity',
                 q.scoreClarity / 5,
                 'bg-cyan-500',
               )}
               {q.scoreDifficulty != null && renderScoreBar(
-                isZh ? '难度' : 'Difficulty',
+                isFr ? '难度' : 'Difficulty',
                 q.scoreDifficulty / 5,
                 'bg-amber-500',
               )}
@@ -851,7 +851,7 @@ function QuestionsPageInner() {
   // ==========================================================
   return (
     <SidebarLayout
-      title={isZh ? '书籍' : 'Books'}
+      title={isFr ? '书籍' : 'Books'}
       icon={<BookOpen className="h-4 w-4 text-primary" />}
       sidebarItems={sidebarItems}
       activeFilter={filter}
@@ -862,13 +862,13 @@ function QuestionsPageInner() {
       sidebarFooter={
         <p className="text-[10px] text-muted-foreground">
           {booksLoading
-            ? (isZh ? '正在加载书籍…' : 'Loading books…')
-            : (isZh ? `${books.length} 本书 · ${questions.length} 个问题` : `${books.length} books · ${questions.length} questions`)
+            ? (isFr ? '正在加载书籍…' : 'Loading books…')
+            : (isFr ? `${books.length} 本书 · ${questions.length} 个问题` : `${books.length} books · ${questions.length} questions`)
           }
         </p>
       }
       loading={loading}
-      loadingText={isZh ? '正在加载...' : 'Loading...'}
+      loadingText={isFr ? '正在加载...' : 'Loading...'}
       error={error}
       onRetry={load}
       toolbar={
@@ -890,7 +890,7 @@ function QuestionsPageInner() {
               onChange={(e) => setGenCount(Math.max(1, Math.min(20, Number(e.target.value) || 1)))}
               className="w-10 h-7 rounded-md border border-border bg-card text-xs text-center text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
               disabled={generating}
-              title={isZh ? '生成数量' : 'Count'}
+              title={isFr ? '生成数量' : 'Count'}
             />
             <button
               onClick={handleGenerate}
@@ -901,13 +901,13 @@ function QuestionsPageInner() {
                   ? 'bg-primary/20 text-primary cursor-wait'
                   : 'bg-gradient-to-r from-primary to-primary/80 text-primary-foreground hover:shadow-lg hover:shadow-primary/25 hover:scale-[1.02] active:scale-[0.98] shadow-sm'
               )}
-              title={isZh ? '生成问题' : 'Generate questions'}
+              title={isFr ? '生成问题' : 'Generate questions'}
             >
               {generating
                 ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 : <Sparkles className="h-3.5 w-3.5" />
               }
-              {isZh ? '生成' : 'Generate'}
+              {isFr ? '生成' : 'Generate'}
             </button>
           </div>
 
@@ -916,10 +916,10 @@ function QuestionsPageInner() {
             <button
               onClick={() => autoEvaluateAll(displayQuestions)}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-violet-400 hover:bg-violet-500/10 transition-colors border border-violet-500/20"
-              title={isZh ? '评估所有问题' : 'Evaluate all'}
+              title={isFr ? '评估所有问题' : 'Evaluate all'}
             >
               <BarChart3 className="h-3.5 w-3.5" />
-              {isZh ? '评估' : 'Evaluate'}
+              {isFr ? '评估' : 'Evaluate'}
             </button>
           )}
 
@@ -948,16 +948,16 @@ function QuestionsPageInner() {
               onClick={handleClearAll}
               disabled={clearingAll}
               className="flex items-center gap-1 px-2 py-1.5 rounded-md text-[11px] font-medium text-destructive/70 hover:bg-destructive/10 hover:text-destructive transition-colors disabled:opacity-50"
-              title={isZh ? '清空当前列表' : 'Clear all'}
+              title={isFr ? '清空当前列表' : 'Clear all'}
             >
               <Trash2 className={`h-3 w-3 ${clearingAll ? 'animate-spin' : ''}`} />
-              {isZh ? '清空' : 'Clear'}
+              {isFr ? '清空' : 'Clear'}
             </button>
           )}
           <button
             onClick={load}
             className="p-1.5 rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
-            title={isZh ? '刷新' : 'Refresh'}
+            title={isFr ? '刷新' : 'Refresh'}
           >
             <RefreshCw className="h-3.5 w-3.5" />
           </button>
@@ -971,7 +971,7 @@ function QuestionsPageInner() {
           <AlertCircle className="h-3.5 w-3.5 shrink-0" />
           {genError}
           <button onClick={() => setGenError(null)} className="ml-auto text-[10px] underline hover:no-underline">
-            {isZh ? '关闭' : 'Dismiss'}
+            {isFr ? '关闭' : 'Dismiss'}
           </button>
         </div>
       )}
@@ -985,10 +985,10 @@ function QuestionsPageInner() {
           </div>
           <div>
             <p className="text-sm font-medium text-foreground">
-              {isZh ? `正在生成 ${genCount} 个问题…` : `Generating ${genCount} questions…`}
+              {isFr ? `正在生成 ${genCount} 个问题…` : `Generating ${genCount} questions…`}
             </p>
             <p className="text-[11px] text-muted-foreground">
-              {isZh ? '大约需要 10-30 秒' : 'This may take 10-30 seconds'}
+              {isFr ? '大约需要 10-30 秒' : 'This may take 10-30 seconds'}
             </p>
           </div>
         </div>
@@ -1002,7 +1002,7 @@ function QuestionsPageInner() {
           <button
             onClick={() => setShowPreview(true)}
             className="shrink-0 self-start flex flex-col items-center justify-center w-8 py-3 rounded-lg border border-border bg-card/50 hover:bg-secondary transition-colors gap-1"
-            title={isZh ? '展开预览' : 'Show PDF preview'}
+            title={isFr ? '展开预览' : 'Show PDF preview'}
           >
             <PanelLeftOpen className="h-4 w-4 text-muted-foreground" />
             <span className="text-[8px] text-muted-foreground writing-mode-vertical" style={{ writingMode: 'vertical-rl' }}>PDF</span>
@@ -1021,7 +1021,7 @@ function QuestionsPageInner() {
                 <div className="flex items-center gap-2">
                   <FileText className="h-3.5 w-3.5 text-primary" />
                   <span className="text-xs font-semibold text-foreground">
-                    {isZh ? '原文预览' : 'PDF Preview'}
+                    {isFr ? '原文预览' : 'PDF Preview'}
                   </span>
                   <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
                     p.{previewPage}
@@ -1030,7 +1030,7 @@ function QuestionsPageInner() {
                 <button
                   onClick={() => setShowPreview(false)}
                   className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                  title={isZh ? '收起预览' : 'Collapse preview'}
+                  title={isFr ? '收起预览' : 'Collapse preview'}
                 >
                   <PanelLeftClose className="h-3.5 w-3.5" />
                 </button>
@@ -1043,7 +1043,7 @@ function QuestionsPageInner() {
                   loading={
                     <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
                       <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      {isZh ? '加载 PDF...' : 'Loading PDF...'}
+                      {isFr ? '加载 PDF...' : 'Loading PDF...'}
                     </div>
                   }
                   onLoadSuccess={({ numPages: n }) => setNumPdfPages(n)}
@@ -1099,14 +1099,14 @@ function QuestionsPageInner() {
                 </div>
                 <h3 className="text-base font-semibold text-foreground mb-1.5">
                   {selectedBookId
-                    ? (isZh ? '此书暂无问题' : 'No questions for this book')
-                    : (isZh ? '暂无问题' : 'No questions yet')
+                    ? (isFr ? '此书暂无问题' : 'No questions for this book')
+                    : (isFr ? '暂无问题' : 'No questions yet')
                   }
                 </h3>
                 <p className="text-sm text-muted-foreground text-center max-w-xs leading-relaxed">
                   {selectedBookId
-                    ? (isZh ? '点击工具栏「生成」按钮来创建问题' : 'Click "Generate" in the toolbar to create questions')
-                    : (isZh ? '从左侧选择一本书，然后点击「生成」' : 'Select a book, then click "Generate"')
+                    ? (isFr ? '点击工具栏「生成」按钮来创建问题' : 'Click "Generate" in the toolbar to create questions')
+                    : (isFr ? '从左侧选择一本书，然后点击「生成」' : 'Select a book, then click "Generate"')
                   }
                 </p>
               </div>
@@ -1118,10 +1118,10 @@ function QuestionsPageInner() {
                 {/* Header */}
                 <div className="text-[10px] text-muted-foreground bg-muted/50 rounded-lg px-3 py-1.5 flex items-center justify-between sticky top-0 z-10 backdrop-blur-sm">
                   <span className="font-medium text-foreground text-[11px]">
-                    {isZh ? '问题列表' : 'Questions'}
+                    {isFr ? '问题列表' : 'Questions'}
                   </span>
                   <span>
-                    {displayQuestions.length} {isZh ? '个问题' : 'items'}
+                    {displayQuestions.length} {isFr ? '个问题' : 'items'}
                   </span>
                 </div>
 
@@ -1211,7 +1211,7 @@ function QuestionsPageInner() {
                                 onClick={() => handleDelete(q.id)}
                                 disabled={deletingIds.has(q.id)}
                                 className="opacity-0 group-hover:opacity-100 p-1.5 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
-                                title={isZh ? '删除' : 'Delete'}
+                                title={isFr ? '删除' : 'Delete'}
                               >
                                 <Trash2 className="h-3 w-3" />
                               </button>
@@ -1255,7 +1255,7 @@ function QuestionsPageInner() {
               <div className="flex items-center gap-2">
                 <BarChart3 className="h-3.5 w-3.5 text-violet-400" />
                 <span className="text-[11px] font-medium text-foreground flex-1">
-                  {isZh ? '质量评估' : 'Quality Evaluation'}
+                  {isFr ? '质量评估' : 'Quality Evaluation'}
                 </span>
                 {evalProgress.total > 0 && (
                   <span className="text-[9px] text-muted-foreground">

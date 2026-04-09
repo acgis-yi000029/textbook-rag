@@ -1,5 +1,5 @@
 /**
- * i18n locale dictionaries — 中英文国际化文案
+ * i18n locale dictionaries — English / French bilingual messages
  *
  * Architecture:
  *   - Flat key structure kept for backward compatibility (`t.appName`)
@@ -7,7 +7,7 @@
  *   - `tpl()` helper for safe string interpolation: `tpl(t.deleteConfirm, { count: 3 })`
  */
 
-export type Locale = 'en' | 'zh'
+export type Locale = 'en' | 'fr'
 
 // ────────────────────────────────────────
 // Message shape — grouped by UI section
@@ -138,7 +138,7 @@ export function tpl(template: string, vars: Record<string, string | number>): st
 
 const en: Messages = {
   // Common
-  appName: 'Textbook RAG',
+  appName: 'EcDev Research',
   appVersion: 'v2.0',
   signIn: 'Sign In',
   signOut: 'Sign Out',
@@ -150,42 +150,42 @@ const en: Messages = {
 
   // Hero
   heroTitle1: 'AI-Powered',
-  heroTitleHighlight: ' Textbook Assistant',
-  heroSubtitle: 'Ask questions about your textbooks and get instant, accurate answers with deep source tracing and page-level citations.',
+  heroTitleHighlight: ' Research Assistant',
+  heroSubtitle: 'Ask questions about City of Ottawa economic reports and get instant, accurate answers with deep source tracing and page-level citations.',
 
   // Stats
-  statMultiTextbook: 'Multi-Textbook Support',
+  statMultiTextbook: 'Multi-Document Support',
   statDeepTrace: 'Deep Source Tracing',
   statPageCitations: 'Page-Level Citations',
   statMultiModels: 'Multiple AI Models',
 
   // Features
   featuresTitle: 'Powerful Features',
-  featuresSubtitle: 'Everything you need to study smarter, not harder',
+  featuresSubtitle: 'Everything you need to analyze economic data smarter',
   featureQATitle: 'Intelligent Q&A',
-  featureQADesc: 'Ask natural language questions and get accurate answers grounded in your actual textbook content.',
+  featureQADesc: 'Ask natural language questions and get accurate answers grounded in official City of Ottawa economic reports.',
   featurePDFTitle: 'PDF Viewer with Highlights',
-  featurePDFDesc: 'View your textbook side-by-side with the chat. Source passages are highlighted directly on the PDF page.',
+  featurePDFDesc: 'View reports side-by-side with the chat. Source passages are highlighted directly on the PDF page.',
   featureTraceTitle: 'Full Trace & Analytics',
   featureTraceDesc: 'See exactly how the AI found its answer — retrieval scores, chunk rankings, and full query trace.',
 
   // How It Works
   howTitle: 'How It Works',
   howSubtitle: 'Three simple steps to get started',
-  howStep1Title: 'Upload Textbooks',
-  howStep1Desc: 'Admin uploads PDF textbooks. The system automatically ingests, chunks, and indexes the content.',
+  howStep1Title: 'Upload Reports',
+  howStep1Desc: 'Admin uploads PDF reports. The system automatically ingests, chunks, and indexes the content.',
   howStep2Title: 'Ask Questions',
-  howStep2Desc: 'Type a question in natural language. The AI searches across all indexed textbook content.',
+  howStep2Desc: 'Type a question in natural language. The AI searches across all indexed report content.',
   howStep3Title: 'Get Cited Answers',
   howStep3Desc: 'Receive accurate answers with page-level citations. Click sources to jump to the exact PDF page.',
 
   // CTA
-  ctaTitle: 'Ready to Study Smarter?',
-  ctaSubtitle: 'Sign in and start asking your textbooks questions today.',
+  ctaTitle: 'Ready to Explore the Data?',
+  ctaSubtitle: 'Sign in and start asking questions about Ottawa economic reports today.',
 
   // Login
-  loginHeading: 'Textbook RAG',
-  loginSubheading: 'Sign in to access your AI-powered textbook assistant',
+  loginHeading: 'EcDev Research',
+  loginSubheading: 'Sign in to access the AI-powered research assistant',
   emailLabel: 'Email',
   emailPlaceholder: 'you@example.com',
   passwordLabel: 'Password',
@@ -224,10 +224,10 @@ const en: Messages = {
   uploadProgress: 'Uploading',
   uploadSuccess: 'Upload complete! Processing...',
   uploadDismiss: 'Dismiss',
-  deleteConfirm: 'Delete {count} book(s)? This cannot be undone.',
+  deleteConfirm: 'Delete {count} document(s)? This cannot be undone.',
 
   // Chat Panel
-  chatWelcomeTitle: 'Ottawa EcDev Research Assistant',
+  chatWelcomeTitle: 'EcDev Research Assistant',
   chatWelcomeBody: 'Searching across {count} documents. Ask about employment, housing, inflation, or any economic indicator.',
   chatWelcomeHint: 'Browse suggested questions in the panel on the right →',
   chatSearchAllDocs: 'Searching all {count} documents',
@@ -240,110 +240,110 @@ const en: Messages = {
 }
 
 // ────────────────────────────────────────
-// 简体中文
+// Français
 // ────────────────────────────────────────
 
-const zh: Messages = {
+const fr: Messages = {
   // Common
-  appName: 'Textbook RAG',
+  appName: 'EcDev Research',
   appVersion: 'v2.0',
-  signIn: '登录',
-  signOut: '退出登录',
-  startAsking: '开始提问',
-  settings: '设置',
-  collapse: '收起',
-  adminAccess: '管理员入口？',
-  goToAdminPanel: '进入管理后台 →',
+  signIn: 'Se connecter',
+  signOut: 'Se déconnecter',
+  startAsking: 'Poser une question',
+  settings: 'Paramètres',
+  collapse: 'Réduire',
+  adminAccess: 'Accès administrateur ?',
+  goToAdminPanel: 'Accéder au panneau admin →',
 
   // Hero
-  heroTitle1: 'AI 驱动的',
-  heroTitleHighlight: '教材智能助手',
-  heroSubtitle: '向你的教材提问，获取即时、精准的答案，支持深度溯源与页码级引用。',
+  heroTitle1: 'Assistant de recherche',
+  heroTitleHighlight: ' propulsé par l\'IA',
+  heroSubtitle: 'Posez des questions sur les rapports économiques de la Ville d\'Ottawa et obtenez des réponses instantanées et précises avec traçabilité des sources et citations au niveau de la page.',
 
   // Stats
-  statMultiTextbook: '多教材支持',
-  statDeepTrace: '深度溯源追踪',
-  statPageCitations: '页码级引用',
-  statMultiModels: '多模型支持',
+  statMultiTextbook: 'Support multi-documents',
+  statDeepTrace: 'Traçabilité approfondie',
+  statPageCitations: 'Citations par page',
+  statMultiModels: 'Multiples modèles IA',
 
   // Features
-  featuresTitle: '核心功能',
-  featuresSubtitle: '让学习更高效、更智能',
-  featureQATitle: '智能问答',
-  featureQADesc: '用自然语言提问，获取基于真实教材内容的精准答案。',
-  featurePDFTitle: 'PDF 高亮阅读器',
-  featurePDFDesc: '聊天与教材并排显示，来源段落直接在 PDF 页面上高亮标注。',
-  featureTraceTitle: '完整追踪与分析',
-  featureTraceDesc: '查看 AI 如何找到答案 —— 检索评分、分块排名和完整查询追踪。',
+  featuresTitle: 'Fonctionnalités',
+  featuresSubtitle: 'Tout ce dont vous avez besoin pour analyser les données économiques',
+  featureQATitle: 'Questions-réponses intelligentes',
+  featureQADesc: 'Posez des questions en langage naturel et obtenez des réponses précises basées sur les rapports économiques officiels de la Ville d\'Ottawa.',
+  featurePDFTitle: 'Visionneuse PDF avec surbrillance',
+  featurePDFDesc: 'Consultez les rapports côte à côte avec le chat. Les passages sources sont surlignés directement sur la page PDF.',
+  featureTraceTitle: 'Traçabilité et analytique complètes',
+  featureTraceDesc: 'Voyez exactement comment l\'IA a trouvé sa réponse — scores de recherche, classement des segments et trace complète de la requête.',
 
   // How It Works
-  howTitle: '使用流程',
-  howSubtitle: '三步开始使用',
-  howStep1Title: '上传教材',
-  howStep1Desc: '管理员上传 PDF 教材，系统自动完成解析、分块和索引。',
-  howStep2Title: '提出问题',
-  howStep2Desc: '用自然语言输入问题，AI 将在所有已索引的教材内容中搜索。',
-  howStep3Title: '获取引用答案',
-  howStep3Desc: '获得带有页码级引用的精准答案，点击来源即可跳转到对应 PDF 页面。',
+  howTitle: 'Comment ça marche',
+  howSubtitle: 'Trois étapes simples pour commencer',
+  howStep1Title: 'Téléverser des rapports',
+  howStep1Desc: 'L\'administrateur téléverse des rapports PDF. Le système ingère, segmente et indexe automatiquement le contenu.',
+  howStep2Title: 'Poser des questions',
+  howStep2Desc: 'Saisissez une question en langage naturel. L\'IA effectue une recherche dans tous les contenus indexés.',
+  howStep3Title: 'Obtenir des réponses citées',
+  howStep3Desc: 'Recevez des réponses précises avec des citations au niveau de la page. Cliquez sur une source pour accéder à la page PDF exacte.',
 
   // CTA
-  ctaTitle: '准备好更聪明地学习了吗？',
-  ctaSubtitle: '登录并立即开始向你的教材提问。',
+  ctaTitle: 'Prêt à explorer les données ?',
+  ctaSubtitle: 'Connectez-vous et commencez à poser des questions sur les rapports économiques d\'Ottawa.',
 
   // Login
-  loginHeading: 'Textbook RAG',
-  loginSubheading: '登录以使用 AI 教材智能助手',
-  emailLabel: '邮箱',
-  emailPlaceholder: 'you@example.com',
-  passwordLabel: '密码',
-  passwordPlaceholder: '请输入密码',
-  signingIn: '登录中...',
-  loginErrorEmpty: '请输入邮箱和密码',
-  loginErrorFailed: '登录失败，请检查您的凭据。',
+  loginHeading: 'EcDev Research',
+  loginSubheading: 'Connectez-vous pour accéder à l\'assistant de recherche propulsé par l\'IA',
+  emailLabel: 'Courriel',
+  emailPlaceholder: 'vous@exemple.com',
+  passwordLabel: 'Mot de passe',
+  passwordPlaceholder: 'Entrez votre mot de passe',
+  signingIn: 'Connexion en cours...',
+  loginErrorEmpty: 'Veuillez saisir votre courriel et votre mot de passe',
+  loginErrorFailed: 'Échec de la connexion. Veuillez vérifier vos identifiants.',
 
   // Sidebar Nav
-  navNewChat: '新对话',
-  navReaders: '书库',
-  navQuestionGen: 'Question Gen',
-  navGroupChat: '对话',
-  navGroupResources: '资源',
-  navGroupAdmin: '管理',
-  navGroupDataPipeline: '数据入库',
-  navGroupQueryPipeline: '查询生成',
-  navGroupQuality: '质量监控',
-  navAnalytics: '使用统计',
-  navEvaluation: '质量评估',
-  navFeedback: '反馈管理',
+  navNewChat: 'Nouvelle conversation',
+  navReaders: 'Bibliothèque',
+  navQuestionGen: 'Génération de questions',
+  navGroupChat: 'Chat',
+  navGroupResources: 'Ressources',
+  navGroupAdmin: 'Administration',
+  navGroupDataPipeline: 'Pipeline de données',
+  navGroupQueryPipeline: 'Pipeline de requêtes',
+  navGroupQuality: 'Qualité',
+  navAnalytics: 'Analytique',
+  navEvaluation: 'Évaluation',
+  navFeedback: 'Rétroaction',
   navLlms: 'LLMs',
-  navResponseSynthesizers: '提示词',
-  navAcquisition: '导入',
-  navIngestion: '数据摄取',
-  navRetrievers: '检索器',
-  navQueryEngine: '查询引擎',
-  navSeed: '数据初始化',
+  navResponseSynthesizers: 'Prompts',
+  navAcquisition: 'Importation',
+  navIngestion: 'Ingestion',
+  navRetrievers: 'Récupérateurs',
+  navQueryEngine: 'Moteur de requêtes',
+  navSeed: 'Base de données initiale',
 
   // Upload
-  uploadPdf: '上传 PDF',
-  uploadDragDrop: '拖放 PDF 文件到此处',
-  uploadClickBrowse: '点击选择文件',
-  uploadOr: '或',
-  uploadDropRelease: '释放文件以上传',
-  uploadProgress: '正在上传',
-  uploadSuccess: '上传成功！正在处理...',
-  uploadDismiss: '关闭',
-  deleteConfirm: '确定删除 {count} 本书？此操作不可撤销。',
+  uploadPdf: 'Téléverser un PDF',
+  uploadDragDrop: 'Glissez-déposez un PDF ici',
+  uploadClickBrowse: 'cliquez pour parcourir',
+  uploadOr: 'ou',
+  uploadDropRelease: 'Relâchez pour téléverser',
+  uploadProgress: 'Téléversement en cours',
+  uploadSuccess: 'Téléversement terminé ! Traitement en cours...',
+  uploadDismiss: 'Fermer',
+  deleteConfirm: 'Supprimer {count} document(s) ? Cette action est irréversible.',
 
   // Chat Panel
-  chatWelcomeTitle: 'Ottawa 经济发展研究助手',
-  chatWelcomeBody: '正在搜索 {count} 份文档。可以询问就业、住房、通货膨胀或任何经济指标。',
-  chatWelcomeHint: '在右侧面板中浏览推荐问题 →',
-  chatSearchAllDocs: '正在搜索全部 {count} 份文档',
-  chatPlaceholderSingle: '关于《{title}》提问…',
-  chatPlaceholderMulti: '关于 Ottawa 经济数据提问…',
-  chatInputHint: 'Enter 发送 · Shift+Enter 换行',
-  chatSendTitle: '发送消息 (Enter)',
-  chatSearching: '正在搜索文档…',
-  chatJumpToLatest: '↓ 跳转到最新',
+  chatWelcomeTitle: 'Assistant de recherche EcDev',
+  chatWelcomeBody: 'Recherche dans {count} documents. Posez des questions sur l\'emploi, le logement, l\'inflation ou tout indicateur économique.',
+  chatWelcomeHint: 'Parcourez les questions suggérées dans le panneau de droite →',
+  chatSearchAllDocs: 'Recherche dans les {count} documents',
+  chatPlaceholderSingle: 'Poser une question sur {title}...',
+  chatPlaceholderMulti: 'Poser une question sur les données économiques d\'Ottawa...',
+  chatInputHint: 'Entrée pour envoyer · Maj+Entrée pour un saut de ligne',
+  chatSendTitle: 'Envoyer le message (Entrée)',
+  chatSearching: 'Recherche dans les documents…',
+  chatJumpToLatest: '↓ Aller au plus récent',
 }
 
-export const messages: Record<Locale, Messages> = { en, zh }
+export const messages: Record<Locale, Messages> = { en, fr }

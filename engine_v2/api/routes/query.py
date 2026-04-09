@@ -106,6 +106,7 @@ async def query(req: QueryRequest, engine=Depends(get_engine)):
         req.question,
         engine=engine if not book_ids else None,
         book_id_strings=book_ids or None,
+        model=req.model,
     )
 
     return {
@@ -137,11 +138,12 @@ async def _stream_generator(req: QueryRequest):
         # Extract book scope from filters
         book_ids = req.filters.book_id_strings or []
 
-        # Build streaming engine with book scope filter
+        # Build streaming engine with book scope filter and model override
         streaming_engine = get_query_engine(
             similarity_top_k=req.top_k,
             streaming=True,
             book_id_strings=book_ids or None,
+            model=req.model,
         )
 
         logger.info("Stream query: {} (top_k={}, books={})", req.question[:80], req.top_k, book_ids or "all")

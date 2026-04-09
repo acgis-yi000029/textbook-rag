@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useState, useMemo, Suspense, useCallback } from 'react'
+import { useEffect, useState, useMemo, Suspense } from 'react'
 import {
   Brain, Loader2, AlertCircle, RefreshCw, CheckCircle2, XCircle,
   Cpu, Globe, Zap, DollarSign, Activity,
   Search, Wifi, WifiOff, HardDrive, Clock, Trash2, Plus, Star,
+  MessageSquare, Database,
 } from 'lucide-react'
 import { cn } from '@/features/shared/utils'
 import { SidebarLayout, type ViewMode, type SidebarItem } from '@/features/shared/components/SidebarLayout'
@@ -12,8 +13,28 @@ import { useModels } from '@/features/engine/llms/useModels'
 import type { RuntimeModel, DiscoveredLocalModel, ModelProvider } from '@/features/engine/llms/types'
 import { PROVIDER_CONFIGS } from '@/features/engine/llms/types'
 import { useQueryState } from '@/features/shared/hooks/useQueryState'
+import { useI18n } from '@/features/shared/i18n'
 
-type FilterKey = 'all' | 'discovered' | ModelProvider
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Detect if a model name refers to an embedding model */
+function isEmbeddingModel(name: string): boolean {
+  const lower = name.toLowerCase()
+  return (
+    lower.includes('embed') ||
+    lower.includes('bge-') ||
+    lower.includes('e5-') ||
+    lower.includes('gte-') ||
+    lower.includes('instructor') ||
+    lower.includes('all-minilm') ||
+    lower.includes('nomic-embed') ||
+    lower.includes('mxbai-embed') ||
+    lower.includes('snowflake-arctic-embed') ||
+    lower.includes('text-embedding')
+  )
+}
+
+type FilterKey = 'all' | 'available' | 'discovered' | ModelProvider
 
 export default function Page() {
   return (
@@ -24,6 +45,9 @@ export default function Page() {
 }
 
 function LlmsPageInner() {
+  const { locale } = useI18n()
+  const isFr = locale === 'fr'
+
   const {
     models,
     loading,
@@ -42,7 +66,7 @@ function LlmsPageInner() {
   const [filter, setFilter] = useQueryState('filter', 'all') as [FilterKey, (v: string) => void]
   const [viewMode, setViewMode] = useQueryState('view', 'cards') as [ViewMode, (v: string) => void]
 
-  // ── 首次加载时自动执行一次完整探测 ────────────────────────────────────────
+  // ── Auto-discover on first load ────────────────────────────────────────────
   const [hasDiscovered, setHasDiscovered] = useState(false)
   useEffect(() => {
     if (!loading && !hasDiscovered) {
@@ -50,50 +74,78 @@ function LlmsPageInner() {
     }
   }, [loading, hasDiscovered, runDiscovery])
 
-  // ── 统计 ────────────────────────────────────────────────────────────────────
+  // ── Stats ──────────────────────────────────────────────────────────────────
+  const availableModels = useMemo(
+    () => models.filter((m) => m.availability.status === 'available'),
+    [models],
+  )
+  const unavailableCount = useMemo(
+    () => models.filter((m) => m.availability.status === 'unavailable').length,
+    [models],
+  )
+
   const providerCounts = useMemo(() => {
-    const c: Record<string, number> = { all: models.length, discovered: discovered.length }
+    const c: Record<string, number> = {
+      all: models.length,
+      available: availableModels.length,
+      discovered: discovered.length,
+    }
     for (const m of models) {
       c[m.provider] = (c[m.provider] || 0) + 1
     }
     return c
-  }, [models, discovered])
+  }, [models, availableModels, discovered])
 
   const visibleProviders = useMemo(() => {
     return (Object.keys(PROVIDER_CONFIGS) as ModelProvider[]).filter(
-      (k) => (providerCounts[k] || 0) > 0
+      (k) => (providerCounts[k] || 0) > 0,
     )
   }, [providerCounts])
 
-  const availableCount = useMemo(
-    () => models.filter((m) => m.availability.status === 'available').length,
-    [models]
-  )
-  const unavailableCount = useMemo(
-    () => models.filter((m) => m.availability.status === 'unavailable').length,
-    [models]
-  )
-
+  // ── Split models into LLM vs Embedding ────────────────────────────────────
   const displayModels = useMemo(() => {
-    const base = filter === 'all' || filter === 'discovered'
-      ? models
-      : models.filter((m) => m.provider === filter)
-    // 可用的排前面，然后按 sortOrder / Available first, then by sortOrder
+    let base: RuntimeModel[]
+    if (filter === 'available') {
+      base = availableModels
+    } else if (filter === 'all' || filter === 'discovered') {
+      base = models
+    } else {
+      base = models.filter((m) => m.provider === filter)
+    }
     return [...base].sort((a, b) => {
       const aAvail = a.availability.status === 'available' ? 0 : 1
       const bAvail = b.availability.status === 'available' ? 0 : 1
       if (aAvail !== bAvail) return aAvail - bAvail
       return a.sortOrder - b.sortOrder
     })
-  }, [models, filter])
+  }, [models, availableModels, filter])
 
-  // ── Sidebar items ──────────────────────────────────────────────────────────
+  const llmModels = useMemo(
+    () => displayModels.filter((m) => !isEmbeddingModel(m.name)),
+    [displayModels],
+  )
+  const embeddingModels = useMemo(
+    () => displayModels.filter((m) => isEmbeddingModel(m.name)),
+    [displayModels],
+  )
+
+  // ── Sidebar items ─────────────────────────────────────────────────────────
   const sidebarItems = useMemo<SidebarItem[]>(() => {
     const items: SidebarItem[] = [
-      { key: 'all', label: '全部模型', count: providerCounts.all || 0 },
+      {
+        key: 'available',
+        label: isFr ? 'Disponibles' : 'Available',
+        count: providerCounts.available || 0,
+        icon: <Wifi className="h-4 w-4 shrink-0 text-emerald-500" />,
+      },
+      {
+        key: 'all',
+        label: isFr ? 'Tous les modèles' : 'All Models',
+        count: providerCounts.all || 0,
+      },
       ...visibleProviders.map((key) => ({
         key,
-        label: PROVIDER_CONFIGS[key].labelZh,
+        label: PROVIDER_CONFIGS[key].label,
         count: providerCounts[key] || 0,
         indent: true,
       })),
@@ -101,33 +153,70 @@ function LlmsPageInner() {
     if (discovered.length > 0) {
       items.push({
         key: 'discovered',
-        label: '🔍 新发现',
+        label: isFr ? 'Découverts' : 'Discovered',
         count: discovered.length,
         highlight: true,
         dividerBefore: true,
+        icon: <Search className="h-4 w-4 shrink-0" />,
       })
     }
     return items
-  }, [providerCounts, visibleProviders, discovered])
+  }, [providerCounts, visibleProviders, discovered, isFr])
 
-  // ── Subtitle ───────────────────────────────────────────────────────────────
+  // ── Subtitle ──────────────────────────────────────────────────────────────
   const subtitle = useMemo(() => {
     const parts: string[] = []
     if (filter === 'discovered') {
-      parts.push(`${discovered.length} 个本地未注册的模型`)
+      parts.push(isFr
+        ? `${discovered.length} modèle(s) local non enregistré(s)`
+        : `${discovered.length} unregistered local model(s)`)
     } else {
-      parts.push(`${displayModels.length} 个模型`)
+      parts.push(isFr
+        ? `${displayModels.length} modèle(s)`
+        : `${displayModels.length} model(s)`)
     }
     if (checking || discovering) {
-      parts.push(discovering ? '正在探测...' : '正在检测...')
+      parts.push(discovering
+        ? (isFr ? 'Détection en cours...' : 'Discovering...')
+        : (isFr ? 'Vérification...' : 'Checking...'))
     }
     return parts.join(' · ')
-  }, [filter, discovered, displayModels, checking, discovering])
+  }, [filter, discovered, displayModels, checking, discovering, isFr])
+
+  // ── Section renderer ──────────────────────────────────────────────────────
+  function renderModelSection(
+    sectionModels: RuntimeModel[],
+    title: string,
+    icon: React.ReactNode,
+    emptyText: string,
+  ) {
+    if (sectionModels.length === 0) return null
+    return (
+      <div className="mb-8 last:mb-0">
+        <div className="flex items-center gap-2 mb-4">
+          {icon}
+          <h2 className="text-sm font-semibold text-foreground">{title}</h2>
+          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-muted text-muted-foreground">
+            {sectionModels.length}
+          </span>
+        </div>
+        {viewMode === 'cards' ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+            {sectionModels.map((m) => (
+              <RegisteredModelCard key={m.id} model={m} onDelete={deleteModel} onSetDefault={setDefaultModel} isFr={isFr} />
+            ))}
+          </div>
+        ) : (
+          <ModelTable models={sectionModels} onDelete={deleteModel} onSetDefault={setDefaultModel} isFr={isFr} />
+        )}
+      </div>
+    )
+  }
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <SidebarLayout
-      title="模型管理"
+      title={isFr ? 'Modèles' : 'Models'}
       icon={<Brain className="h-4 w-4 text-purple-400" />}
       sidebarItems={sidebarItems}
       activeFilter={filter}
@@ -136,12 +225,14 @@ function LlmsPageInner() {
         <div className="space-y-1">
           <div className="flex items-center gap-1.5 text-[10px]">
             <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-            <span className="text-emerald-400">{availableCount} 可用</span>
+            <span className="text-emerald-400">{availableModels.length} {isFr ? 'disponible(s)' : 'available'}</span>
             <span className="text-muted-foreground mx-1">·</span>
             <XCircle className="h-3 w-3 text-red-400" />
-            <span className="text-red-400">{unavailableCount} 不可用</span>
+            <span className="text-red-400">{unavailableCount} {isFr ? 'indisponible(s)' : 'unavailable'}</span>
           </div>
-          <p className="text-[10px] text-muted-foreground">共 {models.length} 个已注册模型</p>
+          <p className="text-[10px] text-muted-foreground">
+            {isFr ? `${models.length} modèle(s) enregistré(s)` : `${models.length} registered model(s)`}
+          </p>
         </div>
       }
       subtitle={subtitle}
@@ -160,7 +251,7 @@ function LlmsPageInner() {
             )}
           >
             <Search className="h-3.5 w-3.5" />
-            探测本地模型
+            {isFr ? 'Détecter les modèles' : 'Discover Local'}
           </button>
           <button
             onClick={() => void refresh()}
@@ -171,32 +262,38 @@ function LlmsPageInner() {
         </div>
       }
       loading={loading && models.length === 0}
-      loadingText="正在探测模型..."
+      loadingText={isFr ? 'Détection des modèles...' : 'Detecting models...'}
       error={error && models.length === 0 ? error : null}
       onRetry={() => void refresh()}
     >
       {/* ── Discovered models view ── */}
       {filter === 'discovered' ? (
-        <DiscoveredModelGrid models={discovered} onRegister={registerDiscoveredModel} onRemove={removeOllamaModel} />
+        <DiscoveredModelGrid models={discovered} onRegister={registerDiscoveredModel} onRemove={removeOllamaModel} isFr={isFr} />
       ) : (
         <>
-          {/* ── Cards view ── */}
-          {viewMode === 'cards' ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-              {displayModels.map((m) => (
-                <RegisteredModelCard key={m.id} model={m} onDelete={deleteModel} onSetDefault={setDefaultModel} />
-              ))}
-            </div>
-          ) : (
-            /* ── Table view ── */
-            <ModelTable models={displayModels} onDelete={deleteModel} onSetDefault={setDefaultModel} />
+          {/* ── LLM (Generation) models ── */}
+          {renderModelSection(
+            llmModels,
+            isFr ? 'Modèles de génération (LLM)' : 'Generation Models (LLM)',
+            <MessageSquare className="h-4 w-4 text-blue-400" />,
+            isFr ? 'Aucun modèle LLM' : 'No LLM models',
+          )}
+
+          {/* ── Embedding models ── */}
+          {renderModelSection(
+            embeddingModels,
+            isFr ? 'Modèles d\'embeddings' : 'Embedding Models',
+            <Database className="h-4 w-4 text-teal-400" />,
+            isFr ? 'Aucun modèle d\'embedding' : 'No embedding models',
           )}
 
           {displayModels.length === 0 && (
             <div className="flex flex-col items-center py-20">
               <Brain className="h-10 w-10 text-muted-foreground mb-3" />
               <p className="text-sm text-muted-foreground">
-                {filter === 'all' ? '暂无已注册的模型' : '此分类暂无模型'}
+                {filter === 'available'
+                  ? (isFr ? 'Aucun modèle disponible' : 'No available models')
+                  : (isFr ? 'Aucun modèle dans cette catégorie' : 'No models in this category')}
               </p>
             </div>
           )}
@@ -206,12 +303,14 @@ function LlmsPageInner() {
             <div className="mt-8">
               <div className="flex items-center gap-2 mb-4">
                 <Search className="h-4 w-4 text-primary" />
-                <h2 className="text-sm font-semibold text-foreground">发现的本地模型（未注册）</h2>
+                <h2 className="text-sm font-semibold text-foreground">
+                  {isFr ? 'Modèles locaux découverts (non enregistrés)' : 'Discovered Local Models (Unregistered)'}
+                </h2>
                 <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-primary/20 text-primary">
                   {discovered.length}
                 </span>
               </div>
-              <DiscoveredModelGrid models={discovered} onRegister={registerDiscoveredModel} onRemove={removeOllamaModel} />
+              <DiscoveredModelGrid models={discovered} onRegister={registerDiscoveredModel} onRemove={removeOllamaModel} isFr={isFr} />
             </div>
           )}
         </>
@@ -224,8 +323,8 @@ function LlmsPageInner() {
 // Sub-components
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/** 已注册模型卡片 / Registered model card */
-function RegisteredModelCard({ model: m, onDelete, onSetDefault }: { model: RuntimeModel; onDelete: (id: number) => Promise<void>; onSetDefault: (id: number) => Promise<void> }) {
+/** Registered model card */
+function RegisteredModelCard({ model: m, onDelete, onSetDefault, isFr }: { model: RuntimeModel; onDelete: (id: number) => Promise<void>; onSetDefault: (id: number) => Promise<void>; isFr: boolean }) {
   const [deleting, setDeleting] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [settingDefault, setSettingDefault] = useState(false)
@@ -257,7 +356,9 @@ function RegisteredModelCard({ model: m, onDelete, onSetDefault }: { model: Runt
           <div className="flex items-center gap-2 mb-1">
             <h3 className="text-sm font-semibold text-foreground truncate">{m.displayName || m.name}</h3>
             {m.isDefault && (
-              <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">默认</span>
+              <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                {isFr ? 'Défaut' : 'Default'}
+              </span>
             )}
           </div>
           <code className="text-xs text-muted-foreground font-mono">{m.name}</code>
@@ -272,40 +373,28 @@ function RegisteredModelCard({ model: m, onDelete, onSetDefault }: { model: Runt
       <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mb-3">
         {m.parameterSize && (
           <div className="flex items-center gap-1.5 text-xs">
-            <Cpu className="h-3 w-3 text-muted-foreground shrink-0" /><span className="text-muted-foreground">参数</span>
+            <Cpu className="h-3 w-3 text-muted-foreground shrink-0" /><span className="text-muted-foreground">{isFr ? 'Paramètres' : 'Params'}</span>
             <span className="text-foreground font-medium ml-auto">{m.parameterSize}</span>
           </div>
         )}
         {m.contextWindow && (
           <div className="flex items-center gap-1.5 text-xs">
-            <Zap className="h-3 w-3 text-muted-foreground shrink-0" /><span className="text-muted-foreground">上下文</span>
+            <Zap className="h-3 w-3 text-muted-foreground shrink-0" /><span className="text-muted-foreground">{isFr ? 'Contexte' : 'Context'}</span>
             <span className="text-foreground font-medium ml-auto">{(m.contextWindow / 1000).toFixed(0)}K</span>
           </div>
         )}
         {m.languages && (
           <div className="flex items-center gap-1.5 text-xs">
-            <Globe className="h-3 w-3 text-muted-foreground shrink-0" /><span className="text-muted-foreground">语言</span>
+            <Globe className="h-3 w-3 text-muted-foreground shrink-0" /><span className="text-muted-foreground">{isFr ? 'Langues' : 'Languages'}</span>
             <span className="text-foreground font-medium ml-auto truncate max-w-[80px]">{m.languages}</span>
           </div>
         )}
         <div className="flex items-center gap-1.5 text-xs">
-          <DollarSign className="h-3 w-3 text-muted-foreground shrink-0" /><span className="text-muted-foreground">费用</span>
+          <DollarSign className="h-3 w-3 text-muted-foreground shrink-0" /><span className="text-muted-foreground">{isFr ? 'Coût' : 'Cost'}</span>
           <span className={cn('font-medium ml-auto', m.isFree ? 'text-emerald-400' : 'text-amber-400')}>
-            {m.isFree ? '免费' : `$${m.costPer1kInput}/1K`}
+            {m.isFree ? (isFr ? 'Gratuit' : 'Free') : `$${m.costPer1kInput}/1K`}
           </span>
         </div>
-        {m.inputTokensPerMin != null && (
-          <div className="flex items-center gap-1.5 text-xs">
-            <Activity className="h-3 w-3 text-muted-foreground shrink-0" /><span className="text-muted-foreground">输入</span>
-            <span className="text-foreground font-medium ml-auto">{(m.inputTokensPerMin / 1000).toFixed(1)}K/min</span>
-          </div>
-        )}
-        {m.outputTokensPerMin != null && (
-          <div className="flex items-center gap-1.5 text-xs">
-            <Activity className="h-3 w-3 text-muted-foreground shrink-0" /><span className="text-muted-foreground">输出</span>
-            <span className="text-foreground font-medium ml-auto">{(m.outputTokensPerMin / 1000).toFixed(1)}K/min</span>
-          </div>
-        )}
       </div>
 
       {m.useCases && Array.isArray(m.useCases) && m.useCases.length > 0 && (
@@ -320,22 +409,21 @@ function RegisteredModelCard({ model: m, onDelete, onSetDefault }: { model: Runt
       <div className="flex items-center justify-between pt-3 border-t border-border">
         <div className="flex items-center gap-1.5 text-xs">
           {isChecking ? (
-            <><Loader2 className="h-3 w-3 animate-spin text-primary" /><span className="text-primary">检测中...</span></>
+            <><Loader2 className="h-3 w-3 animate-spin text-primary" /><span className="text-primary">{isFr ? 'Vérification...' : 'Checking...'}</span></>
           ) : isAvailable ? (
             <>
-              <Wifi className="h-3 w-3 text-emerald-500" /><span className="text-emerald-400">可用</span>
+              <Wifi className="h-3 w-3 text-emerald-500" /><span className="text-emerald-400">{isFr ? 'Disponible' : 'Available'}</span>
               {avail.latencyMs != null && <span className="text-muted-foreground ml-1">({avail.latencyMs}ms)</span>}
             </>
           ) : isUnavailable ? (
-            <><WifiOff className="h-3 w-3 text-red-400" /><span className="text-red-400">不可用</span></>
+            <><WifiOff className="h-3 w-3 text-red-400" /><span className="text-red-400">{isFr ? 'Indisponible' : 'Unavailable'}</span></>
           ) : (
-            <><AlertCircle className="h-3 w-3 text-muted-foreground" /><span className="text-muted-foreground">未知</span></>
+            <><AlertCircle className="h-3 w-3 text-muted-foreground" /><span className="text-muted-foreground">{isFr ? 'Inconnu' : 'Unknown'}</span></>
           )}
         </div>
         <div className="flex items-center gap-2">
           {m.quantization && <span className="text-[10px] text-muted-foreground font-mono">{m.quantization}</span>}
-          {!m.isEnabled && <span className="text-[10px] text-red-400">已禁用</span>}
-          {/* Set as default button — only for available, non-default models */}
+          {!m.isEnabled && <span className="text-[10px] text-red-400">{isFr ? 'Désactivé' : 'Disabled'}</span>}
           {isAvailable && !m.isDefault && (
             <button
               onClick={async () => {
@@ -348,10 +436,10 @@ function RegisteredModelCard({ model: m, onDelete, onSetDefault }: { model: Runt
                 'text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10',
                 settingDefault && 'opacity-50 cursor-not-allowed',
               )}
-              title="设为默认模型"
+              title={isFr ? 'Définir par défaut' : 'Set as default'}
             >
               {settingDefault ? <Loader2 className="h-3 w-3 animate-spin" /> : <Star className="h-3 w-3" />}
-              设为默认
+              {isFr ? 'Défaut' : 'Default'}
             </button>
           )}
           {isUnavailable && (
@@ -365,10 +453,10 @@ function RegisteredModelCard({ model: m, onDelete, onSetDefault }: { model: Runt
                   : 'text-muted-foreground hover:text-red-400 hover:bg-red-500/10',
                 deleting && 'opacity-50 cursor-not-allowed',
               )}
-              title={confirmDelete ? '再次点击确认删除' : '删除此模型'}
+              title={confirmDelete ? (isFr ? 'Cliquer pour confirmer' : 'Click to confirm') : (isFr ? 'Supprimer' : 'Delete')}
             >
               {deleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
-              {confirmDelete ? '确认?' : '删除'}
+              {confirmDelete ? (isFr ? 'Sûr ?' : 'Sure?') : (isFr ? 'Supprimer' : 'Delete')}
             </button>
           )}
         </div>
@@ -383,26 +471,25 @@ function RegisteredModelCard({ model: m, onDelete, onSetDefault }: { model: Runt
   )
 }
 
-/** 模型表格视图 / Model table view */
-function ModelTable({ models, onDelete, onSetDefault }: { models: RuntimeModel[]; onDelete: (id: number) => Promise<void>; onSetDefault: (id: number) => Promise<void> }) {
+/** Model table view */
+function ModelTable({ models, onDelete, onSetDefault, isFr }: { models: RuntimeModel[]; onDelete: (id: number) => Promise<void>; onSetDefault: (id: number) => Promise<void>; isFr: boolean }) {
   return (
     <div className="rounded-xl border border-border overflow-hidden">
       <table className="w-full text-sm">
         <thead>
           <tr className="bg-card/80 border-b border-border">
-            <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">模型</th>
+            <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">{isFr ? 'Modèle' : 'Model'}</th>
             <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">Provider</th>
-            <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">参数</th>
-            <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">上下文</th>
-            <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">费用</th>
-            <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">吞吐量</th>
-            <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">状态</th>
-            <th className="text-right px-4 py-2.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">操作</th>
+            <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">{isFr ? 'Paramètres' : 'Params'}</th>
+            <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">{isFr ? 'Contexte' : 'Context'}</th>
+            <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">{isFr ? 'Coût' : 'Cost'}</th>
+            <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">{isFr ? 'Statut' : 'Status'}</th>
+            <th className="text-right px-4 py-2.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">{isFr ? 'Actions' : 'Actions'}</th>
           </tr>
         </thead>
         <tbody>
           {models.map((m) => (
-            <ModelTableRow key={m.id} model={m} onDelete={onDelete} onSetDefault={onSetDefault} />
+            <ModelTableRow key={m.id} model={m} onDelete={onDelete} onSetDefault={onSetDefault} isFr={isFr} />
           ))}
         </tbody>
       </table>
@@ -410,7 +497,7 @@ function ModelTable({ models, onDelete, onSetDefault }: { models: RuntimeModel[]
   )
 }
 
-function ModelTableRow({ model: m, onDelete, onSetDefault }: { model: RuntimeModel; onDelete: (id: number) => Promise<void>; onSetDefault: (id: number) => Promise<void> }) {
+function ModelTableRow({ model: m, onDelete, onSetDefault, isFr }: { model: RuntimeModel; onDelete: (id: number) => Promise<void>; onSetDefault: (id: number) => Promise<void>; isFr: boolean }) {
   const [deleting, setDeleting] = useState(false)
   const [settingDefault, setSettingDefault] = useState(false)
   const prov = PROVIDER_CONFIGS[m.provider] || PROVIDER_CONFIGS.other
@@ -428,7 +515,7 @@ function ModelTableRow({ model: m, onDelete, onSetDefault }: { model: RuntimeMod
       <td className="px-4 py-3">
         <div>
           <span className="text-sm font-medium text-foreground">{m.displayName || m.name}</span>
-          {m.isDefault && <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-medium bg-amber-500/10 text-amber-400">默认</span>}
+          {m.isDefault && <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-medium bg-amber-500/10 text-amber-400">{isFr ? 'Défaut' : 'Default'}</span>}
         </div>
         <code className="text-[11px] text-muted-foreground font-mono">{m.name}</code>
       </td>
@@ -443,22 +530,17 @@ function ModelTableRow({ model: m, onDelete, onSetDefault }: { model: RuntimeMod
       </td>
       <td className="px-4 py-3">
         <span className={cn('text-xs font-medium', m.isFree ? 'text-emerald-400' : 'text-amber-400')}>
-          {m.isFree ? '免费' : `$${m.costPer1kInput}/1K`}
+          {m.isFree ? (isFr ? 'Gratuit' : 'Free') : `$${m.costPer1kInput}/1K`}
         </span>
-      </td>
-      <td className="px-4 py-3 text-xs text-foreground">
-        {m.outputTokensPerMin != null
-          ? `${(m.outputTokensPerMin / 1000).toFixed(1)}K/min`
-          : '—'}
       </td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-1.5">
           {isAvailable ? (
-            <><Wifi className="h-3 w-3 text-emerald-500" /><span className="text-xs text-emerald-400">可用</span></>
+            <><Wifi className="h-3 w-3 text-emerald-500" /><span className="text-xs text-emerald-400">{isFr ? 'Disponible' : 'Available'}</span></>
           ) : isUnavailable ? (
-            <><WifiOff className="h-3 w-3 text-red-400" /><span className="text-xs text-red-400">不可用</span></>
+            <><WifiOff className="h-3 w-3 text-red-400" /><span className="text-xs text-red-400">{isFr ? 'Indisponible' : 'Unavailable'}</span></>
           ) : (
-            <><AlertCircle className="h-3 w-3 text-muted-foreground" /><span className="text-xs text-muted-foreground">未知</span></>
+            <><AlertCircle className="h-3 w-3 text-muted-foreground" /><span className="text-xs text-muted-foreground">{isFr ? 'Inconnu' : 'Unknown'}</span></>
           )}
         </div>
       </td>
@@ -472,10 +554,10 @@ function ModelTableRow({ model: m, onDelete, onSetDefault }: { model: RuntimeMod
                 }}
                 disabled={settingDefault}
                 className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10 transition-colors disabled:opacity-50"
-                title="设为默认模型"
+                title={isFr ? 'Définir par défaut' : 'Set as default'}
               >
                 {settingDefault ? <Loader2 className="h-3 w-3 animate-spin" /> : <Star className="h-3 w-3" />}
-                默认
+                {isFr ? 'Défaut' : 'Default'}
               </button>
             )}
             {isUnavailable && (
@@ -483,10 +565,10 @@ function ModelTableRow({ model: m, onDelete, onSetDefault }: { model: RuntimeMod
                 onClick={handleDelete}
                 disabled={deleting}
                 className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
-                title="删除此模型"
+                title={isFr ? 'Supprimer' : 'Delete'}
               >
                 {deleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
-                删除
+                {isFr ? 'Supprimer' : 'Delete'}
               </button>
             )}
           </div>
@@ -495,21 +577,25 @@ function ModelTableRow({ model: m, onDelete, onSetDefault }: { model: RuntimeMod
   )
 }
 
-/** 发现的本地模型 / Discovered local models */
+/** Discovered local models */
 function DiscoveredModelGrid({
   models,
   onRegister,
   onRemove,
+  isFr,
 }: {
   models: DiscoveredLocalModel[]
   onRegister: (name: string) => Promise<any>
   onRemove: (name: string) => Promise<void>
+  isFr: boolean
 }) {
   if (models.length === 0) {
     return (
       <div className="flex flex-col items-center py-12">
         <CheckCircle2 className="h-8 w-8 text-emerald-500 mb-3" />
-        <p className="text-sm text-muted-foreground">所有本地模型均已注册 ✓</p>
+        <p className="text-sm text-muted-foreground">
+          {isFr ? 'Tous les modèles locaux sont enregistrés ✓' : 'All local models are registered ✓'}
+        </p>
       </div>
     )
   }
@@ -517,21 +603,23 @@ function DiscoveredModelGrid({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
       {models.map((m) => (
-        <DiscoveredModelCard key={m.name} model={m} onRegister={onRegister} onRemove={onRemove} />
+        <DiscoveredModelCard key={m.name} model={m} onRegister={onRegister} onRemove={onRemove} isFr={isFr} />
       ))}
     </div>
   )
 }
 
-/** 发现的模型卡片（含注册/移除操作）/ Discovered model card with register/remove actions */
+/** Discovered model card with register/remove actions */
 function DiscoveredModelCard({
   model: m,
   onRegister,
   onRemove,
+  isFr,
 }: {
   model: DiscoveredLocalModel
   onRegister: (name: string) => Promise<any>
   onRemove: (name: string) => Promise<void>
+  isFr: boolean
 }) {
   const [registering, setRegistering] = useState(false)
   const [removing, setRemoving] = useState(false)
@@ -567,7 +655,9 @@ function DiscoveredModelCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-1">
             <h3 className="text-sm font-semibold text-foreground truncate">{m.name}</h3>
-            <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium bg-primary/10 text-primary border border-primary/20">新发现</span>
+            <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium bg-primary/10 text-primary border border-primary/20">
+              {isFr ? 'Découvert' : 'Discovered'}
+            </span>
           </div>
           <code className="text-xs text-muted-foreground font-mono">{m.name}</code>
         </div>
@@ -577,31 +667,31 @@ function DiscoveredModelCard({
       <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mb-3">
         {m.parameterSize && (
           <div className="flex items-center gap-1.5 text-xs">
-            <Cpu className="h-3 w-3 text-muted-foreground shrink-0" /><span className="text-muted-foreground">参数</span>
+            <Cpu className="h-3 w-3 text-muted-foreground shrink-0" /><span className="text-muted-foreground">{isFr ? 'Paramètres' : 'Params'}</span>
             <span className="text-foreground font-medium ml-auto">{m.parameterSize}</span>
           </div>
         )}
         {m.size && (
           <div className="flex items-center gap-1.5 text-xs">
-            <HardDrive className="h-3 w-3 text-muted-foreground shrink-0" /><span className="text-muted-foreground">大小</span>
+            <HardDrive className="h-3 w-3 text-muted-foreground shrink-0" /><span className="text-muted-foreground">{isFr ? 'Taille' : 'Size'}</span>
             <span className="text-foreground font-medium ml-auto">{m.size}</span>
           </div>
         )}
         {m.quantization && (
           <div className="flex items-center gap-1.5 text-xs">
-            <Zap className="h-3 w-3 text-muted-foreground shrink-0" /><span className="text-muted-foreground">量化</span>
+            <Zap className="h-3 w-3 text-muted-foreground shrink-0" /><span className="text-muted-foreground">{isFr ? 'Quantification' : 'Quantization'}</span>
             <span className="text-foreground font-medium ml-auto font-mono">{m.quantization}</span>
           </div>
         )}
         {m.family && (
           <div className="flex items-center gap-1.5 text-xs">
-            <Globe className="h-3 w-3 text-muted-foreground shrink-0" /><span className="text-muted-foreground">家族</span>
+            <Globe className="h-3 w-3 text-muted-foreground shrink-0" /><span className="text-muted-foreground">{isFr ? 'Famille' : 'Family'}</span>
             <span className="text-foreground font-medium ml-auto">{m.family}</span>
           </div>
         )}
         {m.modifiedAt && (
           <div className="flex items-center gap-1.5 text-xs">
-            <Clock className="h-3 w-3 text-muted-foreground shrink-0" /><span className="text-muted-foreground">更新</span>
+            <Clock className="h-3 w-3 text-muted-foreground shrink-0" /><span className="text-muted-foreground">{isFr ? 'Modifié' : 'Modified'}</span>
             <span className="text-foreground font-medium ml-auto truncate max-w-[100px]">
               {new Date(m.modifiedAt).toLocaleDateString()}
             </span>
@@ -611,10 +701,10 @@ function DiscoveredModelCard({
 
       <div className="flex items-center justify-between pt-3 border-t border-border">
         <div className="flex items-center gap-1.5 text-xs">
-          <Wifi className="h-3 w-3 text-emerald-500" /><span className="text-emerald-400">本地可用</span>
+          <Wifi className="h-3 w-3 text-emerald-500" /><span className="text-emerald-400">{isFr ? 'Disponible localement' : 'Locally available'}</span>
         </div>
         <div className="flex items-center gap-1.5">
-          {/* 注册按钮 / Register button */}
+          {/* Register button */}
           <button
             onClick={handleRegister}
             disabled={registering}
@@ -623,12 +713,12 @@ function DiscoveredModelCard({
               'bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20',
               registering && 'opacity-50 cursor-not-allowed',
             )}
-            title="注册到 CMS"
+            title={isFr ? 'Enregistrer dans le CMS' : 'Register to CMS'}
           >
             {registering ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-            注册
+            {isFr ? 'Enregistrer' : 'Register'}
           </button>
-          {/* 移除按钮 / Remove button */}
+          {/* Remove button */}
           <button
             onClick={handleRemove}
             disabled={removing}
@@ -639,10 +729,10 @@ function DiscoveredModelCard({
                 : 'text-muted-foreground hover:text-red-400 hover:bg-red-500/10',
               removing && 'opacity-50 cursor-not-allowed',
             )}
-            title={confirmRemove ? '再次点击确认移除' : '从 Ollama 移除'}
+            title={confirmRemove ? (isFr ? 'Cliquer pour confirmer' : 'Click to confirm') : (isFr ? 'Retirer d\'Ollama' : 'Remove from Ollama')}
           >
             {removing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
-            {confirmRemove ? '确认?' : '移除'}
+            {confirmRemove ? (isFr ? 'Sûr ?' : 'Sure?') : (isFr ? 'Retirer' : 'Remove')}
           </button>
         </div>
       </div>

@@ -16,7 +16,6 @@ interface ChatHeaderProps {
   selectedModel: string;
   models: ModelInfo[];
   loading: boolean;
-  selectedSourceLabel: string | null;
   onModelChange: (model: string, provider?: string) => void;
   onNewChat: () => void;
   /** Questions sidebar toggle */
@@ -32,7 +31,6 @@ export default function ChatHeader({
   selectedModel,
   models,
   loading,
-  selectedSourceLabel,
   onModelChange,
   onNewChat,
   showQuestions,
@@ -50,7 +48,7 @@ export default function ChatHeader({
 
         {/* Title */}
         <div className="min-w-0 flex-1">
-          <h2 className="text-sm font-semibold text-foreground">Textbook RAG</h2>
+          <h2 className="text-sm font-semibold text-foreground">EcDev Research</h2>
           <p className="text-[11px] text-muted-foreground">
             {sessionBooks.length === 1
               ? sessionBooks[0].title
@@ -100,16 +98,6 @@ export default function ChatHeader({
           )}
         </div>
       </div>
-
-      {selectedSourceLabel && (
-        <div className="mt-2 inline-flex max-w-full items-center gap-2 rounded-md border border-border bg-muted/50 px-3 py-1.5 text-[11px] text-muted-foreground">
-          <svg className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
-          </svg>
-          <span className="truncate">{selectedSourceLabel}</span>
-        </div>
-      )}
     </div>
   );
 }

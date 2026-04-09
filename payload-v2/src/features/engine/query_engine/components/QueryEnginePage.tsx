@@ -28,7 +28,7 @@ import type { QueryRequest, QueryResponse } from '../types'
 // ============================================================
 export default function QueryEnginePage() {
   const { locale } = useI18n()
-  const isZh = locale === 'zh'
+  const isFr = locale === 'fr'
 
   // ==========================================================
   // Query engine hook
@@ -106,10 +106,10 @@ export default function QueryEnginePage() {
         <Cpu className="h-5 w-5 text-primary" />
         <div>
           <h1 className="text-lg font-bold text-foreground">
-            {isZh ? '查询引擎调试台' : 'Query Engine Console'}
+            {isFr ? '查询引擎调试台' : 'Query Engine Console'}
           </h1>
           <p className="text-xs text-muted-foreground">
-            {isZh
+            {isFr
               ? '端到端查询测试 — 检索 → 合成 → 引用追溯'
               : 'End-to-end query testing — retrieval → synthesis → citation tracing'}
           </p>
@@ -126,13 +126,13 @@ export default function QueryEnginePage() {
             {/* Question input */}
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                {isZh ? '问题' : 'Question'}
+                {isFr ? '问题' : 'Question'}
               </label>
               <textarea
                 id="query-input"
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
-                placeholder={isZh ? '输入你的问题…' : 'Enter your question…'}
+                placeholder={isFr ? '输入你的问题…' : 'Enter your question…'}
                 className="w-full h-28 rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none resize-none transition-colors"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
@@ -177,7 +177,7 @@ export default function QueryEnginePage() {
               </button>
               <span className="text-xs text-muted-foreground flex items-center gap-1">
                 <Zap className="h-3 w-3" />
-                {isZh ? '流式输出' : 'Streaming'}
+                {isFr ? '流式输出' : 'Streaming'}
               </span>
             </div>
 
@@ -185,7 +185,7 @@ export default function QueryEnginePage() {
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1.5">
                 <BookOpen className="inline h-3 w-3 mr-1" />
-                {isZh ? '书籍范围（可选）' : 'Book filter (optional)'}
+                {isFr ? '书籍范围（可选）' : 'Book filter (optional)'}
               </label>
               <div className="space-y-1 max-h-32 overflow-y-auto">
                 {books.map((b) => (
@@ -204,7 +204,7 @@ export default function QueryEnginePage() {
                 ))}
                 {books.length === 0 && (
                   <p className="text-[10px] text-muted-foreground/60 italic px-2">
-                    {isZh ? '无已索引书籍' : 'No indexed books'}
+                    {isFr ? '无已索引书籍' : 'No indexed books'}
                   </p>
                 )}
               </div>
@@ -220,7 +220,7 @@ export default function QueryEnginePage() {
                     className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-destructive/10 text-destructive px-4 py-2 text-sm font-medium hover:bg-destructive/20 transition-colors"
                   >
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    {isZh ? '中断' : 'Abort'}
+                    {isFr ? '中断' : 'Abort'}
                   </button>
                 </>
               ) : (
@@ -231,14 +231,14 @@ export default function QueryEnginePage() {
                     className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     <Play className="h-4 w-4" />
-                    {isZh ? '执行查询' : 'Run Query'}
+                    {isFr ? '执行查询' : 'Run Query'}
                   </button>
                   {result && (
                     <button
                       type="button"
                       onClick={reset}
                       className="px-3 py-2 rounded-lg border border-border text-muted-foreground hover:bg-secondary transition-colors"
-                      title={isZh ? '重置' : 'Reset'}
+                      title={isFr ? '重置' : 'Reset'}
                     >
                       <RotateCcw className="h-4 w-4" />
                     </button>
@@ -260,10 +260,10 @@ export default function QueryEnginePage() {
                   <Search className="h-8 w-8 text-muted-foreground/30" />
                 </div>
                 <h3 className="text-sm font-semibold text-foreground mb-1">
-                  {isZh ? '准备就绪' : 'Ready'}
+                  {isFr ? '准备就绪' : 'Ready'}
                 </h3>
                 <p className="text-xs text-muted-foreground max-w-sm">
-                  {isZh
+                  {isFr
                     ? '在左侧输入问题，按 ⌘+Enter 或点击"执行查询"开始调试'
                     : 'Enter a question on the left and press ⌘+Enter or "Run Query" to start'}
                 </p>
@@ -276,7 +276,7 @@ export default function QueryEnginePage() {
                   <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
                   <div>
                     <p className="text-sm font-medium text-destructive">
-                      {isZh ? '查询失败' : 'Query failed'}
+                      {isFr ? '查询失败' : 'Query failed'}
                     </p>
                     <p className="text-xs text-destructive/70 mt-1">{error.message}</p>
                   </div>
@@ -312,7 +312,7 @@ export default function QueryEnginePage() {
                 TOC: {stats.toc_hits}
               </span>
               <span className="flex items-center gap-1 ml-auto font-medium text-foreground">
-                {isZh ? '融合结果' : 'Fused'}: {stats.fused_count}
+                {isFr ? '融合结果' : 'Fused'}: {stats.fused_count}
               </span>
             </div>
           )}
@@ -332,7 +332,7 @@ export default function QueryEnginePage() {
                 >
                   {traceOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
                   <FileText className="h-3 w-3" />
-                  {isZh ? '来源引用' : 'Sources'} ({result.sources.length})
+                  {isFr ? '来源引用' : 'Sources'} ({result.sources.length})
                 </button>
 
                 {traceOpen && (
@@ -372,7 +372,7 @@ export default function QueryEnginePage() {
 
                     {result.sources.length === 0 && (
                       <p className="text-[10px] text-muted-foreground/60 italic">
-                        {isZh ? '无来源引用' : 'No sources retrieved'}
+                        {isFr ? '无来源引用' : 'No sources retrieved'}
                       </p>
                     )}
                   </div>

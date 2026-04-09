@@ -1,4 +1,4 @@
-/**
+﻿/**
  * engine/readers/types.ts
  * Aligned with: llama_index.readers → engine-v2/readers/ → collections/Books
  *
@@ -33,12 +33,12 @@ export type PipelineStageKey = (typeof PIPELINE_STAGE_KEYS)[number]
 export interface PipelineStageConfig {
   key: PipelineStageKey
   label: string
-  labelZh: string
+  labelFr: string
 }
 
 export const PIPELINE_STAGE_CONFIGS: PipelineStageConfig[] = [
-  { key: 'parse',  label: 'Parse',  labelZh: '解析' },
-  { key: 'ingest', label: 'Ingest', labelZh: '入库' },
+  { key: 'parse',  label: 'Parse',  labelFr: 'Analyser' },
+  { key: 'ingest', label: 'Ingest', labelFr: 'Ingérer' },
 ]
 
 // ── Cover image from Payload Media upload ───────────────────────────────────
@@ -78,12 +78,12 @@ export interface LibraryBook {
 export interface CategoryOption {
   value: string
   label: string
-  labelZh: string
+  labelFr: string
 }
 
 /** Well-known categories (UI display). Dynamic categories added at runtime. */
 export const WELL_KNOWN_CATEGORIES: CategoryOption[] = [
-  { value: 'textbook', label: 'Textbook', labelZh: '教材' },
-  { value: 'ecdev', label: 'EC Dev', labelZh: '经济发展' },
-  { value: 'real_estate', label: 'Real Estate', labelZh: '房地产' },
+  { value: 'textbook', label: 'Textbook', labelFr: 'Manuel' },
+  { value: 'ecdev', label: 'EC Dev', labelFr: 'Développement économique' },
+  { value: 'real_estate', label: 'Real Estate', labelFr: 'Immobilier' },
 ]

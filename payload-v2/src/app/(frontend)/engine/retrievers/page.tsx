@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
 import {
@@ -25,20 +25,20 @@ interface QueryTemplate {
   sortOrder: number
 }
 
-const CATEGORY_CONFIG: Record<string, { icon: typeof Shuffle; label: string; labelZh: string; color: string }> = {
-  disambiguation: { icon: Shuffle, label: 'Disambiguation', labelZh: '消歧义', color: 'text-violet-400 bg-violet-500/10' },
-  scope: { icon: Focus, label: 'Scope Narrowing', labelZh: '范围缩小', color: 'text-blue-400 bg-blue-500/10' },
-  format: { icon: LayoutList, label: 'Format Guidance', labelZh: '格式引导', color: 'text-emerald-400 bg-emerald-500/10' },
-  followup: { icon: MessageCircleQuestion, label: 'Follow-up', labelZh: '追问', color: 'text-amber-400 bg-amber-500/10' },
+const CATEGORY_CONFIG: Record<string, { icon: typeof Shuffle; label: string; labelFr: string; color: string }> = {
+  disambiguation: { icon: Shuffle, label: 'Disambiguation', labelFr: '消歧义', color: 'text-violet-400 bg-violet-500/10' },
+  scope: { icon: Focus, label: 'Scope Narrowing', labelFr: '范围缩小', color: 'text-blue-400 bg-blue-500/10' },
+  format: { icon: LayoutList, label: 'Format Guidance', labelFr: '格式引导', color: 'text-emerald-400 bg-emerald-500/10' },
+  followup: { icon: MessageCircleQuestion, label: 'Follow-up', labelFr: '追问', color: 'text-amber-400 bg-amber-500/10' },
 }
 
-function CategoryBadge({ category, isZh }: { category: string; isZh: boolean }) {
+function CategoryBadge({ category, isFr }: { category: string; isFr: boolean }) {
   const cfg = CATEGORY_CONFIG[category] ?? CATEGORY_CONFIG.disambiguation
   const Icon = cfg.icon
   return (
     <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium', cfg.color)}>
       <Icon className="h-2.5 w-2.5" />
-      {isZh ? cfg.labelZh : cfg.label}
+      {isFr ? cfg.labelFr : cfg.label}
     </span>
   )
 }
@@ -53,7 +53,7 @@ export default function Page() {
 
 function RetrieversPageInner() {
   const { t, locale } = useI18n()
-  const isZh = locale === 'zh'
+  const isFr = locale === 'fr'
 
   const [templates, setTemplates] = useState<QueryTemplate[]>([])
   const [selected, setSelected] = useState<QueryTemplate | null>(null)
@@ -135,7 +135,7 @@ function RetrieversPageInner() {
   }
 
   const handleDelete = async () => {
-    if (!selected || !confirm(isZh ? '确定删除该模板？' : 'Delete this template?')) return
+    if (!selected || !confirm(isFr ? '确定删除该模板？' : 'Delete this template?')) return
     await fetch(`/api/prompts/${selected.id}`, { method: 'DELETE', credentials: 'include' })
     setSelected(null)
     setDraft({})
@@ -160,24 +160,24 @@ function RetrieversPageInner() {
   // ── Sidebar items ──────────────────────────────────────────────────────────
   const sidebarItems = useMemo<SidebarItem[]>(() => {
     const items: SidebarItem[] = [
-      { key: 'all', label: isZh ? '全部模板' : 'All Templates', count: categoryCounts.all || 0 },
+      { key: 'all', label: isFr ? '全部模板' : 'All Templates', count: categoryCounts.all || 0 },
     ]
     for (const [key, cfg] of Object.entries(CATEGORY_CONFIG)) {
       if ((categoryCounts[key] || 0) > 0) {
         items.push({
           key,
-          label: isZh ? cfg.labelZh : cfg.label,
+          label: isFr ? cfg.labelFr : cfg.label,
           count: categoryCounts[key] || 0,
           indent: true,
         })
       }
     }
     return items
-  }, [categoryCounts, isZh])
+  }, [categoryCounts, isFr])
 
   return (
     <SidebarLayout
-      title={isZh ? '问题引导模板' : 'Query Templates'}
+      title={isFr ? '问题引导模板' : 'Query Templates'}
       icon={<HelpCircle className="h-4 w-4 text-cyan-400" />}
       sidebarItems={sidebarItems}
       activeFilter={filter}
@@ -186,16 +186,16 @@ function RetrieversPageInner() {
       sidebarFooter={
         <p className="text-[10px] text-muted-foreground">{templates.length} templates</p>
       }
-      subtitle={`${displayTemplates.length} ${isZh ? '个模板' : 'templates'}`}
+      subtitle={`${displayTemplates.length} ${isFr ? '个模板' : 'templates'}`}
       loading={loading}
-      loadingText={isZh ? '加载模板...' : 'Loading templates...'}
+      loadingText={isFr ? '加载模板...' : 'Loading templates...'}
       toolbar={
         <button
           onClick={startNew}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-primary/30 text-primary hover:bg-primary/10 transition-colors"
         >
           <Plus className="h-3.5 w-3.5" />
-          {isZh ? '新建' : 'New'}
+          {isFr ? '新建' : 'New'}
         </button>
       }
     >
@@ -218,7 +218,7 @@ function RetrieversPageInner() {
                 )}
               >
                 <span className="text-xs font-medium truncate">{tpl.name}</span>
-                <CategoryBadge category={tpl.category} isZh={isZh} />
+                <CategoryBadge category={tpl.category} isFr={isFr} />
               </button>
             ))}
           </nav>
@@ -230,7 +230,7 @@ function RetrieversPageInner() {
             <>
               <div className="flex items-center justify-between px-6 py-3 border-b border-border bg-card/30">
                 <h2 className="text-sm font-semibold text-foreground">
-                  {isNew ? (isZh ? '新建模板' : 'New Template') : draft.name}
+                  {isNew ? (isFr ? '新建模板' : 'New Template') : draft.name}
                 </h2>
                 <div className="flex items-center gap-2">
                   {selected && !isNew && (
@@ -247,7 +247,7 @@ function RetrieversPageInner() {
                     )}
                   >
                     {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : saved ? <Check className="h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
-                    {saving ? '...' : saved ? '✓' : (isZh ? '保存' : 'Save')}
+                    {saving ? '...' : saved ? '✓' : (isFr ? '保存' : 'Save')}
                   </button>
                 </div>
               </div>
@@ -257,7 +257,7 @@ function RetrieversPageInner() {
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="block text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
-                      {isZh ? '模板名称' : 'Name'}
+                      {isFr ? '模板名称' : 'Name'}
                     </label>
                     <input
                       type="text" value={draft.name ?? ''}
@@ -267,7 +267,7 @@ function RetrieversPageInner() {
                   </div>
                   <div>
                     <label className="block text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
-                      {isZh ? '类别' : 'Category'}
+                      {isFr ? '类别' : 'Category'}
                     </label>
                     <select
                       value={draft.category ?? 'disambiguation'}
@@ -275,14 +275,14 @@ function RetrieversPageInner() {
                       className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring/30"
                     >
                       {Object.entries(CATEGORY_CONFIG).map(([k, v]) => (
-                        <option key={k} value={k}>{isZh ? v.labelZh : v.label}</option>
+                        <option key={k} value={k}>{isFr ? v.labelFr : v.label}</option>
                       ))}
                     </select>
                   </div>
                   <div className="flex items-end pb-1">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input type="checkbox" checked={draft.isEnabled ?? true} onChange={(e) => setDraft({ ...draft, isEnabled: e.target.checked })} className="h-4 w-4 rounded accent-primary" />
-                      <span className="text-xs text-muted-foreground">{isZh ? '启用' : 'Enabled'}</span>
+                      <span className="text-xs text-muted-foreground">{isFr ? '启用' : 'Enabled'}</span>
                     </label>
                   </div>
                 </div>
@@ -290,7 +290,7 @@ function RetrieversPageInner() {
                 {/* Row 2: Trigger Patterns */}
                 <div>
                   <label className="block text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
-                    {isZh ? '触发关键词' : 'Trigger Patterns'}
+                    {isFr ? '触发关键词' : 'Trigger Patterns'}
                   </label>
                   <input
                     type="text"
@@ -299,14 +299,14 @@ function RetrieversPageInner() {
                     placeholder="what is, explain, 什么是"
                     className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm text-foreground font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring/30"
                   />
-                  <p className="mt-1 text-[10px] text-muted-foreground">{isZh ? '逗号分隔' : 'Comma-separated keywords'}</p>
+                  <p className="mt-1 text-[10px] text-muted-foreground">{isFr ? '逗号分隔' : 'Comma-separated keywords'}</p>
                 </div>
 
                 {/* Row 3: Clarification Prompts (EN + ZH) */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
-                      {isZh ? '澄清提示 (EN)' : 'Clarify Prompt (EN)'}
+                      {isFr ? '澄清提示 (EN)' : 'Clarify Prompt (EN)'}
                     </label>
                     <textarea
                       value={draft.clarifyPrompt ?? ''}
@@ -317,7 +317,7 @@ function RetrieversPageInner() {
                   </div>
                   <div>
                     <label className="block text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
-                      {isZh ? '澄清提示 (ZH)' : 'Clarify Prompt (ZH)'}
+                      {isFr ? '澄清提示 (ZH)' : 'Clarify Prompt (ZH)'}
                     </label>
                     <textarea
                       value={draft.clarifyPromptZh ?? ''}
@@ -332,7 +332,7 @@ function RetrieversPageInner() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
-                      {isZh ? '建议问题 (EN)' : 'Suggested Questions (EN)'}
+                      {isFr ? '建议问题 (EN)' : 'Suggested Questions (EN)'}
                     </label>
                     <textarea
                       value={Array.isArray(draft.suggestedQuestions) ? draft.suggestedQuestions.join('\n') : ''}
@@ -344,7 +344,7 @@ function RetrieversPageInner() {
                   </div>
                   <div>
                     <label className="block text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
-                      {isZh ? '建议问题 (ZH)' : 'Suggested Questions (ZH)'}
+                      {isFr ? '建议问题 (ZH)' : 'Suggested Questions (ZH)'}
                     </label>
                     <textarea
                       value={Array.isArray(draft.suggestedQuestionsZh) ? draft.suggestedQuestionsZh.join('\n') : ''}
@@ -360,7 +360,7 @@ function RetrieversPageInner() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
-                      {isZh ? '回答格式 (EN)' : 'Answer Format (EN)'}
+                      {isFr ? '回答格式 (EN)' : 'Answer Format (EN)'}
                     </label>
                     <textarea
                       value={draft.answerFormat ?? ''}
@@ -371,7 +371,7 @@ function RetrieversPageInner() {
                   </div>
                   <div>
                     <label className="block text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
-                      {isZh ? '回答格式 (ZH)' : 'Answer Format (ZH)'}
+                      {isFr ? '回答格式 (ZH)' : 'Answer Format (ZH)'}
                     </label>
                     <textarea
                       value={draft.answerFormatZh ?? ''}
@@ -386,7 +386,7 @@ function RetrieversPageInner() {
           ) : (
             <div className="flex flex-1 items-center justify-center">
               <p className="text-sm text-muted-foreground">
-                {isZh ? '选择一个模板查看详情' : 'Select a template to view details'}
+                {isFr ? '选择一个模板查看详情' : 'Select a template to view details'}
               </p>
             </div>
           )}

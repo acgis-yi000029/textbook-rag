@@ -62,7 +62,7 @@ export default function PromptEditorPage() {
 
 function PromptEditorPageInner() {
   const { locale } = useI18n()
-  const isZh = locale === 'zh'
+  const isFr = locale === 'fr'
 
   // ==========================================================
   // Data state
@@ -284,7 +284,7 @@ function PromptEditorPageInner() {
   // ==========================================================
   return (
     <SidebarLayout
-      title={isZh ? 'Prompt 管理' : 'Prompt Editor'}
+      title={isFr ? 'Prompt 管理' : 'Prompt Editor'}
       icon={<FileText className="h-4 w-4 text-rose-400" />}
       sidebarItems={sidebarItems}
       activeFilter={selected != null ? String(selected) : ''}
@@ -292,30 +292,30 @@ function PromptEditorPageInner() {
       sidebarWidthPx={200}
       sidebarFooter={
         <p className="text-[10px] text-muted-foreground">
-          {isZh ? `共 ${modes.length} 种模式` : `${modes.length} modes`}
+          {isFr ? `共 ${modes.length} 种模式` : `${modes.length} modes`}
         </p>
       }
       loading={loading}
-      loadingText={isZh ? '加载 Prompt 模式...' : 'Loading prompt modes...'}
+      loadingText={isFr ? '加载 Prompt 模式...' : 'Loading prompt modes...'}
       error={error}
       onRetry={loadModes}
       toolbar={
         <div className="flex items-center gap-2">
           {dirty && (
             <span className="text-[10px] text-amber-400 font-medium">
-              {isZh ? '● 未保存' : '● Unsaved'}
+              {isFr ? '● 未保存' : '● Unsaved'}
             </span>
           )}
           {saveSuccess && (
             <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-medium">
               <CheckCircle2 className="h-3 w-3" />
-              {isZh ? '已保存' : 'Saved'}
+              {isFr ? '已保存' : 'Saved'}
             </span>
           )}
           <button
             onClick={loadModes}
             className="p-2 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
-            title={isZh ? '刷新' : 'Refresh'}
+            title={isFr ? '刷新' : 'Refresh'}
           >
             <RefreshCw className="h-4 w-4" />
           </button>
@@ -342,7 +342,7 @@ function PromptEditorPageInner() {
                   <h1 className="text-lg font-bold text-foreground">{activeMode.name}</h1>
                   {activeMode.isDefault && (
                     <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-0.5">
-                      <Star className="h-2.5 w-2.5" />{isZh ? '默认' : 'Default'}
+                      <Star className="h-2.5 w-2.5" />{isFr ? '默认' : 'Default'}
                     </span>
                   )}
                 </div>
@@ -365,7 +365,7 @@ function PromptEditorPageInner() {
                   )}
                 >
                   <Pencil className="h-3 w-3" />
-                  {isZh ? '编辑' : 'Edit'}
+                  {isFr ? '编辑' : 'Edit'}
                 </button>
                 <button
                   onClick={() => setActiveTab('preview')}
@@ -377,7 +377,7 @@ function PromptEditorPageInner() {
                   )}
                 >
                   <Eye className="h-3 w-3" />
-                  {isZh ? '预览' : 'Preview'}
+                  {isFr ? '预览' : 'Preview'}
                 </button>
               </div>
 
@@ -396,7 +396,7 @@ function PromptEditorPageInner() {
                 ) : (
                   <Save className="h-3.5 w-3.5" />
                 )}
-                {isZh ? '保存' : 'Save'}
+                {isFr ? '保存' : 'Save'}
               </button>
             </div>
           </div>
@@ -415,7 +415,7 @@ function PromptEditorPageInner() {
               {/* Name */}
               <div>
                 <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                  {isZh ? '名称' : 'Name'}
+                  {isFr ? '名称' : 'Name'}
                 </label>
                 <input
                   type="text"
@@ -428,7 +428,7 @@ function PromptEditorPageInner() {
               {/* Icon */}
               <div>
                 <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                  {isZh ? '图标 (Lucide 名称)' : 'Icon (Lucide name)'}
+                  {isFr ? '图标 (Lucide 名称)' : 'Icon (Lucide name)'}
                 </label>
                 <div className="flex items-center gap-2">
                   <input
@@ -452,7 +452,7 @@ function PromptEditorPageInner() {
               {/* Description */}
               <div>
                 <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                  {isZh ? '描述' : 'Description'}
+                  {isFr ? '描述' : 'Description'}
                 </label>
                 <textarea
                   value={editDescription}
@@ -475,7 +475,7 @@ function PromptEditorPageInner() {
                   onChange={(e) => setEditSystemPrompt(e.target.value)}
                   rows={16}
                   className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground font-mono leading-relaxed focus:border-primary focus:outline-none resize-y transition-colors"
-                  placeholder={isZh ? '输入系统提示词…' : 'Enter system prompt…'}
+                  placeholder={isFr ? '输入系统提示词…' : 'Enter system prompt…'}
                 />
               </div>
             </div>
@@ -492,7 +492,7 @@ function PromptEditorPageInner() {
                     type="text"
                     value={previewQuestion}
                     onChange={(e) => setPreviewQuestion(e.target.value)}
-                    placeholder={isZh ? '输入测试问题…' : 'Enter a test question…'}
+                    placeholder={isFr ? '输入测试问题…' : 'Enter a test question…'}
                     className="w-full rounded-lg border border-border bg-card pl-9 pr-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none transition-colors"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
@@ -508,7 +508,7 @@ function PromptEditorPageInner() {
                     className="flex items-center gap-1.5 rounded-lg bg-destructive/10 text-destructive px-3 py-2 text-xs font-medium hover:bg-destructive/20 transition-colors"
                   >
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    {isZh ? '中断' : 'Stop'}
+                    {isFr ? '中断' : 'Stop'}
                   </button>
                 ) : (
                   <button
@@ -517,14 +517,14 @@ function PromptEditorPageInner() {
                     className="flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground px-3 py-2 text-xs font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     <Play className="h-3.5 w-3.5" />
-                    {isZh ? '测试' : 'Test'}
+                    {isFr ? '测试' : 'Test'}
                   </button>
                 )}
                 {previewText && !previewing && (
                   <button
                     onClick={() => { setPreviewText(''); setPreviewError(null) }}
                     className="p-2 rounded-lg border border-border text-muted-foreground hover:bg-secondary transition-colors"
-                    title={isZh ? '清除' : 'Clear'}
+                    title={isFr ? '清除' : 'Clear'}
                   >
                     <RotateCcw className="h-3.5 w-3.5" />
                   </button>
@@ -536,11 +536,11 @@ function PromptEditorPageInner() {
                 <div className="flex items-center gap-1.5 mb-1">
                   <Zap className="h-3 w-3 text-amber-400" />
                   <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                    {isZh ? '使用的 System Prompt' : 'Active System Prompt'}
+                    {isFr ? '使用的 System Prompt' : 'Active System Prompt'}
                   </span>
                   {dirty && (
                     <span className="text-[10px] text-amber-400 font-medium ml-auto">
-                      {isZh ? '(已编辑, 未保存)' : '(edited, unsaved)'}
+                      {isFr ? '(已编辑, 未保存)' : '(edited, unsaved)'}
                     </span>
                   )}
                 </div>
@@ -557,10 +557,10 @@ function PromptEditorPageInner() {
                       <Eye className="h-7 w-7 text-muted-foreground/30" />
                     </div>
                     <h3 className="text-sm font-semibold text-foreground mb-1">
-                      {isZh ? '实时预览' : 'Live Preview'}
+                      {isFr ? '实时预览' : 'Live Preview'}
                     </h3>
                     <p className="text-xs text-muted-foreground max-w-xs">
-                      {isZh
+                      {isFr
                         ? '输入测试问题，使用当前编辑的 System Prompt 查看 AI 回答效果'
                         : 'Enter a test question to see how the AI responds with your edited system prompt'}
                     </p>
@@ -573,7 +573,7 @@ function PromptEditorPageInner() {
                       <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
                       <div>
                         <p className="text-sm font-medium text-destructive">
-                          {isZh ? '预览失败' : 'Preview failed'}
+                          {isFr ? '预览失败' : 'Preview failed'}
                         </p>
                         <p className="text-xs text-destructive/70 mt-1">{previewError}</p>
                       </div>
@@ -597,7 +597,7 @@ function PromptEditorPageInner() {
         <div className="flex flex-col items-center justify-center h-full py-20">
           <FileText className="h-10 w-10 text-muted-foreground mb-3" />
           <p className="text-sm text-muted-foreground">
-            {isZh ? '选择左侧的 Prompt 模式查看详情' : 'Select a prompt mode from the sidebar'}
+            {isFr ? '选择左侧的 Prompt 模式查看详情' : 'Select a prompt mode from the sidebar'}
           </p>
         </div>
       )}

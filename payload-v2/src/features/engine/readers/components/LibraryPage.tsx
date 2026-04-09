@@ -100,7 +100,7 @@ export default function LibraryPage() {
 function LibraryPageInner() {
   const router = useRouter()
   const { locale } = useI18n()
-  const isZh = locale === 'zh'
+  const isFr = locale === 'fr'
 
   const {
     books,
@@ -133,7 +133,7 @@ function LibraryPageInner() {
 
   const handleDeleteSingle = async (book: LibraryBook) => {
     const confirmed = window.confirm(
-      isZh
+      isFr
         ? `确定删除「${book.title}」？此操作不可撤销。`
         : `Delete "${book.title}"? This cannot be undone.`,
     )
@@ -192,8 +192,8 @@ function LibraryPageInner() {
 
   const { sidebarItems, filterBooks: _filterBooks } = useBookSidebar(booksForSidebar, {
     mode: 'by-category',
-    isZh,
-    allLabel: isZh ? '全部教材' : 'All Books',
+    isFr,
+    allLabel: isFr ? '全部教材' : 'All Books',
     allIcon: <Layers className="h-4 w-4 shrink-0" />,
     categoryIcons,
   })
@@ -230,7 +230,7 @@ function LibraryPageInner() {
 
   return (
     <SidebarLayout
-      title={isZh ? '资料库' : 'Library'}
+      title={isFr ? '资料库' : 'Library'}
       icon={<Library className="h-4 w-4 text-primary" />}
       sidebarItems={sidebarItems}
       activeFilter={filter}
@@ -240,11 +240,11 @@ function LibraryPageInner() {
       onViewModeChange={setViewMode}
       sidebarFooter={
         <p className="text-[10px] text-muted-foreground">
-          {isZh ? `共 ${total} 本` : `${total} total`}
+          {isFr ? `共 ${total} 本` : `${total} total`}
         </p>
       }
       loading={loading}
-      loadingText={isZh ? '正在加载...' : 'Loading...'}
+      loadingText={isFr ? '正在加载...' : 'Loading...'}
       error={error}
       onRetry={refresh}
       toolbar={
@@ -252,16 +252,16 @@ function LibraryPageInner() {
           <Link
             href="/engine/acquisition"
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
-            title={isZh ? '导入 PDF' : 'Import PDF'}
+            title={isFr ? '导入 PDF' : 'Import PDF'}
           >
             <Download className="h-3.5 w-3.5" />
-            {isZh ? '导入' : 'Import'}
+            {isFr ? '导入' : 'Import'}
           </Link>
           {selected.size > 0 && (
             <button
               onClick={async () => {
                 const confirmed = window.confirm(
-                  isZh
+                  isFr
                     ? `确定删除 ${selected.size} 本书？此操作不可撤销。`
                     : `Delete ${selected.size} book(s)? This cannot be undone.`,
                 )
@@ -279,16 +279,16 @@ function LibraryPageInner() {
               }}
               disabled={deleting !== null}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
-              title={isZh ? '删除选中' : 'Delete selected'}
+              title={isFr ? '删除选中' : 'Delete selected'}
             >
               <Trash2 className="h-3.5 w-3.5" />
-              {isZh ? '删除' : 'Delete'}
+              {isFr ? '删除' : 'Delete'}
             </button>
           )}
           <button
             onClick={refresh}
             className="p-1.5 rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
-            title={isZh ? '刷新' : 'Refresh'}
+            title={isFr ? '刷新' : 'Refresh'}
           >
             <RefreshCw className="h-3.5 w-3.5" />
           </button>
@@ -299,7 +299,7 @@ function LibraryPageInner() {
           <div className="shrink-0 flex items-center gap-3 px-4 py-2.5 bg-card border-t border-border animate-in slide-in-from-bottom-1 duration-200">
             <CheckSquare className="h-4 w-4 shrink-0 text-primary" />
             <span className="text-sm font-medium flex-1 text-foreground">
-              {isZh
+              {isFr
                 ? `已选 ${selected.size} 本书`
                 : `${selected.size} book${selected.size > 1 ? 's' : ''} selected`}
             </span>
@@ -308,7 +308,7 @@ function LibraryPageInner() {
               onClick={() => setSelected(new Set())}
               className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded"
             >
-              {isZh ? '清除' : 'Clear'}
+              {isFr ? '清除' : 'Clear'}
             </button>
             <button
               type="button"
@@ -316,7 +316,7 @@ function LibraryPageInner() {
               className="flex items-center gap-2 bg-primary text-primary-foreground rounded-lg px-4 py-1.5 text-sm font-semibold hover:bg-primary/90 transition-colors"
             >
               <MessageSquarePlus className="h-4 w-4" />
-              {isZh ? '开始对话' : 'New Chat'}
+              {isFr ? '开始对话' : 'New Chat'}
             </button>
           </div>
         ) : undefined
@@ -330,7 +330,7 @@ function LibraryPageInner() {
           type="text"
           value={localSearch}
           onChange={(e) => setLocalSearch(e.target.value)}
-          placeholder={isZh
+          placeholder={isFr
             ? '搜索书名、作者、ISBN、分类...'
             : 'Search title, author, ISBN, category...'}
           className="w-full h-8 pl-9 pr-3 rounded-md border border-input bg-background text-xs text-foreground
@@ -355,13 +355,13 @@ function LibraryPageInner() {
           </div>
           <h3 className="text-sm font-semibold text-foreground mb-1">
             {localSearch
-              ? (isZh ? '未找到匹配结果' : 'No matches found')
-              : (isZh ? '此分类暂无教材' : 'No books in this category')}
+              ? (isFr ? '未找到匹配结果' : 'No matches found')
+              : (isFr ? '此分类暂无教材' : 'No books in this category')}
           </h3>
           <p className="text-xs text-muted-foreground text-center max-w-xs">
             {localSearch
-              ? (isZh ? '尝试不同的关键词' : 'Try different keywords')
-              : (isZh ? '运行 sync 同步或通过 Admin 上传 PDF' : 'Run sync or upload via Admin')}
+              ? (isFr ? '尝试不同的关键词' : 'Try different keywords')
+              : (isFr ? '运行 sync 同步或通过 Admin 上传 PDF' : 'Run sync or upload via Admin')}
           </p>
         </div>
       )}
@@ -385,7 +385,7 @@ function LibraryPageInner() {
                     type="button"
                     onClick={(e) => { e.stopPropagation(); setEditingBookId(book.id) }}
                     className="absolute top-2 right-[4.5rem] z-10 flex h-6 w-6 items-center justify-center rounded-md border-2 border-muted-foreground/40 bg-card/80 text-transparent group-hover/card:text-muted-foreground transition-all shadow-sm hover:border-primary hover:text-primary"
-                    title={isZh ? '编辑' : 'Edit'}
+                    title={isFr ? '编辑' : 'Edit'}
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </button>
@@ -395,7 +395,7 @@ function LibraryPageInner() {
                     onClick={(e) => { e.stopPropagation(); handleDeleteSingle(book) }}
                     disabled={deleting === book.id}
                     className="absolute top-2 right-10 z-10 flex h-6 w-6 items-center justify-center rounded-md border-2 border-muted-foreground/40 bg-card/80 text-transparent group-hover/card:text-destructive/70 transition-all shadow-sm hover:border-destructive hover:text-destructive disabled:opacity-50"
-                    title={isZh ? '删除' : 'Delete'}
+                    title={isFr ? '删除' : 'Delete'}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -434,20 +434,20 @@ function LibraryPageInner() {
               onClick={() => toggleSort('title')}
               className="flex items-center gap-1 flex-1 group/th hover:text-foreground transition-colors"
             >
-              {isZh ? '书名' : 'Title'}
+              {isFr ? '书名' : 'Title'}
               <SortIcon field="title" />
             </button>
             <button
               onClick={() => toggleSort('authors')}
               className="w-32 hidden sm:block text-right group/th hover:text-foreground transition-colors"
             >
-              {isZh ? '作者' : 'Author'}
+              {isFr ? '作者' : 'Author'}
             </button>
             <button
               onClick={() => toggleSort('pages')}
               className="w-16 hidden md:block text-right group/th hover:text-foreground transition-colors"
             >
-              {isZh ? '页数' : 'Pages'}
+              {isFr ? '页数' : 'Pages'}
             </button>
             <button
               onClick={() => toggleSort('chunks')}
@@ -461,7 +461,7 @@ function LibraryPageInner() {
             </span>
             {/* Actions column */}
             <span className="w-16 shrink-0 text-center">
-              {isZh ? '操作' : 'Actions'}
+              {isFr ? '操作' : 'Actions'}
             </span>
           </div>
 
@@ -538,7 +538,7 @@ function LibraryPageInner() {
                   type="button"
                   onClick={(e) => { e.stopPropagation(); setEditingBookId(book.id) }}
                   className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-                  title={isZh ? '编辑' : 'Edit'}
+                  title={isFr ? '编辑' : 'Edit'}
                 >
                   <Pencil className="h-3 w-3" />
                 </button>
@@ -547,7 +547,7 @@ function LibraryPageInner() {
                   onClick={(e) => { e.stopPropagation(); handleDeleteSingle(book) }}
                   disabled={deleting === book.id}
                   className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
-                  title={isZh ? '删除' : 'Delete'}
+                  title={isFr ? '删除' : 'Delete'}
                 >
                   <Trash2 className="h-3 w-3" />
                 </button>

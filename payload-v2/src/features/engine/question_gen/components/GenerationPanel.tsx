@@ -57,7 +57,7 @@ export default function GenerationPanel({
   onGenerated,
 }: GenerationPanelProps) {
   const { locale } = useI18n()
-  const isZh = locale === 'zh'
+  const isFr = locale === 'fr'
 
   // ==========================================================
   // Derived: target books from sidebar filter
@@ -149,24 +149,24 @@ export default function GenerationPanel({
 
       setResultCount(questions.length)
       if (questions.length === 0) {
-        setError(isZh ? '未生成任何问题，请检查书籍是否已索引' : 'No questions generated. Check if books are indexed.')
+        setError(isFr ? '未生成任何问题，请检查书籍是否已索引' : 'No questions generated. Check if books are indexed.')
       }
       onGenerated?.()
     } catch {
-      setError(isZh ? '生成失败，请稍后重试' : 'Generation failed. Please retry.')
+      setError(isFr ? '生成失败，请稍后重试' : 'Generation failed. Please retry.')
     } finally {
       setGenerating(false)
     }
-  }, [targetBookIds, selectedChapterKeys, filter, count, isZh, onGenerated])
+  }, [targetBookIds, selectedChapterKeys, filter, count, isFr, onGenerated])
 
   // ==========================================================
   // Scope label
   // ==========================================================
   const scopeLabel = useMemo(() => {
-    if (targetBooks.length === 0) return isZh ? '暂无可用书籍' : 'No books available'
+    if (targetBooks.length === 0) return isFr ? '暂无可用书籍' : 'No books available'
     if (isSingleBook) return targetBooks[0].title
-    return isZh ? `${targetBooks.length} 本书` : `${targetBooks.length} books`
-  }, [targetBooks, isSingleBook, isZh])
+    return isFr ? `${targetBooks.length} 本书` : `${targetBooks.length} books`
+  }, [targetBooks, isSingleBook, isFr])
 
   // ==========================================================
   // Render
@@ -181,10 +181,10 @@ export default function GenerationPanel({
           </div>
           <div>
             <h3 className="text-xs font-semibold text-foreground leading-none">
-              {isZh ? '问题生成器' : 'Question Generator'}
+              {isFr ? '问题生成器' : 'Question Generator'}
             </h3>
             <p className="text-[10px] text-muted-foreground mt-0.5">
-              {isZh ? '范围' : 'Scope'}: {scopeLabel}
+              {isFr ? '范围' : 'Scope'}: {scopeLabel}
             </p>
           </div>
         </div>
@@ -201,7 +201,7 @@ export default function GenerationPanel({
             {/* Chapter sidebar header */}
             <div className="px-3 py-2 border-b border-border">
               <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-                {isZh ? '章节筛选' : 'Chapters'}
+                {isFr ? '章节筛选' : 'Chapters'}
               </span>
               {selectedChapterKeys.size > 0 && (
                 <span className="text-[10px] text-primary ml-1">
@@ -215,11 +215,11 @@ export default function GenerationPanel({
               {chaptersLoading ? (
                 <div className="flex items-center gap-2 text-xs text-muted-foreground p-3">
                   <Loader2 className="h-3 w-3 animate-spin" />
-                  {isZh ? '加载中…' : 'Loading…'}
+                  {isFr ? '加载中…' : 'Loading…'}
                 </div>
               ) : chapters.length === 0 ? (
                 <p className="text-[11px] text-muted-foreground p-3">
-                  {isZh ? '无可用章节' : 'No chapters'}
+                  {isFr ? '无可用章节' : 'No chapters'}
                 </p>
               ) : (
                 <div className="py-1">
@@ -263,7 +263,7 @@ export default function GenerationPanel({
             {/* Chapter footer hint */}
             <div className="px-3 py-1.5 border-t border-border">
               <p className="text-[9px] text-muted-foreground/60">
-                {isZh ? '不选则全书生成' : 'No selection = whole book'}
+                {isFr ? '不选则全书生成' : 'No selection = whole book'}
               </p>
             </div>
           </div>
@@ -277,7 +277,7 @@ export default function GenerationPanel({
             <div className="flex items-center gap-2">
               <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
               <label className="text-[11px] text-muted-foreground whitespace-nowrap">
-                {isZh ? '数量' : 'Count'}
+                {isFr ? '数量' : 'Count'}
               </label>
               <input
                 type="range"
@@ -310,8 +310,8 @@ export default function GenerationPanel({
                 <Sparkles className="h-4 w-4" />
               )}
               {generating
-                ? (isZh ? '生成中…' : 'Generating…')
-                : (isZh ? '开始生成' : 'Generate')
+                ? (isFr ? '生成中…' : 'Generating…')
+                : (isFr ? '开始生成' : 'Generate')
               }
             </button>
           </div>
@@ -333,8 +333,8 @@ export default function GenerationPanel({
             )}>
               <Sparkles className="h-3.5 w-3.5" />
               {resultCount > 0
-                ? (isZh ? `成功生成 ${resultCount} 个问题` : `Generated ${resultCount} questions`)
-                : (isZh ? '未生成问题' : 'No questions generated')
+                ? (isFr ? `成功生成 ${resultCount} 个问题` : `Generated ${resultCount} questions`)
+                : (isFr ? '未生成问题' : 'No questions generated')
               }
             </div>
           )}

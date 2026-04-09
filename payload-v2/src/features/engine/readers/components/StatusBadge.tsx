@@ -18,7 +18,7 @@ import { cn } from '@/features/shared/utils'
 
 const statusConfig: Record<BookStatus, {
   label: string
-  labelZh: string
+  labelFr: string
   icon: typeof Clock
   bgClass: string
   textClass: string
@@ -26,7 +26,7 @@ const statusConfig: Record<BookStatus, {
 }> = {
   pending: {
     label: 'Pending',
-    labelZh: '待处理',
+    labelFr: 'En attente',
     icon: Clock,
     bgClass: 'bg-amber-500/10',
     textClass: 'text-amber-600 dark:text-amber-400',
@@ -34,7 +34,7 @@ const statusConfig: Record<BookStatus, {
   },
   processing: {
     label: 'Processing',
-    labelZh: '处理中',
+    labelFr: 'En cours',
     icon: Loader2,
     bgClass: 'bg-blue-500/10',
     textClass: 'text-blue-600 dark:text-blue-400',
@@ -42,7 +42,7 @@ const statusConfig: Record<BookStatus, {
   },
   indexed: {
     label: 'Ready',
-    labelZh: '已就绪',
+    labelFr: 'Prêt',
     icon: CheckCircle2,
     bgClass: 'bg-emerald-500/10',
     textClass: 'text-emerald-600 dark:text-emerald-400',
@@ -50,7 +50,7 @@ const statusConfig: Record<BookStatus, {
   },
   error: {
     label: 'Error',
-    labelZh: '失败',
+    labelFr: 'Erreur',
     icon: AlertCircle,
     bgClass: 'bg-red-500/10',
     textClass: 'text-red-600 dark:text-red-400',

@@ -186,32 +186,86 @@ export async function removeOllamaModel(modelName: string): Promise<void> {
   }
 }
 
-// ── 2. 真实可用性检测 / Real availability detection ──────────────────────────────
+// ── 2. Real availability detection ──────────────────────────────────────────
 
 /**
- * 检测所有 provider 的可用性（通过 Engine API 代理）
- * Detect availability for all providers via Engine API proxy
+ * Engine API response shape for /engine/llms/providers
  *
- * Engine 暴露:
- *   GET /engine/llms/models        → Ollama 本地模型列表
- *   GET /engine/llms/providers     → 可用的 provider 列表
- *   GET /engine/llms/models/check  → 完整的可用性检测（我们在此新建）
+ *   { providers: [{ name, display_name, model, available, base_url?, endpoint? }] }
  */
+interface EngineProviderInfo {
+  name: string
+  display_name?: string
+  model?: string
+  available: boolean
+  base_url?: string
+  endpoint?: string
+}
 
-/** 检测 Ollama 本地模型可用性 / Check Ollama local model availability */
+/**
+ * Engine API response shape for /engine/llms/models
+ *
+ *   { llm: { model, provider }, embed_model: { model } }
+ */
+interface EngineModelsResponse {
+  llm?: { model?: string; provider?: string }
+  embed_model?: { model?: string }
+}
+
+/**
+ * Fetch all provider health from Engine's /engine/llms/providers endpoint.
+ * This is the single source of truth for availability.
+ */
+async function fetchProviderHealth(): Promise<EngineProviderInfo[]> {
+  const data = await request<{ providers: EngineProviderInfo[] }>(
+    `${ENGINE}/engine/llms/providers`
+  )
+  return data.providers || []
+}
+
+/** Check Ollama local model availability */
 export async function checkOllamaModels(): Promise<ProviderHealth> {
   const start = Date.now()
   try {
-    const data = await request<{ models: string[] }>(
-      `${ENGINE}/engine/llms/models`
-    )
+    const providers = await fetchProviderHealth()
+    const ollama = providers.find((p) => p.name === 'ollama')
+
+    if (ollama?.available) {
+      // Also try to get the list of locally installed Ollama models
+      let availableModels: string[] = []
+      try {
+        // Engine /engine/llms/models returns current active model info
+        const modelsData = await request<EngineModelsResponse>(
+          `${ENGINE}/engine/llms/models`
+        )
+        if (modelsData.llm?.model) {
+          availableModels.push(modelsData.llm.model)
+        }
+        if (modelsData.embed_model?.model) {
+          availableModels.push(modelsData.embed_model.model)
+        }
+      } catch {
+        // If we can't get model list, just use the provider's model name
+        if (ollama.model) availableModels = [ollama.model]
+      }
+
+      return {
+        provider: 'ollama',
+        status: 'available',
+        availableModels,
+        latencyMs: Date.now() - start,
+        checkedAt: Date.now(),
+        error: null,
+      }
+    }
+
     return {
       provider: 'ollama',
-      status: 'available',
-      availableModels: data.models || [],
+      status: 'unavailable',
+      availableModels: [],
       latencyMs: Date.now() - start,
       checkedAt: Date.now(),
-      error: null,
+      error: ollama ? 'Ollama service not responding' : 'Ollama not configured',
     }
   } catch (err) {
     return {
@@ -220,62 +274,39 @@ export async function checkOllamaModels(): Promise<ProviderHealth> {
       availableModels: [],
       latencyMs: null,
       checkedAt: Date.now(),
-      error: err instanceof Error ? err.message : 'Ollama service unavailable',
+      error: err instanceof Error ? err.message : 'Engine unreachable',
     }
   }
 }
 
-/** 检测云端 provider 可用性 / Check cloud provider availability */
+/** Check cloud provider availability */
 export async function checkCloudProviders(): Promise<ProviderHealth[]> {
   const start = Date.now()
   try {
-    const data = await request<{ providers: string[] }>(
-      `${ENGINE}/engine/llms/providers`
-    )
-    const providers = data.providers || []
+    const providers = await fetchProviderHealth()
     const results: ProviderHealth[] = []
 
     // Azure OpenAI
-    if (providers.includes('azure_openai')) {
-      results.push({
-        provider: 'azure_openai',
-        status: 'available',
-        availableModels: [], // 云端模型不需要本地检测，只要 provider 可用
-        latencyMs: Date.now() - start,
-        checkedAt: Date.now(),
-        error: null,
-      })
-    } else {
-      results.push({
-        provider: 'azure_openai',
-        status: 'unavailable',
-        availableModels: [],
-        latencyMs: null,
-        checkedAt: Date.now(),
-        error: 'Azure OpenAI endpoint not configured',
-      })
-    }
+    const azure = providers.find((p) => p.name === 'azure_openai')
+    results.push({
+      provider: 'azure_openai',
+      status: azure?.available ? 'available' : 'unavailable',
+      availableModels: azure?.model ? [azure.model] : [],
+      latencyMs: Date.now() - start,
+      checkedAt: Date.now(),
+      error: azure?.available ? null : 'Azure OpenAI endpoint not configured',
+    })
 
-    // OpenAI
-    if (providers.includes('openai')) {
-      results.push({
-        provider: 'openai',
-        status: 'available',
-        availableModels: [],
-        latencyMs: Date.now() - start,
-        checkedAt: Date.now(),
-        error: null,
-      })
-    } else {
-      results.push({
-        provider: 'openai',
-        status: 'unavailable',
-        availableModels: [],
-        latencyMs: null,
-        checkedAt: Date.now(),
-        error: 'OpenAI API key not configured',
-      })
-    }
+    // OpenAI (direct, not Azure)
+    const openai = providers.find((p) => p.name === 'openai')
+    results.push({
+      provider: 'openai',
+      status: openai?.available ? 'available' : 'unavailable',
+      availableModels: openai?.model ? [openai.model] : [],
+      latencyMs: Date.now() - start,
+      checkedAt: Date.now(),
+      error: openai?.available ? null : 'OpenAI API key not configured',
+    })
 
     return results
   } catch (err) {
@@ -311,23 +342,55 @@ export async function checkCloudProviders(): Promise<ProviderHealth[]> {
 export async function checkAllModels(
   registeredModels?: LlmModel[]
 ): Promise<RuntimeModel[]> {
-  // 1. 拉取已注册模型（如未传入）/ Fetch registered models if not provided
+  // 1. Fetch registered models if not provided
   const models = registeredModels ?? await fetchEnabledModels()
 
-  // 2. 并行检测所有 provider / Parallel check all providers
-  const [ollamaHealth, cloudHealthResults] = await Promise.all([
-    checkOllamaModels(),
-    checkCloudProviders(),
-  ])
-
-  // 3. 构建 provider → health 映射 / Build provider → health map
-  const healthMap = new Map<ModelProvider, ProviderHealth>()
-  healthMap.set('ollama', ollamaHealth)
-  for (const h of cloudHealthResults) {
-    healthMap.set(h.provider, h)
+  // 2. Fetch provider health (single API call)
+  let providers: EngineProviderInfo[] = []
+  try {
+    providers = await fetchProviderHealth()
+  } catch {
+    // Engine unreachable — all providers unavailable
   }
 
-  // 4. 为每个模型生成可用性结果 / Generate availability for each model
+  // 3. Build provider → health map from the single response
+  const healthMap = new Map<ModelProvider, ProviderHealth>()
+  const now = Date.now()
+
+  // Ollama health
+  const ollama = providers.find((p) => p.name === 'ollama')
+  healthMap.set('ollama', {
+    provider: 'ollama',
+    status: ollama?.available ? 'available' : 'unavailable',
+    availableModels: ollama?.model ? [ollama.model] : [],
+    latencyMs: providers.length > 0 ? 0 : null,
+    checkedAt: now,
+    error: ollama?.available ? null : 'Ollama not available',
+  })
+
+  // Azure OpenAI health
+  const azure = providers.find((p) => p.name === 'azure_openai')
+  healthMap.set('azure_openai', {
+    provider: 'azure_openai',
+    status: azure?.available ? 'available' : 'unavailable',
+    availableModels: azure?.model ? [azure.model] : [],
+    latencyMs: providers.length > 0 ? 0 : null,
+    checkedAt: now,
+    error: azure?.available ? null : 'Azure OpenAI not configured',
+  })
+
+  // OpenAI health
+  const openai = providers.find((p) => p.name === 'openai')
+  healthMap.set('openai', {
+    provider: 'openai',
+    status: openai?.available ? 'available' : 'unavailable',
+    availableModels: openai?.model ? [openai.model] : [],
+    latencyMs: providers.length > 0 ? 0 : null,
+    checkedAt: now,
+    error: openai?.available ? null : 'OpenAI not configured',
+  })
+
+  // 4. Generate availability result for each model
   return models.map((model) => {
     const health = healthMap.get(model.provider)
     const availability = resolveAvailability(model, health)
@@ -374,20 +437,9 @@ function resolveAvailability(
     }
   }
 
-  // Ollama: 检查模型是否真实存在于本地 / Ollama: check if model is actually pulled locally
-  if (model.provider === 'ollama') {
-    const isLocally = health.availableModels.some(
-      (m) => m === model.name || m.startsWith(model.name.split(':')[0])
-    )
-    if (!isLocally) {
-      return {
-        status: 'unavailable',
-        latencyMs: health.latencyMs,
-        checkedAt: health.checkedAt,
-        error: `Model "${model.name}" is not pulled locally. Run: ollama pull ${model.name}`,
-      }
-    }
-  }
+  // Ollama: if the service is available, trust it for all registered models.
+  // The Engine confirms Ollama is reachable — specific models can be pulled on demand.
+  // Cloud providers: provider-level availability is sufficient.
 
   // 一切正常 / All good
   return {

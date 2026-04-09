@@ -53,7 +53,7 @@ export default function Page({ params }: { params: Promise<{ bookId: string }> }
   const resolvedParams = use(params)
   const bookId = resolvedParams.bookId
   const { locale } = useI18n()
-  const isZh = locale === 'zh'
+  const isFr = locale === 'fr'
 
   const [book, setBook] = useState<BookInfo | null>(null)
   const [chapters, setChapters] = useState<Chapter[]>([])
@@ -81,9 +81,8 @@ export default function Page({ params }: { params: Promise<{ bookId: string }> }
           category: b.category ?? '', status: b.status ?? 'pending',
           chunkCount: b.chunkCount ?? 0,
           pipeline: {
-            chunked: b.pipeline?.chunked ?? 'pending',
-            toc: b.pipeline?.toc ?? 'pending',
-            vector: b.pipeline?.vector ?? 'pending',
+            parse: b.pipeline?.parse ?? 'pending',
+            ingest: b.pipeline?.ingest ?? 'pending',
           },
         })
       }
@@ -159,7 +158,7 @@ export default function Page({ params }: { params: Promise<{ bookId: string }> }
           <span className="text-muted-foreground/50">·</span>
           <span>{book.chunkCount} chunks</span>
           <span className="text-muted-foreground/50">·</span>
-          <span>{chapters.length} {isZh ? '章节' : 'chapters'}</span>
+          <span>{chapters.length} {isFr ? 'chapitres' : 'chapters'}</span>
         </div>
 
         <div className="mt-2 max-w-xs">
@@ -174,7 +173,7 @@ export default function Page({ params }: { params: Promise<{ bookId: string }> }
           <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
             <Layers className="h-4 w-4 text-blue-400" />
             <span className="text-xs font-semibold text-foreground">
-              {isZh ? '目录结构' : 'Table of Contents'}
+              {isFr ? 'Table des matières' : 'Table of Contents'}
             </span>
           </div>
 
@@ -229,7 +228,7 @@ export default function Page({ params }: { params: Promise<{ bookId: string }> }
 
             {chapters.length === 0 && (
               <p className="text-[11px] text-muted-foreground text-center py-4">
-                {isZh ? '暂无章节数据' : 'No chapters yet'}
+                {isFr ? 'Aucun chapitre pour le moment' : 'No chapters yet'}
               </p>
             )}
           </nav>
@@ -246,33 +245,33 @@ export default function Page({ params }: { params: Promise<{ bookId: string }> }
                     'text-[10px] rounded-full px-2 py-0.5 font-medium',
                     selectedChunk.vectorized ? 'bg-emerald-500/10 text-emerald-400' : 'bg-muted text-muted-foreground'
                   )}>
-                    {selectedChunk.vectorized ? (isZh ? '已向量化' : 'Vectorized') : (isZh ? '未向量化' : 'Not vectorized')}
+                    {selectedChunk.vectorized ? (isFr ? 'Vectorisé' : 'Vectorized') : (isFr ? 'Non vectorisé' : 'Not vectorized')}
                   </span>
                 </div>
               </div>
 
               <div className="grid grid-cols-4 gap-3 mb-4 text-xs">
                 <div className="rounded-lg border border-border bg-muted/30 p-3">
-                  <span className="text-muted-foreground">{isZh ? '页码' : 'Page'}</span>
+                  <span className="text-muted-foreground">{isFr ? 'Page' : 'Page'}</span>
                   <p className="font-medium text-foreground">{selectedChunk.pageNumber}</p>
                 </div>
                 <div className="rounded-lg border border-border bg-muted/30 p-3">
-                  <span className="text-muted-foreground">{isZh ? '类型' : 'Type'}</span>
+                  <span className="text-muted-foreground">{isFr ? 'Type' : 'Type'}</span>
                   <p className="font-medium text-foreground capitalize">{selectedChunk.contentType}</p>
                 </div>
                 <div className="rounded-lg border border-border bg-muted/30 p-3">
-                  <span className="text-muted-foreground">{isZh ? '排序' : 'Order'}</span>
+                  <span className="text-muted-foreground">{isFr ? 'Ordre' : 'Order'}</span>
                   <p className="font-medium text-foreground">{selectedChunk.readingOrder}</p>
                 </div>
                 <div className="rounded-lg border border-border bg-muted/30 p-3">
-                  <span className="text-muted-foreground">{isZh ? '字符数' : 'Chars'}</span>
+                  <span className="text-muted-foreground">{isFr ? 'Caractères' : 'Chars'}</span>
                   <p className="font-medium text-foreground">{selectedChunk.text.length}</p>
                 </div>
               </div>
 
               <div className="rounded-lg border border-border bg-muted/20 p-4">
                 <label className="block text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                  {isZh ? '文本内容' : 'Content'}
+                  {isFr ? 'Contenu' : 'Content'}
                 </label>
                 <pre className="text-xs text-foreground whitespace-pre-wrap font-mono leading-relaxed max-h-[60vh] overflow-y-auto">
                   {selectedChunk.text}
@@ -283,27 +282,27 @@ export default function Page({ params }: { params: Promise<{ bookId: string }> }
             <div className="flex-1 overflow-y-auto p-6">
               {/* Statistics overview */}
               <h3 className="text-sm font-semibold text-foreground mb-4">
-                {isZh ? '数据统计' : 'Statistics'}
+                {isFr ? 'Statistiques' : 'Statistics'}
               </h3>
               <div className="grid grid-cols-3 gap-4 mb-6">
                 <div className="rounded-lg border border-border bg-card p-4">
                   <p className="text-2xl font-bold text-primary">{chapters.length}</p>
-                  <p className="text-xs text-muted-foreground">{isZh ? '章节' : 'Chapters'}</p>
+                  <p className="text-xs text-muted-foreground">{isFr ? 'Chapitres' : 'Chapters'}</p>
                 </div>
                 <div className="rounded-lg border border-border bg-card p-4">
                   <p className="text-2xl font-bold text-emerald-400">{totalChunks}</p>
-                  <p className="text-xs text-muted-foreground">{isZh ? '文本块' : 'Chunks'}</p>
+                  <p className="text-xs text-muted-foreground">{isFr ? 'Segments' : 'Chunks'}</p>
                 </div>
                 <div className="rounded-lg border border-border bg-card p-4">
                   <p className="text-2xl font-bold text-blue-400">{chunks.filter(c => c.vectorized).length}/{chunks.length}</p>
-                  <p className="text-xs text-muted-foreground">{isZh ? '已向量化（本页）' : 'Vectorized (this page)'}</p>
+                  <p className="text-xs text-muted-foreground">{isFr ? 'Vectorisés (cette page)' : 'Vectorized (this page)'}</p>
                 </div>
               </div>
 
               {/* Chunk list */}
               <div className="flex items-center justify-between mb-3">
                 <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  {isZh ? '所有文本块' : 'All Chunks'} ({totalChunks})
+                  {isFr ? 'Tous les segments' : 'All Chunks'} ({totalChunks})
                 </h4>
                 {totalPages > 1 && (
                   <div className="flex items-center gap-1.5">

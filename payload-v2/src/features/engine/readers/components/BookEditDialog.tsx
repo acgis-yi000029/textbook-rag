@@ -1,4 +1,4 @@
-/**
+﻿/**
  * BookEditDialog — Inline edit form for book metadata (title, authors, category).
  *
  * Renders below the BookCard when activated. Saves via updateBook API.
@@ -28,7 +28,7 @@ interface BookEditDialogProps {
 // ============================================================
 export default function BookEditDialog({ book, onSave, onCancel }: BookEditDialogProps) {
   const { locale } = useI18n()
-  const isZh = locale === 'zh'
+  const isFr = locale === 'fr'
 
   // ==========================================================
   // State
@@ -44,7 +44,7 @@ export default function BookEditDialog({ book, onSave, onCancel }: BookEditDialo
   // ==========================================================
   const handleSave = useCallback(async () => {
     if (!title.trim()) {
-      setError(isZh ? '标题不能为空' : 'Title is required')
+      setError(isFr ? '标题不能为空' : 'Title is required')
       return
     }
 
@@ -63,7 +63,7 @@ export default function BookEditDialog({ book, onSave, onCancel }: BookEditDialo
     } finally {
       setSaving(false)
     }
-  }, [book.id, title, authors, category, isZh, onSave])
+  }, [book.id, title, authors, category, isFr, onSave])
 
   // ==========================================================
   // Field style
@@ -79,35 +79,35 @@ export default function BookEditDialog({ book, onSave, onCancel }: BookEditDialo
       {/* Title */}
       <div>
         <label className="block text-[11px] font-medium text-muted-foreground mb-1">
-          {isZh ? '书名' : 'Title'}
+          {isFr ? '书名' : 'Title'}
         </label>
         <input
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           className={fieldClass}
-          placeholder={isZh ? '请输入书名' : 'Enter title'}
+          placeholder={isFr ? '请输入书名' : 'Enter title'}
         />
       </div>
 
       {/* Authors */}
       <div>
         <label className="block text-[11px] font-medium text-muted-foreground mb-1">
-          {isZh ? '作者' : 'Authors'}
+          {isFr ? '作者' : 'Authors'}
         </label>
         <input
           type="text"
           value={authors}
           onChange={(e) => setAuthors(e.target.value)}
           className={fieldClass}
-          placeholder={isZh ? '请输入作者' : 'Enter authors'}
+          placeholder={isFr ? '请输入作者' : 'Enter authors'}
         />
       </div>
 
       {/* Category */}
       <div>
         <label className="block text-[11px] font-medium text-muted-foreground mb-1">
-          {isZh ? '分类' : 'Category'}
+          {isFr ? '分类' : 'Category'}
         </label>
         <input
           type="text"
@@ -115,12 +115,12 @@ export default function BookEditDialog({ book, onSave, onCancel }: BookEditDialo
           value={category}
           onChange={(e) => setCategory(e.target.value)}
           className={fieldClass}
-          placeholder={isZh ? '输入或选择分类' : 'Type or select category'}
+          placeholder={isFr ? '输入或选择分类' : 'Type or select category'}
         />
         <datalist id="category-options">
           {WELL_KNOWN_CATEGORIES.map((opt) => (
             <option key={opt.value} value={opt.value}>
-              {isZh ? opt.labelZh : opt.label}
+              {isFr ? opt.labelFr : opt.label}
             </option>
           ))}
         </datalist>
@@ -140,7 +140,7 @@ export default function BookEditDialog({ book, onSave, onCancel }: BookEditDialo
           className="flex items-center gap-1 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50"
         >
           <X className="h-3 w-3" />
-          {isZh ? '取消' : 'Cancel'}
+          {isFr ? '取消' : 'Cancel'}
         </button>
         <button
           type="button"
@@ -149,7 +149,7 @@ export default function BookEditDialog({ book, onSave, onCancel }: BookEditDialo
           className="flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
         >
           {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-          {isZh ? '保存' : 'Save'}
+          {isFr ? '保存' : 'Save'}
         </button>
       </div>
     </div>
